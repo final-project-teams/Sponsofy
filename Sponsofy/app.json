@@ -5,24 +5,49 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
+    "assetBundlePatterns": [
+      "**/*",
+      "assets/fonts/*"
+    ],
+    "fonts": [
+      {
+        "Poppins-Regular": "./assets/fonts/Poppins-Regular.ttf"
+      },
+      {
+        "Poppins-Medium": "./assets/fonts/Poppins-Medium.ttf"
+      },
+      {
+        "Poppins-SemiBold": "./assets/fonts/Poppins-SemiBold.ttf"
+      },
+      {
+        "Poppins-Bold": "./assets/fonts/Poppins-Bold.ttf"
+      }
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.sponsofy",
+      "buildNumber": "1.0.0"
     },
     "android": {
+      "package": "com.yourcompany.sponsofy",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
