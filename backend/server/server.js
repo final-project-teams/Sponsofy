@@ -10,6 +10,7 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
+const seedDatabase = require('../database/seeders/seed');
 
 const io = socketIo(server, {
   cors: {
@@ -18,15 +19,21 @@ const io = socketIo(server, {
     credentials: true
   }
 });
-// async function initializeDatabase() {
-//   try {
-      
-//       console.log('Database initialized successfully');
-//   } catch (error) {
-//       console.error('Database initialization failed:', error);
-//   }
-// }
-// initializeDatabase()
+
+async function initializeDatabase() {
+  try {
+    // Add alter:true option to avoid dropping tables
+    await sequelize.sync({ alter: true });
+    // Add a small delay before seeding
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await seedDatabase();
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+  }
+}
+
+// initializeDatabase();
 
 // CORS configuration - place this before any routes
 app.use(cors({
