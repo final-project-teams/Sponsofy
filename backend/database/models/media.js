@@ -1,10 +1,6 @@
 // models/media.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db');
-const ContentCreator = require('./contentCreator');
-const Deal = require('./deal');
-const Company = require('./company');
 
+module.exports = (sequelize, DataTypes) => {
 const Media = sequelize.define('Media', {
   media_type: {
     type: DataTypes.ENUM('image', 'video', 'audio', 'document'),
@@ -36,5 +32,5 @@ const Media = sequelize.define('Media', {
   tableName: 'media',
   timestamps: true,
 });
-
-module.exports = Media;
+return Media
+}
