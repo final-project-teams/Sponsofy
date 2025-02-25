@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+require('dotenv').config();
 const PORT = process.env.PORT 
 const fs = require('fs');
 const cors = require("cors");
@@ -18,7 +19,7 @@ const io = socketIo(server, {
 });
 // async function initializeDatabase() {
 //   try {
-//       await seedDatabase();
+//       // await seedDatabase();
 //       console.log('Database initialized successfully');
 //   } catch (error) {
 //       console.error('Database initialization failed:', error);
