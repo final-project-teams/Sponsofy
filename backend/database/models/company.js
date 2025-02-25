@@ -1,9 +1,7 @@
 // models/company.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db');
-const Media = require('./media');
-const Deal = require('./deal');
 
+
+module.exports = (sequelize, DataTypes) => {
 const Company = sequelize.define('Company', {
   name: {
     type: DataTypes.STRING,
@@ -19,9 +17,18 @@ const Company = sequelize.define('Company', {
   description: {
     type: DataTypes.TEXT,
   },
+    verified: {
+        type: DataTypes.BOOLEAN,
+    },
+    isPremium: {
+        type: DataTypes.BOOLEAN,
+    },
+    codeFiscal: {
+        type: DataTypes.STRING,
+    },
 }, {
   tableName: 'companies',
   timestamps: true,
 });
-
-module.exports = Company;
+return Company;
+}

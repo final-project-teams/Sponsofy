@@ -1,26 +1,29 @@
 // models/deal.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db');
-const ContentCreator = require('./contentCreator');
-const Company = require('./company');
 
+module.exports = (sequelize, DataTypes) => {
 const Deal = sequelize.define('Deal', {
-  deal_type: {
-    type: DataTypes.STRING,
+  content_creator_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
-  description: {
+  company_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  deal_terms: {
     type: DataTypes.TEXT,
   },
-  budget: {
-    type: DataTypes.INTEGER,
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: false,  // Deal price
   },
-  timeline: {
-    type: DataTypes.STRING,
+  status: {
+    type: DataTypes.ENUM('pending', 'accepted', 'rejected', 'completed'),
+    defaultValue: 'pending',  // Status of the deal
   },
 }, {
   tableName: 'deals',
-  timestamps: true,
+  timestamps: true,  // Automatically add createdAt and updatedAt columns
 });
-
-module.exports = Deal;
+return Deal
+}

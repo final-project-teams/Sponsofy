@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
-const PORT = process.env.PORT 
+require('dotenv').config();
+const PORT = process.env.DB_PORT 
+const { sequelize} = require('../database/connection');
 const fs = require('fs');
 const cors = require("cors");
 const http = require('http');
