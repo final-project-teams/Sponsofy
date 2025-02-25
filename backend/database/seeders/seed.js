@@ -87,6 +87,7 @@ async function seedDatabase() {
         UserId: user.id
       });
     }
+
     const createdCreators = await models.ContentCreator.bulkCreate(contentCreators);
     console.log(`Created ${createdCreators.length} content creators`);
 
@@ -264,8 +265,8 @@ async function seedMessages() {
   await models.Message.bulkCreate(messages);
 }
 
-seedDatabase()
-.then(() => console.log('Database seeded successfully'))
-.catch(error => console.error('Seeding failed:', error));
+// seedDatabase()
+// .then(() => console.log('Database seeded successfully'))
+// .catch(error => console.error('Seeding failed:', error));
 
 module.exports = seedDatabase;
