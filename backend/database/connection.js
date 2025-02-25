@@ -52,14 +52,16 @@ Media.belongsTo(ContentCreator, { foreignKey: 'creator_id' });
 Deal.hasMany(Media, { foreignKey: 'deal_id', onDelete: 'SET NULL' });
 Media.belongsTo(Deal, { foreignKey: 'deal_id' });
 
-// Sync models with the database
-sequelize.sync({ force: false }).then(() => {
+// Sync models with the database 
+
+sequelize.sync({ force: true }).then(() => {
   console.log('Database & tables have been synchronized!');
 }).catch((error) => {
   console.error('Error syncing database:', error);
 });
 
 // Export models and sequelize instance
+
 module.exports = {
   sequelize,
   User,
