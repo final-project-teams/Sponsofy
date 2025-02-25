@@ -12,6 +12,8 @@ const app = express();
 const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
 
+const userRouter = require("../router/userRoutes")
+
 const io = socketIo(server, {
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:5174'],
@@ -62,6 +64,9 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
+
+app.use("/user", userRouter)
 // Change app.listen to server.listen
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
