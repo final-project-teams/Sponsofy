@@ -264,8 +264,8 @@ async function seedMessages() {
   await models.Message.bulkCreate(messages);
 }
 
-seedDatabase()
-.then(() => console.log('Database seeded successfully'))
-.catch(error => console.error('Seeding failed:', error));
+// seedDatabase()
+// .then(() => console.log('Database seeded successfully'))
+// .catch(error => console.error('Seeding failed:', error));
 
 module.exports = seedDatabase;
