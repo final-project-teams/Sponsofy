@@ -1,8 +1,6 @@
 // models/contentCreator.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db');
-const Media = require('./media');
 
+module.exports = (sequelize, DataTypes) => {
 const ContentCreator = sequelize.define('ContentCreator', {
   first_name: {
     type: DataTypes.STRING,
@@ -25,17 +23,12 @@ const ContentCreator = sequelize.define('ContentCreator', {
   verified: {
     type: DataTypes.BOOLEAN,
   },
-  profile_picture_id: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: Media,
-      key: 'id',
-    },
-    onDelete: 'SET NULL',
+  isPremium: {
+    type: DataTypes.BOOLEAN,
   },
 }, {
   tableName: 'content_creators',
   timestamps: true,
 });
-
-module.exports = ContentCreator;
+return ContentCreator;
+}

@@ -1,7 +1,6 @@
 // models/user.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db');
 
+module.exports =(sequelize, DataTypes) => { 
 const User = sequelize.define('User', {
   username: {
     type: DataTypes.STRING,
@@ -18,12 +17,18 @@ const User = sequelize.define('User', {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('content_creator', 'company', 'admin'),
+    type: DataTypes.ENUM('content_creator', 'company'),
     allowNull: false,
   },
+    verified: {
+        type: DataTypes.BOOLEAN,
+    },
+    isPremium: {
+        type: DataTypes.BOOLEAN,
+    },
 }, {
   tableName: 'users',
   timestamps: true,
 });
-
-module.exports = User;
+return User;
+}
