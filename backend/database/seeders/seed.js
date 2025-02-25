@@ -87,6 +87,7 @@ async function seedDatabase() {
         UserId: user.id
       });
     }
+
     const createdCreators = await models.ContentCreator.bulkCreate(contentCreators);
     console.log(`Created ${createdCreators.length} content creators`);
 
