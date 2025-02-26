@@ -157,6 +157,7 @@ sequelize.authenticate()
 // Export models and sequelize instance
 
 module.exports = {
+  sequelize,
   User,
   ContentCreator,
   Media,

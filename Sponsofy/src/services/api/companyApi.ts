@@ -4,10 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Make sure this IP and port match your backend server
 const API_URL = 'http://192.168.11.214:3304/api';
 
-// Create API instance with adjusted timeout and better error handling
+// Create API instance with better error handling
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000, // Reduced timeout to 15 seconds
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -88,19 +88,34 @@ const ensureAuth = async () => {
 // Add request interceptor
 api.interceptors.request.use(
   async (config) => {
+    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
     const token = await AsyncStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  }
 );
 
-// Add response interceptor
+// Add response interceptor with improved error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`Response from ${response.config.url}: Status ${response.status}`);
+    return response;
+  },
   async (error) => {
+    console.error('Response error:', error.message);
+    console.error('Error details:', error.code, error.response?.status);
+    
+    // Handle timeout errors specifically
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timed out. Please check your server connection.');
+    }
+    
     if (error.response?.status === 401) {
       try {
         const newToken = await clearTokenAndLogin();
@@ -110,6 +125,7 @@ api.interceptors.response.use(
         throw new Error('Authentication failed. Please try again.');
       }
     }
+    
     return Promise.reject(error);
   }
 );
@@ -193,6 +209,41 @@ export const companyApi = {
     } catch (error) {
       console.error(`Get company ${id} error:`, error);
       throw new Error('Failed to fetch company profile');
+    }
+  },
+
+  // Add a method to check server connectivity
+  checkConnection: async (): Promise<boolean> => {
+    try {
+      await axios.get(`${API_URL}/health`, { timeout: 5000 });
+      return true;
+    } catch (error) {
+      console.error('Server connection check failed:', error);
+      return false;
+    }
+  },
+  
+  // Get current user's company profile
+  getCurrentCompany: async (): Promise<Company> => {
+    try {
+      await ensureAuth();
+      const response = await api.get('/companies/current');
+      return response.data;
+    } catch (error) {
+      console.error('Get current company error:', error);
+      throw new Error('Failed to fetch company profile');
+    }
+  },
+  
+  // Update company profile
+  updateCompany: async (id: number, data: Partial<Company>): Promise<Company> => {
+    try {
+      await ensureAuth();
+      const response = await api.put(`/companies/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Update company error:', error);
+      throw new Error('Failed to update company profile');
     }
   }
 }; 

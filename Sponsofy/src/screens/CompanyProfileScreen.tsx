@@ -29,69 +29,51 @@ type CompanyProfileScreenRouteProp = RouteProp<RootStackParamList, 'CompanyProfi
 export default function CompanyProfileScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<CompanyProfileScreenRouteProp>();
-  const { company, companyId } = route.params || {};
+  const { company: routeCompany, companyId } = route.params || {};
   const { currentTheme } = useTheme();
   
-  
-  const [loading, setLoading] = useState(!company);
-  const [profileData, setProfileData] = useState<Company | null>(company || null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-
-
-  useEffect(() => {
-    const fetchCompanyProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // If we have a specific company ID, fetch that company
-        if (companyId) {
-          const data = await companyApi.getById(companyId);
-          setProfileData(data);
-        } 
-        // Otherwise fetch the first company (or create one if none exists)
-        else {
-          const companies = await companyApi.getAll();
-          
-          if (companies && companies.length > 0) {
-            setProfileData(companies[0]);
-          } else {
-            // Create a new company if none exists
-            const newCompany = await companyApi.create({
-              name: 'Company Name',
-              industry: 'Technology',
-              location: 'El Khazala, Tunis, Tunisia',
-              website: 'https://example.com',
-              description: 'Lorem ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.',
-              codeFiscal: Date.now().toString(), // Generate a unique code
-              targetContentType: ['Video'],
-              budget: {
-                min: 1000,
-                max: 5000,
-                currency: 'USD'
-              },
-              collaborationPreferences: {
-                contentTypes: ['Video'],
-                duration: '3 months',
-                requirements: 'High quality content'
-              }
-            });
-            setProfileData(newCompany);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching company profile:', err);
-        setError('Failed to load company profile');
-      } finally {
-        setLoading(false);
+  // Create a default mock company profile
+  const defaultCompany: Company = {
+    id: 1,
+    name: 'Company Name',
+    industry: 'Technology',
+    location: 'El Khazala, Tunis, Tunisia',
+    website: 'https://example.com',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.',
+    codeFiscal: 'ABC123456789',
+    targetContentType: ['Video'],
+    budget: {
+      min: 1000,
+      max: 5000,
+      currency: 'USD'
+    },
+    collaborationPreferences: {
+      contentTypes: ['Video'],
+      duration: '3 months',
+      requirements: 'High quality content'
+    },
+    verified: true,
+    profileViews: 0,
+    dealsPosted: 0,
+    previousContracts: [
+      {
+        title: 'Marketing Campaign',
+        date: '1 month ago',
+        description: 'Social media promotion'
+      },
+      {
+        title: 'Product Launch',
+        date: '3 months ago',
+        description: 'Video content creation'
       }
-    };
-
-    if (!profileData) {
-      fetchCompanyProfile();
-    }
-  }, [companyId, profileData]);
+    ]
+  };
+  
+  // Use the company from route params or the default mock company
+  const [profileData, setProfileData] = useState<Company>(routeCompany || defaultCompany);
 
   const handleEditProfile = () => {
     if (profileData) {
@@ -118,18 +100,10 @@ export default function CompanyProfileScreen() {
         <Text style={{ color: '#FF3A3A', marginBottom: 20 }}>{error}</Text>
         <TouchableOpacity 
           style={[styles.retryButton, { backgroundColor: '#701FF1' }]}
-          onPress={() => setProfileData(null)} // This will trigger a re-fetch
+          onPress={() => setProfileData(defaultCompany)} // This will reset to default company
         >
           <Text style={{ color: '#FFFFFF' }}>Retry</Text>
         </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (!profileData) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: '#000000' }]}>
-        <Text style={{ color: '#FFFFFF' }}>No profile data available</Text>
       </View>
     );
   }
@@ -151,9 +125,11 @@ export default function CompanyProfileScreen() {
             label={profileData.name.substring(0, 2).toUpperCase()}
             style={{ backgroundColor: '#666', borderWidth: 2, borderColor: '#000' }}
           />
-          <View style={styles.verificationBadge}>
-            <Icon name="check" size={12} color="#FFFFFF" />
-          </View>
+          {profileData.verified && (
+            <View style={styles.verificationBadge}>
+              <Icon name="check" size={12} color="#FFFFFF" />
+            </View>
+          )}
           <Text style={styles.premiumText}>Premium Member</Text>
         </View>
         
@@ -186,11 +162,11 @@ export default function CompanyProfileScreen() {
           <Text style={styles.sectionTitle}>Analytics</Text>
           <TouchableOpacity style={styles.analyticsItem}>
             <Icon name="eye" size={20} color="#5F5F5F" />
-            <Text style={styles.analyticsText}>0 Profile Views</Text>
+            <Text style={styles.analyticsText}>{profileData.profileViews || 0} Profile Views</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.analyticsItem}>
             <Icon name="handshake" size={20} color="#5F5F5F" />
-            <Text style={styles.analyticsText}>0 Deals posted</Text>
+            <Text style={styles.analyticsText}>{profileData.dealsPosted || 0} Deals posted</Text>
           </TouchableOpacity>
         </View>
         
@@ -206,16 +182,26 @@ export default function CompanyProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Previous Contracts</Text>
           <View style={styles.contractsContainer}>
-            <View style={styles.contractCard}>
-              <Text style={styles.contractTitle}>Title...</Text>
-              <Text style={styles.contractDate}>1 month ago</Text>
-              <Text style={styles.contractDescription}>Description...</Text>
-            </View>
-            <View style={styles.contractCard}>
-              <Text style={styles.contractTitle}>Title...</Text>
-              <Text style={styles.contractDate}>3 months ago</Text>
-              <Text style={styles.contractDescription}>Description...</Text>
-            </View>
+            {profileData.previousContracts?.map((contract, index) => (
+              <View key={index} style={styles.contractCard}>
+                <Text style={styles.contractTitle}>{contract.title}</Text>
+                <Text style={styles.contractDate}>{contract.date}</Text>
+                <Text style={styles.contractDescription}>{contract.description}</Text>
+              </View>
+            )) || (
+              <>
+                <View style={styles.contractCard}>
+                  <Text style={styles.contractTitle}>Title...</Text>
+                  <Text style={styles.contractDate}>1 month ago</Text>
+                  <Text style={styles.contractDescription}>Description...</Text>
+                </View>
+                <View style={styles.contractCard}>
+                  <Text style={styles.contractTitle}>Title...</Text>
+                  <Text style={styles.contractDate}>3 months ago</Text>
+                  <Text style={styles.contractDescription}>Description...</Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
         
@@ -234,16 +220,18 @@ export default function CompanyProfileScreen() {
           <Icon name="home" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Icon name="home-outline" size={24} color="#FFFFFF" />
+          <Icon name="compass" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Icon name="plus-box-outline" size={24} color="#FFFFFF" />
+          <View style={styles.centerButton}>
+            <Icon name="plus" size={24} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Icon name="compass-outline" size={24} color="#FFFFFF" />
+          <Icon name="bell-outline" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Icon name="account-outline" size={24} color="#FFFFFF" />
+          <Icon name="account" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -455,5 +443,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
     height: '100%',
+  },
+  centerButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#701FF1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
 }); 

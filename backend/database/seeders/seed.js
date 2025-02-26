@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 
 async function seedDatabase() {
   try {
+    console.log("sequelize",sequelize)
     // First, sync the database to create missing tables
     await sequelize.sync({ alter: true });
     
