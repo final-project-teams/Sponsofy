@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 
 async function seedDatabase() {
   try {
-    // First, sync the database to create missing tables
+    // Sync the database
     await sequelize.sync({ alter: true });
     
     console.log('Clearing existing data...');
@@ -56,6 +56,7 @@ async function seedDatabase() {
     // Create Companies
     const companies = [];
     const companyUsers = createdUsers.filter(user => user.role === 'company');
+    const categories = ['Technology', 'Health', 'Finance', 'Education', 'Entertainment']; // Define categories
     for (const user of companyUsers) {
       companies.push({
         name: faker.company.name(),
@@ -65,6 +66,7 @@ async function seedDatabase() {
         verified: faker.datatype.boolean(),
         isPremium: faker.datatype.boolean(),
         codeFiscal: faker.string.alphanumeric(10),
+        category: faker.helpers.arrayElement(categories), // Randomly select a category
         UserId: user.id
       });
     }
@@ -266,7 +268,7 @@ async function seedMessages() {
 }
 
 // seedDatabase()
-// .then(() => console.log('Database seeded successfully'))
-// .catch(error => console.error('Seeding failed:', error));
+//   .then(() => console.log('Database seeded successfully'))
+//   .catch(error => console.error('Seeding failed:', error));
 
 module.exports = seedDatabase;

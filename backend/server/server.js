@@ -1,8 +1,8 @@
 const express = require('express');
 const path = require('path');
 require('dotenv').config();
-const PORT = process.env.DB_PORT 
-const { sequelize} = require('../database/connection');
+const PORT = process.env.DB_PORT;
+const { sequelize } = require('../database/connection');
 const fs = require('fs');
 const cors = require("cors");
 const http = require('http');
@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
+const searchRoutes = require('../router/searchrouter');
 
 const io = socketIo(server, {
   cors: {
@@ -44,6 +45,9 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
+// Use the search routes
+app.use('/api/search', searchRoutes);
+
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -56,12 +60,15 @@ if (!fs.existsSync(uploadDir)) {
 
 // Important: Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
 require('dotenv').config();
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
 // Change app.listen to server.listen
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
