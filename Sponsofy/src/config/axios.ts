@@ -1,8 +1,11 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import {API_URL} from './source'
+if(!API_URL){
+  throw new Error("API_URL is not defined")
+}
 const api = axios.create({
-  baseURL: process.env.API_URL,
+  baseURL:   API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

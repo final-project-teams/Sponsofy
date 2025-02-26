@@ -12,7 +12,7 @@ import { useTheme } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { socketService } from '../services/socketService';
 import { chatService } from '../services/api';
-
+import api from '../config/axios';
 interface Message {
   id: string;
   content: string;
@@ -27,15 +27,24 @@ const ChatScreen = ({ route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const roomId = route.params?.roomId || '1';
   const currentUserId = '1'; // Replace with actual user ID from your auth system
+const getTest = async () => {
+  try {
 
+    const response = await api.get("/");
+    console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",response.data)
+  } catch (error) {
+    console.error('Error loading messages:', error);  
+  }
+}
   useEffect(() => {
-    loadMessages();
-    setupSocketConnection();
+    getTest();
+    // loadMessages();
+    // setupSocketConnection();
 
-    return () => {
-      socketService.disconnect();
-    };
-  }, [roomId]);
+    // return () => {
+    //   socketService.disconnect();
+    // };
+  }, []);
 
   const loadMessages = async () => {
     try {
