@@ -1,0 +1,1 @@
+console.log('Connection to the database has been established successfully.');

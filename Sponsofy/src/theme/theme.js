@@ -25,6 +25,14 @@ const darkColors = {
   error: '#FF3A3A',
   white: '#F4F4F4',
   black: '#0E0E0E',
+  headerBackground: '#1A1A1A',
+  cardBackground: '#1A1A1A',
+  verificationBadge: '#00C853',
+  premiumText: '#701FF1',
+  bottomNavBackground: '#000000',
+  bottomNavBorder: '#292929',
+  avatarBackground: '#666666',
+  profileHeaderBackground: '#1A1A1A',
 };
 
 export const theme = {
@@ -42,6 +50,7 @@ export const theme = {
       small: 4,
       medium: 8,
       large: 12,
+      pill: 25,
     },
     fonts: {
       regular: 'Poppins-Regular',
@@ -107,6 +116,11 @@ export const theme = {
         },
       },
     },
+    profile: {
+      headerHeight: 120,
+      avatarSize: 80,
+      verificationBadgeSize: 20,
+    },
   },
   dark: {
     colors: darkColors,
@@ -122,6 +136,7 @@ export const theme = {
       small: 4,
       medium: 8,
       large: 12,
+      pill: 25,
     },
     fonts: {
       regular: 'Poppins-Regular',
@@ -174,18 +189,23 @@ export const theme = {
       },
       button: {
         accept: {
-          backgroundColor: '#6A0DA0',
+          backgroundColor: '#701FF1',
           textColor: '#FFFFFF',
           borderRadius: 8,
           padding: 12,
         },
         cancel: {
-          backgroundColor: '#D9D9D9',
-          textColor: '#181818',
+          backgroundColor: '#292929',
+          textColor: '#FFFFFF',
           borderRadius: 8,
           padding: 12,
         },
       },
+    },
+    profile: {
+      headerHeight: 120,
+      avatarSize: 80,
+      verificationBadgeSize: 20,
     },
   },
 };
