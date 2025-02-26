@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import ChatScreen from './src/ChatScreen';
-import VideoCallScreen from './src/VideoCallScreen';
-import { darkTheme, lightTheme } from './src/themes';
+import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
+
+import FlashMessage from 'react-native-flash-message'; // Import FlashMessage
 
 const Stack = createStackNavigator();
 
 const App = () => {
-  const [isDarkTheme, setIsDarkTheme] = useState(true);
-
   return (
-    <NavigationContainer theme={isDarkTheme ? darkTheme : lightTheme}>
-      <Stack.Navigator initialRouteName="Chat">
-        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="VideoCall" component={VideoCallScreen} options={{ headerShown: false }} />
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login">
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
       </Stack.Navigator>
+      <FlashMessage position="top" />
     </NavigationContainer>
   );
 };
