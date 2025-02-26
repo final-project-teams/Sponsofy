@@ -16,6 +16,10 @@
       "**/*",
       "assets/fonts/*"
     ],
+    "extra": {
+      "API_URL": "http://192.168.11.199:3304",
+      "SOCKET_URL": "http://192.168.11.199:3000"
+    },
     "fonts": [
       {
         "Poppins-Regular": "./assets/fonts/Poppins-Regular.ttf"
