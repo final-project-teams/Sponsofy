@@ -4,6 +4,12 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { showMessage } from 'react-native-flash-message';
 
 
+// import * as webBrowser from 'expo-web-browser'; 
+import * as Google from "expo-auth-session/providers/google"; 
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
+
 ////// android id : 346617996333-e4ven3pmerrbdistl3m9pfh8u3959cj5.apps.googleusercontent.com
 
 const SignupScreen = ({ navigation }) => {
@@ -12,6 +18,15 @@ const SignupScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+
+  // ***************************** google ********************************* ///
+  const [userInfo, setUserInfo]= React.useState(null)
+  const [request,response,promptAsyn] = Google.useAuthRequest({
+    androidClientId: "346617996333-e4ven3pmerrbdistl3m9pfh8u3959cj5.apps.googleusercontent.com"
+  })
+
+
 
   const validatePasswords = () => {
     if (password !== confirmPassword) {
