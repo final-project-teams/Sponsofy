@@ -24,5 +24,10 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+    settings: {
+      react: {
+        version: 'detect',
+      },
+    },
   },
 )
