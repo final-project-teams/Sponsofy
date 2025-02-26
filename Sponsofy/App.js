@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import ChatScreen from './src/ChatScreen';
-import VideoCallScreen from './src/VideoCallScreen';
-import { darkTheme, lightTheme } from './src/themes';
-
+import ChatScreen from './src/screens/ChatScreen';
+import VideoCallScreen from './src/screens/VideoCallScreen';
+import { darkColors, lightColors } from './src/theme/theme';
+const lightTheme=lightColors
 const Stack = createStackNavigator();
-
+const darkTheme=darkColors
 const App = () => {
   const [isDarkTheme, setIsDarkTheme] = useState(true);
 
