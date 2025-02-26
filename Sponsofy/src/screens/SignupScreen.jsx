@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { showMessage } from 'react-native-flash-message'; // Import showMessage
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { showMessage } from 'react-native-flash-message';
+
+
+////// android id : 346617996333-e4ven3pmerrbdistl3m9pfh8u3959cj5.apps.googleusercontent.com
 
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -27,7 +31,7 @@ const SignupScreen = ({ navigation }) => {
       showMessage({
         message: 'Validation Error',
         description: passwordError,
-        type: 'danger', // Red background for errors
+        type: 'danger',
         icon: 'auto',
       });
       return;
@@ -36,14 +40,8 @@ const SignupScreen = ({ navigation }) => {
     try {
       const response = await fetch('http://192.168.11.207:3304/user/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
       });
 
       const data = await response.json();
@@ -52,7 +50,7 @@ const SignupScreen = ({ navigation }) => {
         showMessage({
           message: 'Success',
           description: 'Registration successful!',
-          type: 'success', // Green background for success
+          type: 'success',
           icon: 'auto',
         });
         navigation.navigate('Login');
@@ -81,9 +79,14 @@ const SignupScreen = ({ navigation }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+      <KeyboardAwareScrollView 
+        contentContainerStyle={styles.scrollViewContent}
+        enableOnAndroid={true} 
+        extraScrollHeight={100} 
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Get Started With Sponsofy</Text>
-        <Text style={styles.subtitle}>sign up with</Text>
+        <Text style={styles.subtitle}>Sign up with</Text>
 
         <View style={styles.socialButtonsContainer}>
           <TouchableOpacity style={styles.socialButton}>
@@ -153,7 +156,7 @@ const SignupScreen = ({ navigation }) => {
             <Text style={styles.footerLink}>Login</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 };
