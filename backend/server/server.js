@@ -1,8 +1,8 @@
 const express = require('express');
 const path = require('path');
 require('dotenv').config();
-const PORT = process.env.DB_PORT 
-const { sequelize} = require('../database/connection');
+const PORT = process.env.DB_PORT;
+const { sequelize } = require('../database/connection');
 const fs = require('fs');
 const cors = require("cors");
 const http = require('http');
@@ -11,16 +11,11 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
+const chatSocket = require('../socket/chat');
+const notificationSocket = require('../socket/notification');
+const io = socketIo(server);
 
 const userRouter = require("../router/userRoutes")
-
-const io = socketIo(server, {
-  cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
 
 async function initializeDatabase() {
   try {
@@ -67,6 +62,54 @@ app.use((err, req, res, next) => {
 
 
 app.use("/user", userRouter)
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+// Create a namespace for /chat
+const chatNamespace = io.of('/chat');
+chatNamespace.on('connection', (socket) => {
+  console.log('A user connected to /chat');
+  // Use the chat socket logic
+  chatSocket(socket);
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected from /chat');
+  });
+});
+
+// Create a namespace for /notification
+const notificationNamespace = io.of('/notification');
+notificationNamespace.on('connection', (socket) => {
+  console.log('A user connected to /notification');
+  // Use the notification socket logic
+  notificationSocket(socket);
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected from /notification');
+  });
+});
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  
+  // Send a welcome message to the client
+  socket.emit('message', 'Welcome to the Socket.io server!');
+
+  // Listen for a message from the client
+  socket.on('clientMessage', (msg) => {
+    console.log('Message from client:', msg);
+    socket.emit('message', `Server received: ${msg}`);
+  });
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+  });
+});
+
 // Change app.listen to server.listen
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);

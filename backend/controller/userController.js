@@ -1,7 +1,14 @@
-const  {User}  = require('../database/connection');
+const { User, ContentCreator, Company } = require('../database/connection');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Op } = require('sequelize');
+const company = require('../database/models/company');
+
+// Utility function to validate password
+const validatePassword = (password) => {
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
+    return passwordRegex.test(password);
+};
 
 module.exports = {
     Login: async (req, res) => {
@@ -77,6 +84,14 @@ module.exports = {
                 });
             }
 
+            // Validate password
+            if (!validatePassword(password)) {
+                return res.status(400).json({ 
+                    error: true, 
+                    message: "Password must be at least 8 characters long, contain numbers, letters, and at least one uppercase letter" 
+                });
+            }
+
             // Check if user already exists
             const existingUser = await User.findOne({ 
                 where: { 
@@ -104,6 +119,24 @@ module.exports = {
                 verified: false, // Default to false
                 isPremium: false // Default to false
             });
+
+            // If the user is a content creator, create a corresponding ContentCreator record
+            if (user.role === 'content_creator') {
+                await ContentCreator.create({
+                    first_name: username,
+                    userId: user.id,
+                    verified: user.verified,
+                    isPremium: user.isPremium
+                });
+            } 
+            else if (user.role === 'company') {
+                await Company.create({
+                    name: username,
+                    userId: user.id,
+                    verified: user.verified,
+                    isPremium: user.isPremium
+                });
+            } 
 
             // Generate JWT token
             const accessToken = jwt.sign(

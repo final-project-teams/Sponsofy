@@ -2,39 +2,40 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { showMessage } from 'react-native-flash-message';
+import api from '../config/axios'; // Import the axios instance
 
-
-// import * as webBrowser from 'expo-web-browser'; 
-import * as Google from "expo-auth-session/providers/google"; 
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
-
-////// android id : 346617996333-e4ven3pmerrbdistl3m9pfh8u3959cj5.apps.googleusercontent.com
-
+import {getTheme} from "../theme/theme"
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(false); // You can manage dark mode state here
 
+  const theme = getTheme(isDarkMode); // Get the current theme
 
-  // ***************************** google ********************************* ///
-  const [userInfo, setUserInfo]= React.useState(null)
-  const [request,response,promptAsyn] = Google.useAuthRequest({
-    androidClientId: "346617996333-e4ven3pmerrbdistl3m9pfh8u3959cj5.apps.googleusercontent.com"
-  })
+  const validatePassword = (password) => {
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
+    return passwordRegex.test(password);
+  };
 
-
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    if (!validatePassword(text)) {
+      setPasswordError('Password must contain at least 8 characters, one uppercase letter, and one number');
+    } else {
+      setPasswordError('');
+    }
+  };
 
   const validatePasswords = () => {
     if (password !== confirmPassword) {
       setPasswordError('Passwords do not match');
       return false;
     }
-    if (password.length < 8) {
-      setPasswordError('Password must be at least 8 characters long');
+    if (!validatePassword(password)) {
+      setPasswordError('Password must contain at least 8 characters, one uppercase letter, and one number');
       return false;
     }
     setPasswordError('');
@@ -53,15 +54,13 @@ const SignupScreen = ({ navigation }) => {
     }
 
     try {
-      const response = await fetch('http://192.168.11.207:3304/user/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
+      const response = await api.post('/user/register', {
+        username,
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.data) {
         showMessage({
           message: 'Success',
           description: 'Registration successful!',
@@ -69,18 +68,11 @@ const SignupScreen = ({ navigation }) => {
           icon: 'auto',
         });
         navigation.navigate('Login');
-      } else {
-        showMessage({
-          message: 'Error',
-          description: data.message || 'Registration failed',
-          type: 'danger',
-          icon: 'auto',
-        });
       }
     } catch (error) {
       showMessage({
         message: 'Error',
-        description: 'An error occurred during registration',
+        description: error.response?.data?.message || 'Registration failed',
         type: 'danger',
         icon: 'auto',
       });
@@ -90,7 +82,7 @@ const SignupScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: theme.colors.background }]} 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
@@ -100,35 +92,35 @@ const SignupScreen = ({ navigation }) => {
         extraScrollHeight={100} 
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Get Started With Sponsofy</Text>
-        <Text style={styles.subtitle}>Sign up with</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Get Started With Sponsofy</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Sign up with</Text>
 
         <View style={styles.socialButtonsContainer}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Text style={styles.socialButtonText}>Instagram</Text>
+          <TouchableOpacity style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>Instagram</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Text style={styles.socialButtonText}>Google</Text>
+          <TouchableOpacity style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>Google</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Username</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Username</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
             placeholder="username..."
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
             value={username}
             onChangeText={setUsername}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
             placeholder="example@gmail.com"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -136,39 +128,45 @@ const SignupScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Password</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
             placeholder="xxxxxxxx"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             secureTextEntry
           />
+          <Text style={[styles.passwordHint, { color: theme.colors.textSecondary }]}>
+            Password must contain:
+            <Text style={validatePassword(password) ? styles.valid : styles.invalid}> 8+ characters</Text>
+            <Text style={/[A-Z]/.test(password) ? styles.valid : styles.invalid}>, one uppercase</Text>
+            <Text style={/\d/.test(password) ? styles.valid : styles.invalid}>, one number</Text>
+          </Text>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Confirm Password</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Confirm Password</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
             placeholder="xxxxxxxx"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
           />
         </View>
 
-        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+        {passwordError ? <Text style={[styles.errorText, { color: theme.colors.error }]}>{passwordError}</Text> : null}
 
-        <TouchableOpacity style={styles.button} onPress={handleSignup}>
-          <Text style={styles.buttonText}>Continue</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleSignup}>
+          <Text style={[styles.buttonText, { color: theme.colors.white }]}>Continue</Text>
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.footerLink}>Login</Text>
+            <Text style={[styles.footerLink, { color: theme.colors.primary }]}>Login</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAwareScrollView>
@@ -230,6 +228,17 @@ const styles = StyleSheet.create({
     padding: 15,
     color: '#FFFFFF',
     fontSize: 16,
+  },
+  passwordHint: {
+    color: '#999999',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  valid: {
+    color: '#4CAF50', // Green for valid
+  },
+  invalid: {
+    color: '#FF6B6B', // Red for invalid
   },
   button: {
     backgroundColor: '#8B5CF6',

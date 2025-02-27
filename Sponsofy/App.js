@@ -6,8 +6,12 @@ import SignupScreen from './src/screens/SignupScreen';
 
 import FlashMessage from 'react-native-flash-message'; // Import FlashMessage
 
+import ChatScreen from './src/screens/ChatScreen';
+import VideoCallScreen from './src/screens/VideoCallScreen';
+import { darkColors, lightColors } from './src/theme/theme';
+const lightTheme=lightColors
 const Stack = createStackNavigator();
-
+const darkTheme=darkColors
 const App = () => {
   return (
     <NavigationContainer>

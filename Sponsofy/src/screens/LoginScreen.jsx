@@ -4,79 +4,75 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../config/axios'; // Import the axios instance
+import {getTheme} from "../theme/theme"
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(false); // You can manage dark mode state here
+
+  const theme = getTheme(isDarkMode); // Get the current theme
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('http://192.168.11.207:3304/user/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email, 
-          password,
-        }),
+      const response = await api.post('/user/login', {
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.data) {
         // Save the token to AsyncStorage
-        await AsyncStorage.setItem('userToken', data.token);
+        await AsyncStorage.setItem('userToken', response.data.token);
+        // console.log("token", await AsyncStorage.getItem('userToken'))
 
         Alert.alert('Success', 'Login successful!');
         navigation.navigate('Home'); // Navigate to the home screen
-      } else {
-        Alert.alert('Error', data.message || 'Login failed');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred during login');
+      Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
       console.error(error);
     }
   };
 
   return (
     <KeyboardAwareScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
       enableOnAndroid={true}
       extraScrollHeight={100}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>Login</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Login</Text>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
             placeholder="example@gmail.com"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
           />
         </View>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Password</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
             placeholder="xxxxxxxx"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
         </View>
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleLogin}>
+          <Text style={[styles.buttonText, { color: theme.colors.white }]}>Login</Text>
         </TouchableOpacity>
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
+          <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-            <Text style={styles.footerLink}>Sign Up</Text>
+            <Text style={[styles.footerLink, { color: theme.colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -87,7 +83,6 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#000000',
     padding: 20,
     paddingTop: 60,
     paddingBottom: 40,
@@ -99,7 +94,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -107,26 +101,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    color: '#FFFFFF',
     marginBottom: 8,
     fontSize: 16,
   },
   input: {
-    backgroundColor: '#1A1A1A',
     borderRadius: 10,
     padding: 15,
-    color: '#FFFFFF',
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#8B5CF6',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -136,11 +125,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   footerText: {
-    color: '#999999',
     fontSize: 14,
   },
   footerLink: {
-    color: '#FFFFFF',
     fontSize: 14,
   },
 });
