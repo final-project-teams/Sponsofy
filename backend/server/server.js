@@ -16,6 +16,8 @@ const notificationSocket = require('../socket/notification');
 const io = socketIo(server);
 
 const userRouter = require("../router/userRoutes")
+const addDealRouter = require("../router/addDeal")
+
 
 async function initializeDatabase() {
   try {
@@ -61,10 +63,12 @@ app.use((err, req, res, next) => {
 });
 
 
-app.use("/user", userRouter)
+app.use("/api/user", userRouter)
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
+
+app.use("/api/addDeal", addDealRouter)
 
 // Create a namespace for /chat
 const chatNamespace = io.of('/chat');

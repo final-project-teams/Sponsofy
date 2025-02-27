@@ -12,12 +12,17 @@ import { darkColors, lightColors } from "./src/theme/theme";
 const lightTheme = lightColors;
 const Stack = createStackNavigator();
 const darkTheme = darkColors;
+
+import AddDeal from "./src/screens/AddDeal";
+
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName="AddDeal">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="AddDeal" component={AddDeal} />
       </Stack.Navigator>
       <FlashMessage position="top" />
     </NavigationContainer>
