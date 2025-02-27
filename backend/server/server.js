@@ -15,6 +15,8 @@ const chatSocket = require('../socket/chat');
 const notificationSocket = require('../socket/notification');
 const io = socketIo(server);
 
+const userRouter = require("../router/userRoutes")
+
 async function initializeDatabase() {
   try {
     // Add alter:true option to avoid dropping tables
@@ -57,6 +59,9 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
+
+app.use("/user", userRouter)
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
