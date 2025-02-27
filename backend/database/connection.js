@@ -6,7 +6,7 @@ const sequelize = new Sequelize(config.development.database, config.development.
     host: config.development.host,
     dialect: config.development.dialect, 
   });
-  module.exports = {sequelize}
+  module.exports = {sequelize};
 // Import models
 const User = require('./models/user')(sequelize, DataTypes);
 const ContentCreator = require('./models/contentCreator')(sequelize, DataTypes);

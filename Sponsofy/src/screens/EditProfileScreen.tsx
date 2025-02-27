@@ -11,6 +11,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Company } from '../services/api/companyApi';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTheme } from '../theme/ThemeContext';
 
 type RootStackParamList = {
   CompanyProfile: { company: Company };
@@ -22,6 +23,7 @@ type EditProfileScreenRouteProp = RouteProp<RootStackParamList, 'EditProfile'>;
 export default function EditProfileScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<EditProfileScreenRouteProp>();
+  const { currentTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [company, setCompany] = useState<Company>(route.params.company);
 
@@ -43,15 +45,17 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       <View style={styles.profileImageContainer}>
         <Avatar.Text 
           size={100} 
           label={company.name.substring(0, 2).toUpperCase()}
-          style={{ backgroundColor: '#701FF1' }}
+          style={{ backgroundColor: currentTheme.colors.primary }}
         />
         <TouchableOpacity style={styles.changePhotoButton}>
-          <Text style={styles.changePhotoText}>Change Photo</Text>
+          <Text style={[styles.changePhotoText, { color: currentTheme.colors.primary }]}>
+            Change Photo
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -60,47 +64,82 @@ export default function EditProfileScreen() {
           label="Company Name"
           value={company.name}
           onChangeText={(text) => setCompany({ ...company, name: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
           mode="outlined"
-          theme={{ colors: { primary: '#701FF1' } }}
+          theme={{ 
+            colors: { 
+              primary: currentTheme.colors.primary,
+              text: currentTheme.colors.text,
+              placeholder: currentTheme.colors.textSecondary,
+              background: currentTheme.colors.surface
+            } 
+          }}
         />
 
         <TextInput
           label="Industry"
           value={company.industry}
           onChangeText={(text) => setCompany({ ...company, industry: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
           mode="outlined"
-          theme={{ colors: { primary: '#701FF1' } }}
+          theme={{ 
+            colors: { 
+              primary: currentTheme.colors.primary,
+              text: currentTheme.colors.text,
+              placeholder: currentTheme.colors.textSecondary,
+              background: currentTheme.colors.surface
+            } 
+          }}
         />
 
         <TextInput
           label="Location"
           value={company.location}
           onChangeText={(text) => setCompany({ ...company, location: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
           mode="outlined"
-          theme={{ colors: { primary: '#701FF1' } }}
+          theme={{ 
+            colors: { 
+              primary: currentTheme.colors.primary,
+              text: currentTheme.colors.text,
+              placeholder: currentTheme.colors.textSecondary,
+              background: currentTheme.colors.surface
+            } 
+          }}
         />
 
         <TextInput
           label="Website"
           value={company.website}
           onChangeText={(text) => setCompany({ ...company, website: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
           mode="outlined"
-          theme={{ colors: { primary: '#701FF1' } }}
+          theme={{ 
+            colors: { 
+              primary: currentTheme.colors.primary,
+              text: currentTheme.colors.text,
+              placeholder: currentTheme.colors.textSecondary,
+              background: currentTheme.colors.surface
+            } 
+          }}
         />
 
         <TextInput
           label="Description"
           value={company.description || ''}
           onChangeText={(text) => setCompany({ ...company, description: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
           multiline
           numberOfLines={4}
           mode="outlined"
-          theme={{ colors: { primary: '#701FF1' } }}
+          theme={{ 
+            colors: { 
+              primary: currentTheme.colors.primary,
+              text: currentTheme.colors.text,
+              placeholder: currentTheme.colors.textSecondary,
+              background: currentTheme.colors.surface
+            } 
+          }}
         />
 
         <Button
@@ -108,7 +147,7 @@ export default function EditProfileScreen() {
           onPress={handleSave}
           style={styles.saveButton}
           loading={loading}
-          color="#701FF1"
+          color={currentTheme.colors.primary}
         >
           Save Changes
         </Button>
@@ -120,7 +159,6 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
   },
   profileImageContainer: {
     alignItems: 'center',
@@ -131,7 +169,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   changePhotoText: {
-    color: '#701FF1',
     fontSize: 16,
   },
   formContainer: {
@@ -139,7 +176,6 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
-    backgroundColor: '#1A1A1A',
   },
   saveButton: {
     marginTop: 20,

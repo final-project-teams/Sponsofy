@@ -55,21 +55,40 @@ async function seedDatabase() {
     const createdUsers = await models.User.bulkCreate(users);
 
     // Create Companies
+    console.log('Creating companies...');
     const companies = [];
-    const companyUsers = createdUsers.filter(user => user.role === 'company');
-    for (const user of companyUsers) {
+    for (let i = 0; i < 10; i++) {
+      const contentTypes = ['Video', 'Photo', 'Blog', 'Social Media', 'Podcast'];
+      const selectedContentTypes = faker.helpers.arrayElements(contentTypes, faker.number.int({ min: 1, max: 3 }));
+      
       companies.push({
         name: faker.company.name(),
-        industry: faker.company.buzzNoun(),
-        location: faker.location.city(),
+        industry: faker.company.buzzPhrase().split(' ')[0],
+        location: `${faker.location.city()}, ${faker.location.country()}`,
         description: faker.company.catchPhrase(),
         verified: faker.datatype.boolean(),
         isPremium: faker.datatype.boolean(),
-        codeFiscal: faker.string.alphanumeric(10),
-        UserId: user.id
+        codeFiscal: faker.finance.accountNumber(),
+        website: faker.internet.url(),
+        targetContentType: selectedContentTypes,
+        budget: {
+          min: faker.number.int({ min: 500, max: 2000 }),
+          max: faker.number.int({ min: 2001, max: 10000 }),
+          currency: faker.helpers.arrayElement(['USD', 'EUR', 'TND'])
+        },
+        collaborationPreferences: {
+          contentTypes: selectedContentTypes,
+          duration: faker.helpers.arrayElement(['1 month', '3 months', '6 months', '1 year']),
+          requirements: faker.lorem.sentence()
+        },
+        profileViews: faker.number.int({ min: 0, max: 500 }),
+        dealsPosted: faker.number.int({ min: 0, max: 10 }),
+        UserId: faker.helpers.arrayElement(createdUsers).id
       });
     }
+
     const createdCompanies = await models.Company.bulkCreate(companies);
+    console.log(`Created ${createdCompanies.length} companies`);
 
     // Create Content Creators
     console.log('Creating content creators...');

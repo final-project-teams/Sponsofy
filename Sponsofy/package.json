@@ -11,23 +11,31 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.1",
+    "@react-native-clipboard/clipboard": "^1.16.1",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^7.1.1",
+    "@types/socket.io-client": "^1.4.36",
     "axios": "^1.7.9",
-    "cors": "^2.8.5",
     "expo": "~52.0.36",
+    "expo-constants": "^17.0.7",
     "expo-status-bar": "~2.0.1",
-    "react": "18.3.1",
+    "install": "^0.13.0",
+    "npm": "^11.1.0",
+    "react": "^18.3.1",
     "react-native": "0.76.7",
-    "react-native-gesture-handler": "^2.24.0",
+    "react-native-dotenv": "^3.4.11",
     "react-native-paper": "^5.13.1",
-    "react-native-reanimated": "^3.17.0",
+    "react-native-qrcode-svg": "^6.3.15",
     "react-native-safe-area-context": "^5.2.0",
-    "react-native-screens": "^4.9.1"
+    "react-native-screens": "^4.8.0",
+    "react-native-vector-icons": "^10.2.0",
+    "socket.io-client": "^4.8.1",
+    "expo-clipboard": "~7.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@types/react": "~18.3.12",
+    "@types/react-native-vector-icons": "^6.4.18",
     "typescript": "^5.3.3"
   },
   "private": true

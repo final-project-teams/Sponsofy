@@ -2,27 +2,35 @@ const express = require('express');
 const path = require('path');
 require('dotenv').config();
 const PORT = process.env.DB_PORT;
-
+const { sequelize } = require('../database/connection');
+const fs = require('fs');
 const cors = require("cors");
 const http = require('http');
 const socketIo = require('socket.io');
+const companyRoutes =require('../router/companyRoutes');
 const app = express();
 const server = http.createServer(app);
-const jwt = require('jsonwebtoken');
+const seedDatabase = require('../database/seeders/seed');
+const chatSocket = require('../socket/chat');
+const notificationSocket = require('../socket/notification');
+const io = socketIo(server);
 
-// Import routes
-const companyRoutes = require('../router/companyRoutes');
-
-// Socket.io setup
-const io = socketIo(server, {
-  cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
-    methods: ['GET', 'POST'],
-    credentials: true
+async function initializeDatabase() {
+  try {
+    // Add alter:true option to avoid dropping tables
+    await sequelize.sync({ alter: true });
+    // Add a small delay before seeding
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await seedDatabase();
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
   }
-});
+}
 
-// CORS configuration
+// initializeDatabase();
+
+// CORS configuration - place this before any routes
 app.use(cors({
   origin: '*', // Be more specific in production
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -39,62 +47,62 @@ const uploadDir = path.join(__dirname, '..', 'uploads');
 app.use('/uploads', express.static(uploadDir));
 
 // Routes
-app.use('/api', companyRoutes); // Mount company routes under /api
+app.use('/api/companies', companyRoutes); // Mount company routes under /api
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
-
-// Database initialization
-// async function initializeDatabase() {
-//   try {
-//     await sequelize.sync({ alter: true });
-//     console.log('Database synchronized successfully');
-//   } catch (error) {
-//     console.error('Database synchronization failed:', error);
-//   }
-// }
-
-// initializeDatabase();
-
-// Use a very simple secret
-const JWT_SECRET = 'your-super-secret-key-123';
-
-// Add login endpoint to get token
-app.post('/api/login', (req, res) => {
-  // For testing purposes, create a test user
-  const testUser = {
-    id: 2,
-    email: 'test@example.com'
-  };
-
-  try {
-    const token = jwt.sign(testUser, JWT_SECRET);
-    console.log('Generated token:', token);
-    res.json({ token });
-  } catch (error) {
-    console.error('Token generation error:', error);
-    res.status(500).json({ error: 'Failed to generate token' });
-  }
+app.get('/', (req, res) => {
+  res.send('Hello World!');
 });
 
-// Add test endpoint
-app.get('/api/verify-token', (req, res) => {
-  const authHeader = req.header('Authorization');
-  console.log('Verify token header:', authHeader);
+// Create a namespace for /chat
+const chatNamespace = io.of('/chat');
+chatNamespace.on('connection', (socket) => {
+  console.log('A user connected to /chat');
+  // Use the chat socket logic
+  chatSocket(socket);
 
-  try {
-    const token = authHeader.replace('Bearer ', '');
-    const decoded = jwt.verify(token, JWT_SECRET);
-    res.json({ valid: true, user: decoded });
-  } catch (error) {
-    res.status(401).json({ valid: false, error: error.message });
-  }
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected from /chat');
+  });
 });
 
-// Start server
+// Create a namespace for /notification
+const notificationNamespace = io.of('/notification');
+notificationNamespace.on('connection', (socket) => {
+  console.log('A user connected to /notification');
+  // Use the notification socket logic
+  notificationSocket(socket);
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected from /notification');
+  });
+});
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  
+  // Send a welcome message to the client
+  socket.emit('message', 'Welcome to the Socket.io server!');
+
+  // Listen for a message from the client
+  socket.on('clientMessage', (msg) => {
+    console.log('Message from client:', msg);
+    socket.emit('message', `Server received: ${msg}`);
+  });
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+  });
+});
+
+// Change app.listen to server.listen
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });
