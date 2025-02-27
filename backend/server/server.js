@@ -11,15 +11,11 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
+const chatSocket = require('../socket/chat');
+const notificationSocket = require('../socket/notification');
+const io = socketIo(server);
+const contract = require('../router/contractrouter');
 const searchRoutes = require('../router/searchrouter');
-
-const io = socketIo(server, {
-  cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
 
 async function initializeDatabase() {
   try {
@@ -47,7 +43,7 @@ app.use(cors({
 
 // Use the search routes
 app.use('/api/search', searchRoutes);
-
+app.use('/api/contract', contract);
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -67,6 +63,53 @@ require('dotenv').config();
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
+});
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+// Create a namespace for /chat
+const chatNamespace = io.of('/chat');
+chatNamespace.on('connection', (socket) => {
+  console.log('A user connected to /chat');
+  // Use the chat socket logic
+  chatSocket(socket);
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected from /chat');
+  });
+});
+
+// Create a namespace for /notification
+const notificationNamespace = io.of('/notification');
+notificationNamespace.on('connection', (socket) => {
+  console.log('A user connected to /notification');
+  // Use the notification socket logic
+  notificationSocket(socket);
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected from /notification');
+  });
+});
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  
+  // Send a welcome message to the client
+  socket.emit('message', 'Welcome to the Socket.io server!');
+
+  // Listen for a message from the client
+  socket.on('clientMessage', (msg) => {
+    console.log('Message from client:', msg);
+    socket.emit('message', `Server received: ${msg}`);
+  });
+
+  // When the user disconnects
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+  });
 });
 
 // Change app.listen to server.listen

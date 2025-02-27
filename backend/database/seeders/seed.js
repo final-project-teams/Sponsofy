@@ -27,6 +27,9 @@ async function seedDatabase() {
     // Get all models
     const models = sequelize.models;
     
+    // Define categories
+    const categories = ['Technology', 'Health', 'Finance', 'Education', 'Entertainment'];
+
     // Create Users (Companies and Content Creators)
     const users = [];
     // Create 10 company users
@@ -56,7 +59,6 @@ async function seedDatabase() {
     // Create Companies
     const companies = [];
     const companyUsers = createdUsers.filter(user => user.role === 'company');
-    const categories = ['Technology', 'Health', 'Finance', 'Education', 'Entertainment']; // Define categories
     for (const user of companyUsers) {
       companies.push({
         name: faker.company.name(),
@@ -86,6 +88,7 @@ async function seedDatabase() {
         location: faker.location.city(),
         verified: faker.datatype.boolean(),
         isPremium: faker.datatype.boolean(),
+        category: faker.helpers.arrayElement(categories),
         UserId: user.id
       });
     }
@@ -143,10 +146,12 @@ async function seedDatabase() {
     }
     const createdDeals = await models.Deal.bulkCreate(deals);
 
+    // Define ranks
+    const ranks = ['plat', 'gold', 'silver'];
+
     // Create Contracts with explicit values
     const contracts = [];
     for (let i = 0; i < 10; i++) {
-      // Get random company and creator
       const randomCompany = faker.helpers.arrayElement(createdCompanies);
       const randomCreator = faker.helpers.arrayElement(createdCreators);
       
@@ -169,6 +174,7 @@ async function seedDatabase() {
         payment_frequency: faker.helpers.arrayElement(['one-time', 'monthly', 'quarterly', 'annually']),
         company_id: randomCompany.id,
         content_creator_id: randomCreator.id,
+        rank: faker.helpers.arrayElement(ranks), // Randomly assign a rank
         deal_id: null, // Optional: can be linked to a deal if needed
         createdAt: new Date(),
         updatedAt: new Date()

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,100 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
+  FlatList,
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { socketService } from '../services/socketService';
+import { chatService } from '../services/api';
+import api from '../config/axios';
+interface Message {
+  id: string;
+  content: string;
+  UserId: string;
+  created_at: string;
+}
 
-const ChatScreen = () => {
+const ChatScreen = ({ route }) => {
   const { colors } = useTheme();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const roomId = route.params?.roomId || '1';
+  const currentUserId = '1'; // Replace with actual user ID from your auth system
+const getTest = async () => {
+  try {
+
+    const response = await api.get("/");
+    console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",response.data)
+  } catch (error) {
+    console.error('Error loading messages:', error);  
+  }
+}
+  useEffect(() => {
+    getTest();
+    // loadMessages();
+    // setupSocketConnection();
+
+    // return () => {
+    //   socketService.disconnect();
+    // };
+  }, []);
+
+  const loadMessages = async () => {
+    try {
+      setIsLoading(true);
+      const response = await chatService.getMessages(roomId);
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setupSocketConnection = () => {
+    // socketService.connect(/* your auth token */);
+    socketService.joinRoom(roomId);
+    socketService.onReceiveMessage((message) => {
+      setMessages(prev => [...prev, message]);
+    });
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    try {
+      socketService.sendMessage({
+        roomId,
+        message: newMessage,
+        userId: currentUserId
+      });
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isSentByMe = item.UserId === currentUserId;
+
+    return (
+      <View
+        style={[
+          isSentByMe ? styles.messageSent : styles.messageReceived,
+          { backgroundColor: isSentByMe ? colors.primary : colors.card }
+        ]}
+      >
+        <Text style={[
+          styles.messageText,
+          { color: isSentByMe ? '#FFFFFF' : colors.text }
+        ]}>
+          {item.content}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -30,14 +118,13 @@ const ChatScreen = () => {
         </View>
       </View>
 
-      <View style={styles.messagesContainer}>
-        <View style={[styles.messageReceived, { backgroundColor: colors.messageBackground }]}>
-          <Text style={[styles.messageText, { color: colors.text }]}>Hey There!</Text>
-        </View>
-        <View style={[styles.messageSent, { backgroundColor: colors.messageSent }]}>
-          <Text style={styles.messageSentText}>Hey How is it going?</Text>
-        </View>
-      </View>
+      <FlatList
+        style={styles.messagesContainer}
+        data={messages}
+        renderItem={renderMessage}
+        keyExtractor={item => item.id}
+        inverted
+      />
 
       <View style={styles.inputContainer}>
         <View style={styles.attachmentButtons}>
@@ -53,11 +140,13 @@ const ChatScreen = () => {
         </View>
         <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
           <TextInput
+            value={newMessage}
+            onChangeText={setNewMessage}
             placeholder="Message..."
             placeholderTextColor={colors.border}
             style={[styles.input, { color: colors.text }]}
           />
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleSendMessage}>
             <Icon name="send" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -65,6 +154,10 @@ const ChatScreen = () => {
     </SafeAreaView>
   );
 };
+
+// ... existing styles remain the same ...
+
+
 
 const styles = StyleSheet.create({
   container: {

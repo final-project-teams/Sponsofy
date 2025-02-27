@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Company ,ContentCreator,Account} = require('../database/models');
+const { Company ,ContentCreator,Account ,Contract} = require('../database/connection');
 
 // Search Companies with filters
 const searchCompanies = async (req, res) => {
@@ -42,7 +42,50 @@ const searchCompanies = async (req, res) => {
       res.status(500).json({ success: false, error: error.message });
     }
   };
+const searchContracts = async (req, res) => {
+  try {
+    const { query, rank } = req.query; // Get the search query and rank filter
 
+    const whereClause = {};
+    if (query) {
+      whereClause.title = { [Op.like]: `%${query}%` }; // Search by title only
+    }
+
+    const contracts = await Contract.findAll({
+      where: whereClause,
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      limit: 20
+    });
+
+    // Group contracts by rank
+    const groupedContracts = contracts.reduce((acc, contract) => {
+      const rankKey = contract.rank; // Get the rank of the contract
+      if (!acc[rankKey]) {
+        acc[rankKey] = []; // Initialize an array for this rank if it doesn't exist
+      }
+      acc[rankKey].push(contract); // Push the contract into the appropriate rank group
+      return acc;
+    }, {});
+
+    res.json({ success: true, data: groupedContracts }); // Return grouped contracts
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+const searchContractsByRank = async (req, res) => {
+  try {
+    const { rank } = req.query;
+    const contracts = await Contract.findAll({
+      where: { rank },
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      limit: 20
+    });
+
+    res.json({ success: true, data: contracts });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
 // Search Content Creators with filters
 const searchContentCreators = async (req, res) => {
   try {
@@ -97,5 +140,7 @@ const searchContentCreators = async (req, res) => {
 
 module.exports = {
   searchCompanies,
-  searchContentCreators
+  searchContentCreators,
+  searchContracts,
+  searchContractsByRank
 };

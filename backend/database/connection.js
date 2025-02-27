@@ -6,6 +6,7 @@ const sequelize = new Sequelize(config.development.database, config.development.
     host: config.development.host,
     dialect: config.development.dialect, 
   });
+
 // Import models
 const User = require('./models/user')(sequelize, DataTypes);
 const ContentCreator = require('./models/contentCreator')(sequelize, DataTypes);
@@ -147,11 +148,11 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-sequelize.sync({ force:true }).then(() => {
-  console.log('Database & tables have been synchronized!');
-}).catch((error) => {
-  console.error('Error syncing database:', error);
-});
+// sequelize.sync({ force:true }).then(() => {
+//   console.log('Database & tables have been synchronized!');
+// }).catch((error) => {
+//   console.error('Error syncing database:', error);
+// });
 
 // Export models and sequelize instance
 
