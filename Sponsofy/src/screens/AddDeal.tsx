@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button } from "react-native";
+import { View, Text, TextInput, Button, Platform } from "react-native";
 import { useTheme } from "@react-navigation/native";
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import api from "../config/axios";
 
 const AddDeal = () => {
@@ -22,6 +23,9 @@ const AddDeal = () => {
         start_date: '',
         end_date: ''
     });
+
+    const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+    const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
     const handleTitleChange = (text: string) => {
         setTitle(text);
@@ -51,13 +55,19 @@ const AddDeal = () => {
         }
     }
 
-    const handleStartDateChange = (text: string) => {
-        setStartDate(text);
-    }
+    const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowStartDatePicker(false);
+        if (selectedDate) {
+            setStartDate(selectedDate.toISOString().split('T')[0]); // Format: YYYY-MM-DD
+        }
+    };
 
-    const handleEndDateChange = (text: string) => {
-        setEndDate(text);
-    }
+    const handleEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowEndDatePicker(false);
+        if (selectedDate) {
+            setEndDate(selectedDate.toISOString().split('T')[0]); // Format: YYYY-MM-DD
+        }
+    };
 
     const validateForm = () => {
         let isValid = true;
@@ -175,20 +185,36 @@ const AddDeal = () => {
             {view === "Start & End Date" && (
                 <>
                     <Text>{view}</Text>
+
                     <Text>Start Date</Text>
-                    <TextInput
-                        placeholder="start date..."
-                        onChangeText={handleStartDateChange}
-                        value={start_date}
+                    <Button
+                        onPress={() => setShowStartDatePicker(true)}
+                        title={start_date || "Select Start Date"}
                     />
+                    {showStartDatePicker && (
+                        <DateTimePicker
+                            value={start_date ? new Date(start_date) : new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={handleStartDateChange}
+                        />
+                    )}
                     {errors.start_date ? <Text style={{ color: 'red' }}>{errors.start_date}</Text> : null}
 
                     <Text>End Date</Text>
-                    <TextInput
-                        placeholder="end date..."
-                        onChangeText={handleEndDateChange}
-                        value={end_date}
+                    <Button
+                        onPress={() => setShowEndDatePicker(true)}
+                        title={end_date || "Select End Date"}
                     />
+                    {showEndDatePicker && (
+                        <DateTimePicker
+                            value={end_date ? new Date(end_date) : new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={handleEndDateChange}
+                            minimumDate={start_date ? new Date(start_date) : undefined}
+                        />
+                    )}
                     {errors.end_date ? <Text style={{ color: 'red' }}>{errors.end_date}</Text> : null}
 
                     <Button
