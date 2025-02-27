@@ -17,6 +17,8 @@ const io = socketIo(server);
 const contract = require('../router/contractrouter');
 const searchRoutes = require('../router/searchrouter');
 
+const userRouter = require("../router/userRoutes")
+
 async function initializeDatabase() {
   try {
     // Add alter:true option to avoid dropping tables
@@ -64,6 +66,9 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
+
+app.use("/api/user", userRouter)
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
