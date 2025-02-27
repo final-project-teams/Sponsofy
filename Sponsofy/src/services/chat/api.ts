@@ -1,18 +1,18 @@
-import api from '../config/axios';
+import api from '../../config/axios';
 
 export const chatService = {
-  getMessages: async (chatId: string) => {
+  getMessages: async (roomId: string) => {
     try {
-      const response = await api.get(`/chats/${chatId}/messages`);
+      const response = await api.get(`chat/rooms/${roomId}/messages`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  sendMessage: async (chatId: string, message: string) => {
+  sendMessage: async (roomId: string, message: string) => {
     try {
-      const response = await api.post(`/chats/${chatId}/messages`, { message });
+      const response = await api.post(`chat/rooms/${roomId}/messages`, { message });
       return response.data;
     } catch (error) {
       throw error;

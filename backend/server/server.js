@@ -10,10 +10,11 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
+const io = socketIo(server);
 const seedDatabase = require('../database/seeders/seed');
 const chatSocket = require('../socket/chat');
 const notificationSocket = require('../socket/notification');
-const io = socketIo(server);
+const messageRoutes = require('../router/messageRoutes');
 
 async function initializeDatabase() {
   try {
@@ -52,11 +53,16 @@ if (!fs.existsSync(uploadDir)) {
 // Important: Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 require('dotenv').config();
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
+// Use message routes
+app.use('/api/chat', messageRoutes);
+
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });

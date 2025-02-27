@@ -1,17 +1,36 @@
-// sockets/chat.js
 module.exports = function(socket) {
-    console.log('A user connected to the chat');
-    
-    // Handle chat message event
-    socket.on('chatMessage', (msg) => {
-      console.log('Chat message received:', msg);
-      // Emit message to all connected clients
-      socket.broadcast.emit('message', `New chat message: ${msg}`);
-    });
+  console.log('A user connected to the chat');
   
-    // When the user disconnects from chat
-    socket.on('disconnect', () => {
-      console.log('A user disconnected from the chat');
-    });
-  };
-  
+  // Join a chat room
+  socket.on('join_room', (roomId) => {
+    socket.join(roomId);
+    console.log(`User joined room: ${roomId}`);
+  });
+
+  // Handle new message
+  socket.on('send_message', async (data) => {
+    try {
+      const { roomId, message, userId } = data;
+      console.log('New message:', { roomId, message, userId });
+      
+      // Broadcast the message to the room
+      socket.to(roomId).emit('receive_message', {
+        id: Date.now().toString(),
+        content: message,
+        UserId: userId,
+        created_at: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error handling message:', error);
+    }
+  });
+
+  // Handle typing status
+  socket.on('typing', ({ roomId, username }) => {
+    socket.to(roomId).emit('user_typing', { username });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected from chat');
+  });
+};

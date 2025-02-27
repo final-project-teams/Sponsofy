@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { socketService } from '../services/socketService';
-import { chatService } from '../services/api';
-import api from '../config/axios';
+import { socketService } from '../services/chat/socketService';
+import { chatService } from '../services/chat/api';
+
 interface Message {
   id: string;
   content: string;
@@ -25,32 +25,27 @@ const ChatScreen = ({ route }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const roomId = route.params?.roomId || '1';
+  const roomId =  '1';
   const currentUserId = '1'; // Replace with actual user ID from your auth system
-const getTest = async () => {
-  try {
 
-    const response = await api.get("/");
-    console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",response.data)
-  } catch (error) {
-    console.error('Error loading messages:', error);  
-  }
-}
   useEffect(() => {
-    getTest();
-    // loadMessages();
-    // setupSocketConnection();
+    loadMessages();
+    setupSocketConnection();
 
-    // return () => {
-    //   socketService.disconnect();
-    // };
-  }, []);
+    return () => {
+      socketService.disconnect();
+    };
+  }, [roomId]);
 
   const loadMessages = async () => {
     try {
       setIsLoading(true);
       const response = await chatService.getMessages(roomId);
-      setMessages(response.data);
+      if (response && Array.isArray(response)) {
+        setMessages(response);
+      } else {
+        console.error('Invalid response format:', response);
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
@@ -71,7 +66,7 @@ const getTest = async () => {
 
     try {
       socketService.sendMessage({
-        roomId,
+        roomId:"1",
         message: newMessage,
         userId: currentUserId
       });
@@ -107,7 +102,7 @@ const getTest = async () => {
         <TouchableOpacity>
           <Icon name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.username, { color: colors.text }]}>Username</Text>
+        <Text style={[styles.username, { color: colors.text }]}>User</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <Icon name="call" size={20} color={colors.text} />

@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import ChatScreen from './src/screens/ChatScreen';
 import VideoCallScreen from './src/screens/VideoCallScreen';
 import { darkColors, lightColors } from './src/theme/theme';
+import ChatListScreen from './src/screens/ChatListScreen';
 const lightTheme=lightColors
 const Stack = createStackNavigator();
 const darkTheme=darkColors
@@ -12,10 +13,15 @@ const App = () => {
 
   return (
     <NavigationContainer theme={isDarkTheme ? darkTheme : lightTheme}>
-      <Stack.Navigator initialRouteName="Chat">
+      <Stack.Navigator initialRouteName="ChatList">
         <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
         <Stack.Screen name="VideoCall" component={VideoCallScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
+        <Stack.Screen 
+          name="ChatList" 
+          component={ChatListScreen} 
+          options={{ headerShown: false }} 
+        />
+     </Stack.Navigator>
     </NavigationContainer>
   );
 };
