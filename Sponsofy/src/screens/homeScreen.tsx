@@ -17,6 +17,7 @@ const colors = {
 const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {
+    console.log("debounce",args); 
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
