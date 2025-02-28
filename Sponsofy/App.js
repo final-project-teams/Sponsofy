@@ -8,6 +8,7 @@ import FlashMessage from "react-native-flash-message"; // Import FlashMessage
 
 import ChatScreen from "./src/screens/ChatScreen";
 import VideoCallScreen from "./src/screens/VideoCallScreen";
+import { ThemeProvider } from "./src/theme/ThemeContext"; // Add this import
 import { darkColors, lightColors } from "./src/theme/theme";
 const lightTheme = lightColors;
 const Stack = createStackNavigator();
@@ -17,15 +18,17 @@ import AddDeal from "./src/screens/AddDeal";
 
 const App = () => {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="AddDeal">
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Signup" component={SignupScreen} />
-        <Stack.Screen name="Chat" component={ChatScreen} />
-        <Stack.Screen name="AddDeal" component={AddDeal} />
-      </Stack.Navigator>
-      <FlashMessage position="top" />
-    </NavigationContainer>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="AddDeal">
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Signup" component={SignupScreen} />
+          <Stack.Screen name="Chat" component={ChatScreen} />
+          <Stack.Screen name="AddDeal" component={AddDeal} />
+        </Stack.Navigator>
+        <FlashMessage position="top" />
+      </NavigationContainer>
+    </ThemeProvider>
   );
 };
 

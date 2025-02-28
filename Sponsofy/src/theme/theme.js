@@ -96,7 +96,7 @@ export const theme = {
         accept: {
           backgroundColor: '#701FF1',
           textColor: '#FFFFFF',
-          borderRadius: 8,
+          borderRadius: 12,
           padding: 12,
         },
         cancel: {
