@@ -70,11 +70,7 @@ const getTest = async () => {
     if (!newMessage.trim()) return;
 
     try {
-      socketService.sendMessage({
-        roomId,
-        message: newMessage,
-        userId: currentUserId
-      });
+      socketService.sendMessage(roomId, newMessage);
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);

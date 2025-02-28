@@ -43,3 +43,40 @@ export const userService = {
     }
   },
 };
+
+export const callService = {
+  // Get call history
+  getCallHistory: async () => {
+    try {
+      const response = await api.get('/calls/history');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  // Log a call
+  logCall: async (callData: {
+    calleeId: string;
+    duration: number;
+    callType: 'video' | 'audio';
+    status: 'completed' | 'missed' | 'rejected';
+  }) => {
+    try {
+      const response = await api.post('/calls/log', callData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  // Check if user is available for calls
+  checkUserAvailability: async (userId: string) => {
+    try {
+      const response = await api.get(`/users/${userId}/availability`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+};

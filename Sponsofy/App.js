@@ -4,6 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import FlashMessage from 'react-native-flash-message';
+
+// Import screens
+import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
 import CompanyList from './src/components/company/CompanyList';
 import CompanyProfileScreen from './src/screens/CompanyProfileScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
@@ -25,7 +30,7 @@ const MainApp = () => {
         backgroundColor={currentTheme.colors.background} 
       />
       <Stack.Navigator
-        initialRouteName="CompanyProfile"
+        initialRouteName="Login"
         screenOptions={{
           headerStyle: {
             backgroundColor: currentTheme.colors.headerBackground || currentTheme.colors.surface,
@@ -39,6 +44,8 @@ const MainApp = () => {
           },
         }}
       >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen
           name="CompanyProfile"
           component={CompanyProfileScreen}
@@ -78,6 +85,10 @@ const MainApp = () => {
           component={ShareProfileScreen}
           options={{
             title: 'Share Profile',
+            headerStyle: {
+              backgroundColor: currentTheme.colors.headerBackground || currentTheme.colors.surface,
+            },
+            headerTintColor: currentTheme.colors.text,
           }}
         />
         <Stack.Screen
@@ -102,6 +113,7 @@ const MainApp = () => {
           }}
         />
       </Stack.Navigator>
+      <FlashMessage position="top" />
     </NavigationContainer>
   );
 };

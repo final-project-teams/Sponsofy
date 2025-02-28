@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
-import { Company } from '../../services/api/companyApi';
+import { Company, companyApi } from '../../services/api/companyApi';
 import CompanyCard from './CompanyCard';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -17,6 +17,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 // Define your navigation parameters
 type RootStackParamList = {
   CompanyProfile: { company: Company };
+  ShareProfile: { company: Company };
 };
 
 const CompanyList: React.FC = () => {
@@ -27,92 +28,18 @@ const CompanyList: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data for companies
-  const mockCompanies: Company[] = [
-    {
-      id: 1,
-      name: 'Tech Solutions',
-      industry: 'Technology',
-      location: 'El Khazala, Tunis, Tunisia',
-      website: 'https://techsolutions.com',
-      description: 'Leading provider of innovative technology solutions for businesses of all sizes.',
-      codeFiscal: 'ABC123456789',
-      targetContentType: ['Video'],
-      budget: {
-        min: 1000,
-        max: 5000,
-        currency: 'USD'
-      },
-      collaborationPreferences: {
-        contentTypes: ['Video'],
-        duration: '3 months',
-        requirements: 'High quality content'
-      },
-      verified: true,
-      profileViews: 120,
-      dealsPosted: 5
-    },
-    {
-      id: 2,
-      name: 'Fashion Forward',
-      industry: 'Fashion',
-      location: 'Carthage, Tunis, Tunisia',
-      website: 'https://fashionforward.com',
-      description: 'Trendsetting fashion brand looking for creative content creators.',
-      codeFiscal: 'DEF987654321',
-      targetContentType: ['Photo', 'Video'],
-      budget: {
-        min: 500,
-        max: 3000,
-        currency: 'USD'
-      },
-      collaborationPreferences: {
-        contentTypes: ['Photo', 'Video'],
-        duration: '1 month',
-        requirements: 'Fashion-focused content'
-      },
-      verified: false,
-      profileViews: 85,
-      dealsPosted: 3
-    },
-    {
-      id: 3,
-      name: 'Foodie Delights',
-      industry: 'Food & Beverage',
-      location: 'La Marsa, Tunis, Tunisia',
-      website: 'https://foodiedelights.com',
-      description: 'Artisanal food company seeking food bloggers and content creators.',
-      codeFiscal: 'GHI456789123',
-      targetContentType: ['Photo', 'Blog'],
-      budget: {
-        min: 300,
-        max: 2000,
-        currency: 'USD'
-      },
-      collaborationPreferences: {
-        contentTypes: ['Photo', 'Blog'],
-        duration: '2 months',
-        requirements: 'Food photography and reviews'
-      },
-      verified: true,
-      profileViews: 210,
-      dealsPosted: 8
-    }
-  ];
-
   const fetchCompanies = async () => {
     try {
       setError(null);
-      console.log('Loading mock companies...');
+      console.log('Fetching companies from API...');
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const fetchedCompanies = await companyApi.getCompanies();
       
-      setCompanies(mockCompanies);
-      console.log('Mock companies loaded successfully:', mockCompanies.length);
+      setCompanies(fetchedCompanies);
+      console.log('Companies loaded successfully:', fetchedCompanies.length);
     } catch (err: any) {
-      console.error('Error loading mock companies:', err);
-      setError('Unable to load companies');
+      console.error('Error loading companies:', err);
+      setError('Unable to load companies. Please check your connection.');
     } finally {
       setLoading(false);
       setRefreshing(false);

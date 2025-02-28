@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
-  Dimensions,
-  Share,
-  Alert
+  Dimensions
 } from 'react-native';
 import { Text, Avatar } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -24,6 +22,7 @@ type RootStackParamList = {
   CompanyProfile: { company?: Company; companyId?: number };
   EditProfile: { company: Company };
   ShareProfile: { company: Company };
+  VideoCall: { roomId?: string; remoteUserId?: string; isIncoming?: boolean };
 };
 
 type CompanyProfileScreenRouteProp = RouteProp<RootStackParamList, 'CompanyProfile'>;
@@ -36,28 +35,46 @@ export default function CompanyProfileScreen() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState<Company | null>(routeCompany || null);
-
-  // Fetch company data if we have a companyId but no company object
-  useEffect(() => {
-    const fetchCompanyData = async () => {
-      if (companyId && !profileData) {
-        try {
-          setLoading(true);
-          setError(null);
-          const company = await companyApi.getCompanyById(companyId);
-          setProfileData(company);
-        } catch (err) {
-          console.error('Error fetching company:', err);
-          setError('Failed to load company profile');
-        } finally {
-          setLoading(false);
-        }
+  
+  // Create a default mock company profile
+  const defaultCompany: Company = {
+    id: 1,
+    name: 'Company Name',
+    industry: 'Technology',
+    location: 'El Khazela, Tunis, Tunisia',
+    website: 'https://example.com',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.',
+    codeFiscal: 'ABC123456789',
+    targetContentType: ['Video'],
+    budget: {
+      min: 1000,
+      max: 5000,
+      currency: 'USD'
+    },
+    collaborationPreferences: {
+      contentTypes: ['Video'],
+      duration: '3 months',
+      requirements: 'High quality content'
+    },
+    verified: true,
+    profileViews: 0,
+    dealsPosted: 0,
+    previousContracts: [
+      {
+        title: 'Marketing Campaign',
+        date: '1 month ago',
+        description: 'Social media promotion'
+      },
+      {
+        title: 'Product Launch',
+        date: '3 months ago',
+        description: 'Video content creation'
       }
-    };
-
-    fetchCompanyData();
-  }, [companyId, profileData]);
+    ]
+  };
+  
+  // Use the company from route params or the default mock company
+  const [profileData, setProfileData] = useState<Company>(routeCompany || defaultCompany);
 
   const handleEditProfile = () => {
     if (profileData) {
@@ -65,51 +82,41 @@ export default function CompanyProfileScreen() {
     }
   };
 
-  // Enhanced share profile functionality
   const handleShareProfile = () => {
     if (profileData) {
-      // Navigate to the dedicated share screen for more sharing options
       navigation.navigate('ShareProfile', { company: profileData });
     }
   };
 
-  // Quick share functionality for the floating action button
-  const handleQuickShare = async () => {
-    if (!profileData) return;
-    
-    try {
-      // Generate a shareable message with company details
-      const message = `Check out ${profileData.name} on Sponsofy!\n\n` +
-        `Industry: ${profileData.industry}\n` +
-        `Location: ${profileData.location}\n\n` +
-        `${profileData.description ? profileData.description + '\n\n' : ''}` +
-        `They're looking for content creators for ${profileData.targetContentType?.join(', ') || 'various content types'}.\n\n` +
-        `View their full profile at: https://sponsofy.com/company/${profileData.id}`;
-      
-      const result = await Share.share({
-        title: `${profileData.name} on Sponsofy`,
-        message,
-        // On iOS, the URL will be used instead of the message when sharing to some apps
-        url: `https://sponsofy.com/company/${profileData.id}`,
-      });
-      
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          // shared with activity type of result.activityType
-          console.log(`Shared via ${result.activityType}`);
-        } else {
-          // shared
-          console.log('Shared successfully');
-        }
-      } else if (result.action === Share.dismissedAction) {
-        // dismissed
-        console.log('Share dismissed');
-      }
-    } catch (error) {
-      console.error('Error sharing:', error);
-      Alert.alert('Error', 'Failed to share profile');
-    }
+  const handleVideoCall = () => {
+    const roomId = `room-${profileData.id}-${Date.now()}`;
+    navigation.navigate('VideoCall', {
+      roomId,
+      remoteUserId: profileData.name,
+      isIncoming: false
+    });
   };
+
+  // Update the useEffect to fetch company data
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      if (!routeCompany && companyId) {
+        try {
+          setLoading(true);
+          setError(null);
+          const fetchedCompany = await companyApi.getCompanyById(companyId);
+          setProfileData(fetchedCompany);
+        } catch (err) {
+          console.error('Error fetching company:', err);
+          setError('Failed to load company profile. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCompanyData();
+  }, [routeCompany, companyId]);
 
   if (loading) {
     return (
@@ -125,37 +132,9 @@ export default function CompanyProfileScreen() {
         <Text style={{ color: currentTheme.colors.error, marginBottom: 20 }}>{error}</Text>
         <TouchableOpacity 
           style={[styles.retryButton, { backgroundColor: currentTheme.colors.primary }]}
-          onPress={() => {
-            if (companyId) {
-              setLoading(true);
-              companyApi.getCompanyById(companyId)
-                .then(company => {
-                  setProfileData(company);
-                  setError(null);
-                })
-                .catch(err => {
-                  console.error('Error retrying fetch:', err);
-                  setError('Failed to load company profile');
-                })
-                .finally(() => setLoading(false));
-            }
-          }}
+          onPress={() => setProfileData(defaultCompany)}
         >
           <Text style={{ color: currentTheme.colors.white }}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (!profileData) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: currentTheme.colors.background }]}>
-        <Text style={{ color: currentTheme.colors.error, marginBottom: 20 }}>No company data available</Text>
-        <TouchableOpacity 
-          style={[styles.retryButton, { backgroundColor: currentTheme.colors.primary }]}
-          onPress={() => navigation.navigate('Companies')}
-        >
-          <Text style={{ color: currentTheme.colors.white }}>View All Companies</Text>
         </TouchableOpacity>
       </View>
     );
@@ -183,15 +162,13 @@ export default function CompanyProfileScreen() {
               <Icon name="check" size={12} color={currentTheme.colors.white} />
             </View>
           )}
-          <Text style={[styles.premiumText, { color: currentTheme.colors.premiumText || currentTheme.colors.primary }]}>
-            {profileData.isPremium ? 'Premium Member' : ''}
-          </Text>
+          <Text style={[styles.premiumText, { color: currentTheme.colors.premiumText || currentTheme.colors.primary }]}>Premium Member</Text>
         </View>
         
         {/* Profile Info */}
         <View style={styles.profileInfo}>
-          <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{profileData.name}</Text>
-          <Text style={[styles.industry, { color: currentTheme.colors.textSecondary }]}>{profileData.industry}</Text>
+          <Text style={[styles.username, { color: currentTheme.colors.text }]}>Username</Text>
+          <Text style={[styles.companyName, { color: currentTheme.colors.textSecondary }]}>{profileData.name}</Text>
           <Text style={[styles.location, { color: currentTheme.colors.textSecondary }]}>{profileData.location}</Text>
         </View>
         
@@ -200,18 +177,14 @@ export default function CompanyProfileScreen() {
           <TouchableOpacity 
             style={[styles.editButton, { backgroundColor: currentTheme.colors.primary }]}
             onPress={handleEditProfile}
-            activeOpacity={0.8}
           >
-            <Icon name="pencil" size={16} color={currentTheme.colors.white} style={styles.buttonIcon} />
             <Text style={[styles.editButtonText, { color: currentTheme.colors.white }]}>Edit profile</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={[styles.shareButton, { borderColor: currentTheme.colors.border }]}
             onPress={handleShareProfile}
-            activeOpacity={0.8}
           >
-            <Icon name="share-variant" size={16} color={currentTheme.colors.text} style={styles.buttonIcon} />
             <Text style={[styles.shareButtonText, { color: currentTheme.colors.text }]}>Share profile</Text>
           </TouchableOpacity>
         </View>
@@ -237,44 +210,6 @@ export default function CompanyProfileScreen() {
           </View>
         </View>
         
-        {/* Target Content Types Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Target Content Types</Text>
-          <View style={[styles.contentTypesContainer, { backgroundColor: currentTheme.colors.surface }]}>
-            {profileData.targetContentType && profileData.targetContentType.length > 0 ? (
-              <View style={styles.contentTypeChips}>
-                {profileData.targetContentType.map((type, index) => (
-                  <View 
-                    key={index} 
-                    style={[styles.contentTypeChip, { backgroundColor: currentTheme.colors.primary + '20' }]}
-                  >
-                    <Text style={[styles.contentTypeText, { color: currentTheme.colors.primary }]}>{type}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={[styles.noContentText, { color: currentTheme.colors.textSecondary }]}>
-                No target content types specified
-              </Text>
-            )}
-          </View>
-        </View>
-        
-        {/* Budget Section */}
-        {profileData.budget && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Budget Range</Text>
-            <View style={[styles.budgetCard, { backgroundColor: currentTheme.colors.surface }]}>
-              <View style={styles.budgetContent}>
-                <Icon name="currency-usd" size={24} color={currentTheme.colors.primary} />
-                <Text style={[styles.budgetText, { color: currentTheme.colors.text }]}>
-                  {profileData.budget.min} - {profileData.budget.max} {profileData.budget.currency}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-        
         {/* Previous Contracts Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Previous Contracts</Text>
@@ -288,10 +223,14 @@ export default function CompanyProfileScreen() {
             )) || (
               <>
                 <View style={[styles.contractCard, { backgroundColor: currentTheme.colors.surface }]}>
-                  <Text style={[styles.contractTitle, { color: currentTheme.colors.text }]}>No previous contracts</Text>
-                  <Text style={[styles.contractDescription, { color: currentTheme.colors.textSecondary }]}>
-                    This company hasn't completed any contracts yet
-                  </Text>
+                  <Text style={[styles.contractTitle, { color: currentTheme.colors.text }]}>Title...</Text>
+                  <Text style={[styles.contractDate, { color: currentTheme.colors.textSecondary }]}>1 month ago</Text>
+                  <Text style={[styles.contractDescription, { color: currentTheme.colors.textSecondary }]}>Description...</Text>
+                </View>
+                <View style={[styles.contractCard, { backgroundColor: currentTheme.colors.surface }]}>
+                  <Text style={[styles.contractTitle, { color: currentTheme.colors.text }]}>Title...</Text>
+                  <Text style={[styles.contractDate, { color: currentTheme.colors.textSecondary }]}>3 months ago</Text>
+                  <Text style={[styles.contractDescription, { color: currentTheme.colors.textSecondary }]}>Description...</Text>
                 </View>
               </>
             )}
@@ -302,16 +241,12 @@ export default function CompanyProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
       
-      {/* Floating Action Button for Quick Share */}
-      <TouchableOpacity 
-        style={[styles.fab, { 
-          backgroundColor: currentTheme.colors.primary,
-          borderColor: currentTheme.colors.primary
-        }]}
-        onPress={handleQuickShare}
-        activeOpacity={0.8}
-      >
-        <Icon name="share-variant" size={24} color={currentTheme.colors.white} />
+      {/* Floating Action Button */}
+      <TouchableOpacity style={[styles.fab, { 
+        backgroundColor: currentTheme.colors.surface,
+        borderColor: currentTheme.colors.border
+      }]}>
+        <Icon name="plus" size={24} color={currentTheme.colors.text} />
       </TouchableOpacity>
       
       {/* Bottom Navigation */}
@@ -337,6 +272,16 @@ export default function CompanyProfileScreen() {
           <Icon name="account" size={24} color={currentTheme.colors.text} />
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: currentTheme.colors.primary }]}
+        onPress={handleVideoCall}
+      >
+        <Icon name="video" size={24} color="#FFFFFF" />
+        <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>
+          Video Call
+        </Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -394,13 +339,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingHorizontal: 20,
   },
-  companyName: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  username: {
+    fontSize: 16,
     marginBottom: 5,
   },
-  industry: {
-    fontSize: 16,
+  companyName: {
+    fontSize: 14,
     marginBottom: 5,
   },
   location: {
@@ -414,7 +358,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
-    flexDirection: 'row',
     paddingVertical: 12,
     borderRadius: 25,
     justifyContent: 'center',
@@ -426,7 +369,6 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     flex: 1,
-    flexDirection: 'row',
     paddingVertical: 12,
     borderRadius: 25,
     justifyContent: 'center',
@@ -438,15 +380,12 @@ const styles = StyleSheet.create({
   shareButtonText: {
     fontWeight: '600',
   },
-  buttonIcon: {
-    marginRight: 8,
-  },
   section: {
     marginTop: 25,
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 15,
   },
@@ -469,43 +408,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  contentTypesContainer: {
-    borderRadius: 12,
-    padding: 15,
-  },
-  contentTypeChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  contentTypeChip: {
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    margin: 4,
-  },
-  contentTypeText: {
-    fontSize: 14,
-  },
-  noContentText: {
-    fontSize: 14,
-  },
-  budgetCard: {
-    borderRadius: 12,
-    padding: 15,
-  },
-  budgetContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  budgetText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 10,
-  },
   contractsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
   },
   contractCard: {
     borderRadius: 12,
@@ -527,35 +432,36 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    right: 20,
     bottom: 80,
-    borderRadius: 28,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.30,
-    shadowRadius: 4.65,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    borderWidth: 1,
   },
   bottomNav: {
-    flexDirection: 'row',
-    height: 60,
-    borderTopWidth: 1,
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    height: 60,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    borderTopWidth: 1,
   },
   navItem: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: '100%',
   },
   centerButton: {
     width: 48,
@@ -564,5 +470,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  actionButton: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    width: 120,
+    height: 48,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    borderWidth: 1,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
   },
 }); 

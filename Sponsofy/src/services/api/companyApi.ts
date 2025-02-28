@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define the base URL for your API
-const API_BASE_URL = 'http://localhost:3000/api'; // Change this to your actual backend URL
+const API_BASE_URL = 'http://192.168.11.41:3304/api'; // Updated to match your server address
 
 // Create API instance with better error handling
 const api = axios.create({
@@ -109,38 +109,27 @@ api.interceptors.response.use(
   },
   async (error) => {
     console.error('Response error:', error.message);
-    console.error('Error details:', error.code, error.response?.status);
     
     // Handle timeout errors specifically
     if (error.code === 'ECONNABORTED') {
       console.error('Request timed out. Please check your server connection.');
     }
     
-    if (error.response?.status === 401) {
-      try {
-        const newToken = await clearTokenAndLogin();
-        error.config.headers.Authorization = `Bearer ${newToken}`;
-        return axios(error.config);
-      } catch (refreshError) {
-        throw new Error('Authentication failed. Please try again.');
-      }
-    }
-    
     return Promise.reject(error);
   }
 );
 
-// Define the Company interface based on your database schema
+// Define the Company interface based on your backend model
 export interface Company {
-  id: number;
+  id?: number;
   name: string;
   industry: string;
   location: string;
   description?: string;
-  website?: string;
-  codeFiscal?: string;
   verified?: boolean;
   isPremium?: boolean;
+  codeFiscal?: string;
+  website?: string;
   targetContentType?: string[];
   budget?: {
     min: number;
@@ -189,7 +178,7 @@ export const companyApi = {
   // Create a new company
   createCompany: async (companyData: Omit<Company, 'id'>): Promise<Company> => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/companies`, companyData);
+      const response = await api.post('/companies', companyData);
       return response.data;
     } catch (error) {
       console.error('Error creating company:', error);
@@ -198,9 +187,9 @@ export const companyApi = {
   },
 
   // Update an existing company
-  updateCompany: async (id: number, companyData: Partial<Company>): Promise<Company> => {
+  updateCompany: async (id: number, data: Partial<Company>): Promise<Company> => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/companies/${id}`, companyData);
+      const response = await axios.put(`${API_BASE_URL}/companies/${id}`, data);
       return response.data;
     } catch (error) {
       console.error(`Error updating company with ID ${id}:`, error);
@@ -211,7 +200,7 @@ export const companyApi = {
   // Delete a company
   deleteCompany: async (id: number): Promise<void> => {
     try {
-      await axios.delete(`${API_BASE_URL}/companies/${id}`);
+      await api.delete(`/companies/${id}`);
     } catch (error) {
       console.error(`Error deleting company with ID ${id}:`, error);
       throw error;
@@ -221,7 +210,7 @@ export const companyApi = {
   // Add a method to check server connectivity
   checkConnection: async (): Promise<boolean> => {
     try {
-      await axios.get(`${API_BASE_URL}/health`, { timeout: 5000 });
+      await api.get('/companies/test', { timeout: 5000 });
       return true;
     } catch (error) {
       console.error('Server connection check failed:', error);

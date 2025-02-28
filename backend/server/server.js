@@ -1,33 +1,46 @@
 const express = require('express');
 const path = require('path');
 require('dotenv').config();
-const PORT = process.env.DB_PORT;
+const PORT = process.env.DB_PORT || 3304;
 const { sequelize } = require('../database/connection');
 const fs = require('fs');
 const cors = require("cors");
 const http = require('http');
 const socketIo = require('socket.io');
-const companyRoutes =require('../router/companyRoutes');
+const companyRoutes = require('../router/companyRoutes');
+const userRouter = require("../router/userRoutes");
 const app = express();
 const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
 const chatSocket = require('../socket/chat');
 const notificationSocket = require('../socket/notification');
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 async function initializeDatabase() {
   try {
+    console.log('Connecting to database...');
+    await sequelize.authenticate();
+    console.log('Database connection established successfully');
+    
     // Add alter:true option to avoid dropping tables
     await sequelize.sync({ alter: true });
+    console.log('Database synchronized');
+    
     // Add a small delay before seeding
     await new Promise(resolve => setTimeout(resolve, 1000));
     await seedDatabase();
-    console.log('Database initialized successfully');
+    console.log('Database seeded successfully');
   } catch (error) {
     console.error('Database initialization failed:', error);
   }
 }
 
+// Uncomment this to initialize the database
 // initializeDatabase();
 
 // CORS configuration - place this before any routes
@@ -41,23 +54,34 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 // Static files
 const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 app.use('/uploads', express.static(uploadDir));
 
 // Routes
-app.use('/api/companies', companyRoutes); // Mount company routes under /api
+app.use('/api/companies', companyRoutes);
+app.use("/api/user", userRouter); // Fixed the path
+
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working!' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
+// Root route
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('Sponsofy API Server');
 });
 
+// Socket.io setup
 // Create a namespace for /chat
 const chatNamespace = io.of('/chat');
 chatNamespace.on('connection', (socket) => {

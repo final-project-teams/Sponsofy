@@ -29,12 +29,12 @@ const Message = require('./models/message')(sequelize, DataTypes);
 // Create associations here
 
 // User -> ContentCreator (One-to-One)
-User.hasOne(ContentCreator);
-ContentCreator.belongsTo(User);
+User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
+ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User -> Company (One-to-One)
-User.hasOne(Company);
-Company.belongsTo(User);
+User.hasOne(Company, { foreignKey: 'userId', as: 'company' });
+Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // ContentCreator -> Media (Profile Picture, One-to-One)
 ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });

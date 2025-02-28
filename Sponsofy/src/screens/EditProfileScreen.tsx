@@ -12,6 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Company } from '../services/api/companyApi';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../theme/ThemeContext';
+import { companyApi } from '../services/api/companyApi';
 
 type RootStackParamList = {
   CompanyProfile: { company: Company };
@@ -30,12 +31,15 @@ export default function EditProfileScreen() {
   const handleSave = async () => {
     try {
       setLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Instead of making an API call, just navigate back with the updated company
-      Alert.alert('Success', 'Profile updated successfully');
-      navigation.navigate('CompanyProfile', { company });
+      if (company.id) {
+        // Update the company in the backend
+        const updatedCompany = await companyApi.updateCompany(company.id, company);
+        Alert.alert('Success', 'Profile updated successfully');
+        navigation.navigate('CompanyProfile', { company: updatedCompany });
+      } else {
+        Alert.alert('Error', 'Company ID is missing');
+      }
     } catch (error) {
       console.error('Update profile error:', error);
       Alert.alert('Error', 'Failed to update profile');

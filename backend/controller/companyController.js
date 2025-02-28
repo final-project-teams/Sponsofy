@@ -7,6 +7,8 @@ const companyController = {
       const { name, industry, location, description, codeFiscal } = req.body;
       const userId = req.user?.id; // Get userId from authenticated user
 
+      console.log('Creating company with data:', { name, industry, location, codeFiscal, userId });
+
       // Validate required fields
       if (!name || !industry || !location || !codeFiscal) {
         return res.status(400).json({ 
@@ -31,10 +33,11 @@ const companyController = {
         UserId: userId
       });
 
-      res.status(201).json(company);
+      console.log('Company created successfully:', company.id);
+      return res.status(201).json(company);
     } catch (error) {
       console.error('Error creating company:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         error: 'Failed to create company profile',
         details: error.message 
       });
@@ -44,32 +47,54 @@ const companyController = {
   // Get all companies
   async getAllCompanies(req, res) {
     try {
+      console.log('Fetching all companies...');
       const companies = await Company.findAll({
-        include: [{ model: User, attributes: ['username', 'email'] }]
+        include: [{ 
+          model: User, 
+          as: 'user',
+          attributes: ['username', 'email'],
+          required: false // Make this a LEFT JOIN to include companies without users
+        }]
       });
-      res.json(companies);
+      
+      console.log(`Found ${companies.length} companies`);
+      return res.status(200).json(companies);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch companies' });
+      console.error('Error fetching companies:', error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch companies',
+        details: error.message 
+      });
     }
   },
 
   // Get company profile
   async getCompanyProfile(req, res) {
     try {
-      const company = await Company.findByPk(req.params.id, {
+      const { id } = req.params;
+      console.log(`Fetching company with ID: ${id}`);
+      
+      const company = await Company.findByPk(id, {
         include: [{ 
           model: User,
-          attributes: ['username', 'email']
+          as: 'user',
+          attributes: ['username', 'email'],
+          required: false
         }]
       });
       
       if (!company) {
+        console.log(`Company with ID ${id} not found`);
         return res.status(404).json({ error: 'Company profile not found' });
       }
       
-      res.json(company);
+      return res.status(200).json(company);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch company profile' });
+      console.error(`Error fetching company ${req.params.id}:`, error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch company profile',
+        details: error.message
+      });
     }
   },
 
@@ -79,6 +104,8 @@ const companyController = {
       const { id } = req.params;
       const { name, industry, location, description, codeFiscal } = req.body;
 
+      console.log(`Updating company with ID: ${id}`);
+      
       const company = await Company.findByPk(id);
       
       if (!company) {
@@ -93,25 +120,38 @@ const companyController = {
         codeFiscal
       });
 
-      res.json(company);
+      console.log(`Company ${id} updated successfully`);
+      return res.status(200).json(company);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update company profile' });
+      console.error(`Error updating company ${req.params.id}:`, error);
+      return res.status(500).json({ 
+        error: 'Failed to update company profile',
+        details: error.message
+      });
     }
   },
 
   // Delete company
   async deleteCompany(req, res) {
     try {
-      const company = await Company.findByPk(req.params.id);
+      const { id } = req.params;
+      console.log(`Deleting company with ID: ${id}`);
+      
+      const company = await Company.findByPk(id);
       
       if (!company) {
         return res.status(404).json({ error: 'Company not found' });
       }
 
       await company.destroy();
-      res.json({ message: 'Company deleted successfully' });
+      console.log(`Company ${id} deleted successfully`);
+      return res.status(200).json({ message: 'Company deleted successfully' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to delete company' });
+      console.error(`Error deleting company ${req.params.id}:`, error);
+      return res.status(500).json({ 
+        error: 'Failed to delete company',
+        details: error.message
+      });
     }
   }
 };
