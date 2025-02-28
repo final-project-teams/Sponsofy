@@ -4,8 +4,9 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import api from '../config/axios'; // Import the axios instance
-import {getTheme} from "../theme/theme"
+import { getTheme } from "../theme/theme";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -14,26 +15,62 @@ const LoginScreen = ({ navigation }) => {
 
   const theme = getTheme(isDarkMode); // Get the current theme
 
-  const handleLogin = async () => {
-    try {
-      const response = await api.post('/user/login', {
-        email,
-        password,
-      });
+  // Handle traditional email/password login
+  // const handleLogin = async () => {
+  //   try {
+  //     const response = await api.post('/user/login', {
+  //       email,
+  //       password,
+  //     });
 
-      if (response.data) {
-        // Save the token to AsyncStorage
-        await AsyncStorage.setItem('userToken', response.data.token);
-        // console.log("token", await AsyncStorage.getItem('userToken'))
+  //     if (response.data) {
+  //       // Save the token to AsyncStorage
+  //       await AsyncStorage.setItem('userToken', response.data.token);
 
-        Alert.alert('Success', 'Login successful!');
-        navigation.navigate('Home'); // Navigate to the home screen
-      }
-    } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
-      console.error(error);
-    }
-  };
+  //       Alert.alert('Success', 'Login successful!');
+  //       navigation.navigate('Home'); // Navigate to the home screen
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
+  //     console.error(error);
+  //   }
+  // };
+
+  // Handle Google Sign-In
+  // const handleGoogleSignIn = async () => {
+  //   try {
+  //     // Check if Google Play Services is available
+  //     await GoogleSignin.hasPlayServices();
+
+  //     // Sign in with Google
+  //     const userInfo = await GoogleSignin.signIn();
+  //     const { idToken } = userInfo;
+
+  //     // Send the Google ID token to your backend for verification
+  //     const response = await api.post('/user/google-auth', {
+  //       token: idToken,
+  //     });
+
+  //     if (response.data) {
+  //       // Save the token to AsyncStorage
+  //       await AsyncStorage.setItem('userToken', response.data.token);
+
+  //       Alert.alert('Success', 'Google Sign-In successful!');
+  //       navigation.navigate('Home'); // Navigate to the home screen
+  //     }
+  //   } catch (error) {
+  //     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+  //       Alert.alert('Error', 'Google Sign-In was cancelled');
+  //     } else if (error.code === statusCodes.IN_PROGRESS) {
+  //       Alert.alert('Error', 'Google Sign-In is already in progress');
+  //     } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+  //       Alert.alert('Error', 'Play services not available or outdated');
+  //     } else {
+  //       Alert.alert('Error', 'Google Sign-In failed');
+  //       console.error(error);
+  //     }
+  //   }
+  // };
 
   return (
     <KeyboardAwareScrollView
@@ -44,6 +81,8 @@ const LoginScreen = ({ navigation }) => {
     >
       <View style={styles.inner}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Login</Text>
+
+        {/* Email/Password Login */}
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
           <TextInput
@@ -66,9 +105,19 @@ const LoginScreen = ({ navigation }) => {
             secureTextEntry
           />
         </View>
-        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleLogin}>
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} >
           <Text style={[styles.buttonText, { color: theme.colors.white }]}>Login</Text>
         </TouchableOpacity>
+
+        {/* Google Sign-In Button */}
+        <TouchableOpacity
+          style={[styles.googleButton, { backgroundColor: theme.colors.surface }]}
+         
+        >
+          <Text style={[styles.googleButtonText, { color: theme.colors.text }]}>Sign in with Google</Text>
+        </TouchableOpacity>
+
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
@@ -116,6 +165,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  googleButton: {
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
   },

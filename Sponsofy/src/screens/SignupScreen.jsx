@@ -80,6 +80,46 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
+
+
+
+
+
+  //----------------- google ------------------------------------------------------------------------------------------// 
+
+//   const handleGoogleSignIn = async () => {
+//     try {
+//         await GoogleSignin.hasPlayServices();
+//         const userInfo = await GoogleSignin.signIn();
+//         const { idToken } = userInfo;
+
+//         // Send the Google ID token to your backend
+//         const response = await api.post('/user/google-auth', {
+//             token: idToken,
+//         });
+
+//         if (response.data) {
+//             // Save the token to AsyncStorage
+//             await AsyncStorage.setItem('userToken', response.data.token);
+
+//             // Navigate to the home screen
+//             navigation.navigate('Home');
+//         }
+//     } catch (error) {
+//         if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+//             Alert.alert('Error', 'Google Sign-In was cancelled');
+//         } else if (error.code === statusCodes.IN_PROGRESS) {
+//             Alert.alert('Error', 'Google Sign-In is already in progress');
+//         } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+//             Alert.alert('Error', 'Play services not available or outdated');
+//         } else {
+//             Alert.alert('Error', 'Google Sign-In failed');
+//         }
+//     }
+// };
+
+  //----------------- google ------------------------------------------------------------------------------------------// 
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: theme.colors.background }]} 
@@ -99,8 +139,8 @@ const SignupScreen = ({ navigation }) => {
           <TouchableOpacity style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}>
             <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>Instagram</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>Google</Text>
+          <TouchableOpacity style={styles.googleButton}>
+                <Text style={styles.googleButtonText}>Sign Up with Google</Text>
           </TouchableOpacity>
         </View>
 

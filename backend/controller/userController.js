@@ -2,7 +2,7 @@ const { User, ContentCreator, Company } = require('../database/connection');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Op } = require('sequelize');
-const company = require('../database/models/company');
+
 
 // Utility function to validate password
 const validatePassword = (password) => {
