@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 
 async function seedDatabase() {
   try {
-    // First, sync the database to create missing tables
+    // Sync the database
     await sequelize.sync({ alter: true });
     
     console.log('Clearing existing data...');
@@ -27,6 +27,9 @@ async function seedDatabase() {
     // Get all models
     const models = sequelize.models;
     
+    // Define categories
+    const categories = ['Technology', 'Health', 'Finance', 'Education', 'Entertainment'];
+
     // Create Users (Companies and Content Creators)
     const users = [];
     // Create 10 company users
@@ -65,6 +68,7 @@ async function seedDatabase() {
         verified: faker.datatype.boolean(),
         isPremium: faker.datatype.boolean(),
         codeFiscal: faker.string.alphanumeric(10),
+        category: faker.helpers.arrayElement(categories), // Randomly select a category
         UserId: user.id
       });
     }
@@ -84,6 +88,7 @@ async function seedDatabase() {
         location: faker.location.city(),
         verified: faker.datatype.boolean(),
         isPremium: faker.datatype.boolean(),
+        category: faker.helpers.arrayElement(categories),
         UserId: user.id
       });
     }
@@ -141,10 +146,12 @@ async function seedDatabase() {
     }
     const createdDeals = await models.Deal.bulkCreate(deals);
 
+    // Define ranks
+    const ranks = ['plat', 'gold', 'silver'];
+
     // Create Contracts with explicit values
     const contracts = [];
     for (let i = 0; i < 10; i++) {
-      // Get random company and creator
       const randomCompany = faker.helpers.arrayElement(createdCompanies);
       const randomCreator = faker.helpers.arrayElement(createdCreators);
       
@@ -167,6 +174,7 @@ async function seedDatabase() {
         payment_frequency: faker.helpers.arrayElement(['one-time', 'monthly', 'quarterly', 'annually']),
         company_id: randomCompany.id,
         content_creator_id: randomCreator.id,
+        rank: faker.helpers.arrayElement(ranks), // Randomly assign a rank
         deal_id: null, // Optional: can be linked to a deal if needed
         createdAt: new Date(),
         updatedAt: new Date()
@@ -266,7 +274,7 @@ async function seedMessages() {
 }
 
 // seedDatabase()
-// .then(() => console.log('Database seeded successfully'))
-// .catch(error => console.error('Seeding failed:', error));
+//   .then(() => console.log('Database seeded successfully'))
+//   .catch(error => console.error('Seeding failed:', error));
 
 module.exports = seedDatabase;

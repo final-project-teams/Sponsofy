@@ -14,6 +14,8 @@ const seedDatabase = require('../database/seeders/seed');
 const chatSocket = require('../socket/chat');
 const notificationSocket = require('../socket/notification');
 const io = socketIo(server);
+const contract = require('../router/contractrouter');
+const searchRoutes = require('../router/searchrouter');
 
 const userRouter = require("../router/userRoutes")
 const addDealRouter = require("../router/addDeal")
@@ -43,6 +45,9 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
+// Use the search routes
+app.use('/api/search', searchRoutes);
+app.use('/api/contract', contract);
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -55,7 +60,9 @@ if (!fs.existsSync(uploadDir)) {
 
 // Important: Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
 require('dotenv').config();
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
