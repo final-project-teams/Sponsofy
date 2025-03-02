@@ -14,7 +14,7 @@ const AddDeal = () => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [budget, setBudget] = useState("");
-    const [terms, setTerms] = useState("");
+    const [terms, setTerms] = useState([{ title: '', description: '' }]);
     const [payement_terms, setPayement_terms] = useState("");
     const [start_date, setStartDate] = useState("");
     const [end_date, setEndDate] = useState("");
@@ -99,20 +99,27 @@ const AddDeal = () => {
     }
 
     const handleContinueTerms = () => {
-        const newErrors = { ...errors };
-        let isValid = true;
+        const newErrors: { [key: string]: string } = {};
 
-        if (!payement_terms.trim()) {
-            newErrors.payement_terms = 'Terms are required';
-            isValid = false;
+        if (!payement_terms) {
+            newErrors.payement_terms = "Payment terms are required";
         }
 
-        setErrors(newErrors);
+        // Validate each term
+        terms.forEach((term, index) => {
+            if (!term.title) {
+                newErrors[`term_${index}`] = `Term ${index + 1} is required`;
+            }
+        });
 
-        if (isValid) {
-            setView("Start & End Date");
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
         }
-    }
+
+        // Continue to next step
+        setView("Start & End Date");
+    };
 
     const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
         setShowStartDatePicker(false);
@@ -197,7 +204,8 @@ const AddDeal = () => {
                 start_date: start_date,
                 end_date: end_date,
                 rank: rank,
-                user_id: userData?.id || null
+                user_id: userData?.id || null,
+                termsList: terms.filter(term => term.title.trim() !== '') // Only send terms with non-empty titles
             };
 
             console.log("Posting deal data:", dealData);
@@ -366,6 +374,36 @@ const AddDeal = () => {
             color: currentTheme.colors.text,
             textAlign: 'center',
         },
+        termContainer: {
+            marginBottom: currentTheme.spacing.medium,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+            borderRadius: currentTheme.borderRadius.medium,
+            padding: currentTheme.spacing.medium,
+        },
+        termHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: currentTheme.spacing.small,
+        },
+        termLabel: {
+            fontSize: currentTheme.fontSizes.medium,
+            fontFamily: currentTheme.fonts.medium,
+            color: currentTheme.colors.text,
+        },
+        addTermButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: currentTheme.spacing.small,
+            marginBottom: currentTheme.spacing.medium,
+        },
+        addTermText: {
+            color: currentTheme.colors.primary,
+            fontSize: currentTheme.fontSizes.medium,
+            fontFamily: currentTheme.fonts.medium,
+            marginLeft: currentTheme.spacing.small,
+        },
     });
 
     const getStepStyle = (stepNumber: number) => {
@@ -391,6 +429,31 @@ const AddDeal = () => {
             styles.progressLine,
             lineNumber < currentStep && styles.progressLineActive,
         ];
+    };
+
+    const handleTermTitleChange = (text: string, index: number) => {
+        const newTerms = [...terms];
+        newTerms[index].title = text;
+        setTerms(newTerms);
+        if (errors[`term_${index}`]) setErrors({ ...errors, [`term_${index}`]: '' });
+    };
+
+    const handleTermDescriptionChange = (text: string, index: number) => {
+        const newTerms = [...terms];
+        newTerms[index].description = text;
+        setTerms(newTerms);
+    };
+
+    const handleAddTerm = () => {
+        setTerms([...terms, { title: '', description: '' }]);
+    };
+
+    const handleRemoveTerm = (index: number) => {
+        if (terms.length > 1) {
+            const newTerms = [...terms];
+            newTerms.splice(index, 1);
+            setTerms(newTerms);
+        }
     };
 
     return (
@@ -510,16 +573,54 @@ const AddDeal = () => {
 
                 {view === "Terms" && (
                     <View>
-                        <Text style={styles.label}>Terms</Text>
+                        <Text style={styles.label}>Payment Terms</Text>
                         <TextInput
-                            style={[styles.input, { height: 200, textAlignVertical: 'top' }]}
-                            placeholder="Enter deal terms"
+                            style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                            placeholder="Enter payment terms"
                             placeholderTextColor="#666"
                             value={payement_terms}
                             onChangeText={handleTermsChange}
                             multiline
                         />
                         {errors.payement_terms ? <Text style={styles.errorText}>{errors.payement_terms}</Text> : null}
+
+                        <Text style={[styles.label, { marginTop: currentTheme.spacing.medium }]}>Terms</Text>
+                        {terms.map((term, index) => (
+                            <View key={index} style={styles.termContainer}>
+                                <View style={styles.termHeader}>
+                                    <Text style={styles.termLabel}>Term {index + 1}</Text>
+                                    {terms.length > 1 && (
+                                        <TouchableOpacity onPress={() => handleRemoveTerm(index)}>
+                                            <Ionicons name="close-circle" size={24} color={currentTheme.colors.error} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder={`Term ${index + 1} title`}
+                                    placeholderTextColor="#666"
+                                    value={term.title}
+                                    onChangeText={(text) => handleTermTitleChange(text, index)}
+                                />
+                                <TextInput
+                                    style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                                    placeholder={`Term ${index + 1} description (optional)`}
+                                    placeholderTextColor="#666"
+                                    value={term.description}
+                                    onChangeText={(text) => handleTermDescriptionChange(text, index)}
+                                    multiline
+                                />
+                                {errors[`term_${index}`] ? <Text style={styles.errorText}>{errors[`term_${index}`]}</Text> : null}
+                            </View>
+                        ))}
+
+                        <TouchableOpacity
+                            style={styles.addTermButton}
+                            onPress={handleAddTerm}
+                        >
+                            <Ionicons name="add-circle" size={24} color={currentTheme.colors.primary} />
+                            <Text style={styles.addTermText}>Add Term</Text>
+                        </TouchableOpacity>
 
                         <TouchableOpacity
                             style={styles.button}
