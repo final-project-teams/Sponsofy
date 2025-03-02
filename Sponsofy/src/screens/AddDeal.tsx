@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, Platform, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, Button, Platform, StyleSheet, TouchableOpacity, ScrollView, Modal } from "react-native";
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from "../theme/ThemeContext";
 import api from "../config/axios";
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AddDeal = () => {
     const { currentTheme } = useTheme();
@@ -12,10 +13,13 @@ const AddDeal = () => {
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [budget, setBudget] = useState(0);
+    const [budget, setBudget] = useState("");
     const [terms, setTerms] = useState("");
+    const [payement_terms, setPayement_terms] = useState("");
     const [start_date, setStartDate] = useState("");
     const [end_date, setEndDate] = useState("");
+    const [rank, setRank] = useState("");
+    const [showRankDropdown, setShowRankDropdown] = useState(false);
 
     const [view, setView] = useState("Basic Information");
 
@@ -24,37 +28,88 @@ const AddDeal = () => {
         description: '',
         budget: '',
         terms: '',
+        payement_terms: '',
         start_date: '',
-        end_date: ''
+        end_date: '',
+        rank: ''
     });
 
     const [showStartDatePicker, setShowStartDatePicker] = useState(false);
     const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
+    const rankOptions = ['plat', 'gold', 'silver'];
+
     const handleTitleChange = (text: string) => {
         setTitle(text);
+        if (errors.title) setErrors({ ...errors, title: '' });
     }
 
     const handleDescriptionChange = (text: string) => {
         setDescription(text);
+        if (errors.description) setErrors({ ...errors, description: '' });
     }
 
-    const handleBudgetChange = (text: number) => {
-        setBudget(text);
+    const handleBudgetChange = (text: string) => {
+        if (/^\d*\.?\d*$/.test(text)) {
+            setBudget(text);
+            if (errors.budget) setErrors({ ...errors, budget: '' });
+        }
     }
 
     const handleTermsChange = (text: string) => {
-        setTerms(text);
+        setPayement_terms(text);
+        if (errors.payement_terms) setErrors({ ...errors, payement_terms: '' });
+    }
+
+    const handleRankSelect = (selectedRank: string) => {
+        setRank(selectedRank);
+        setShowRankDropdown(false);
+        if (errors.rank) setErrors({ ...errors, rank: '' });
     }
 
     const handleContinueBasicInformation = () => {
-        if (title && description && budget > 0) {
+        const newErrors = { ...errors };
+        let isValid = true;
+
+        if (!title.trim()) {
+            newErrors.title = 'Title is required';
+            isValid = false;
+        }
+
+        if (!description.trim()) {
+            newErrors.description = 'Description is required';
+            isValid = false;
+        }
+
+        if (!budget || parseFloat(budget) <= 0) {
+            newErrors.budget = 'Valid budget is required';
+            isValid = false;
+        }
+
+        if (!rank) {
+            newErrors.rank = 'Rank is required';
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+
+        if (isValid) {
             setView("Terms");
         }
     }
 
     const handleContinueTerms = () => {
-        if (terms) {
+        const newErrors = { ...errors };
+        let isValid = true;
+
+        if (!payement_terms.trim()) {
+            newErrors.payement_terms = 'Terms are required';
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+
+        if (isValid) {
             setView("Start & End Date");
         }
     }
@@ -63,6 +118,7 @@ const AddDeal = () => {
         setShowStartDatePicker(false);
         if (selectedDate) {
             setStartDate(selectedDate.toISOString().split('T')[0]);
+            if (errors.start_date) setErrors({ ...errors, start_date: '' });
         }
     };
 
@@ -70,6 +126,7 @@ const AddDeal = () => {
         setShowEndDatePicker(false);
         if (selectedDate) {
             setEndDate(selectedDate.toISOString().split('T')[0]);
+            if (errors.end_date) setErrors({ ...errors, end_date: '' });
         }
     };
 
@@ -87,13 +144,18 @@ const AddDeal = () => {
             isValid = false;
         }
 
-        if (!budget || budget <= 0) {
+        if (!budget || parseFloat(budget) <= 0) {
             newErrors.budget = 'Valid budget is required';
             isValid = false;
         }
 
-        if (!terms.trim()) {
-            newErrors.terms = 'Terms are required';
+        if (!rank) {
+            newErrors.rank = 'Rank is required';
+            isValid = false;
+        }
+
+        if (!payement_terms.trim()) {
+            newErrors.payement_terms = 'Terms are required';
             isValid = false;
         }
 
@@ -117,30 +179,45 @@ const AddDeal = () => {
         }
 
         try {
-            const response = await api.post("/addDeal", {
-                title,
-                description,
-                budget,
-                terms,
-                start_date,
-                end_date
-            });
-            console.log(response.data);
-            // Add success handling here (e.g., navigation or success message)
+            const userString = await AsyncStorage.getItem('user');
+            let userData = null;
+
+            if (userString) {
+                userData = JSON.parse(userString);
+                console.log("User data found:", userData);
+            } else {
+                console.log("User not found in storage, proceeding with deal creation anyway");
+            }
+
+            const dealData = {
+                title: title,
+                description: description,
+                budget: parseFloat(budget),
+                payement_terms: payement_terms,
+                start_date: start_date,
+                end_date: end_date,
+                rank: rank,
+                user_id: userData?.id || null
+            };
+
+            console.log("Posting deal data:", dealData);
+
+            const response = await api.post("/addDeal", dealData);
+
+            console.log("Deal created successfully:", response.data);
+
+            navigation.navigate("Home" as never);
+
         } catch (error) {
             console.error('Error posting deal:', error);
-            // Add error handling here (e.g., error message to user)
         }
-    }
+    };
 
     const handleGoBack = () => {
         if (view === "Terms") {
             setView("Basic Information");
         } else if (view === "Start & End Date") {
             setView("Terms");
-        }
-        if (view === "Basic Information") {
-            navigation.navigate("Home" as never);
         }
     };
 
@@ -259,6 +336,36 @@ const AddDeal = () => {
             marginTop: currentTheme.spacing.medium,
             textAlign: 'center',
         },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalContent: {
+            backgroundColor: currentTheme.colors.surface,
+            borderRadius: currentTheme.borderRadius.medium,
+            padding: currentTheme.spacing.large,
+            width: '80%',
+            maxHeight: '70%',
+        },
+        modalTitle: {
+            fontSize: currentTheme.fontSizes.large,
+            fontFamily: currentTheme.fonts.semibold,
+            color: currentTheme.colors.text,
+            marginBottom: currentTheme.spacing.medium,
+            textAlign: 'center',
+        },
+        optionItem: {
+            paddingVertical: currentTheme.spacing.medium,
+            borderBottomWidth: 1,
+            borderBottomColor: currentTheme.colors.border,
+        },
+        optionText: {
+            fontSize: currentTheme.fontSizes.medium,
+            color: currentTheme.colors.text,
+            textAlign: 'center',
+        },
     });
 
     const getStepStyle = (stepNumber: number) => {
@@ -288,16 +395,18 @@ const AddDeal = () => {
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={handleGoBack}
-            >
-                <Ionicons
-                    name="arrow-back"
-                    size={24}
-                    color="#ffffff"
-                />
-            </TouchableOpacity>
+            {view !== "Basic Information" && (
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleGoBack}
+                >
+                    <Ionicons
+                        name="arrow-back"
+                        size={24}
+                        color="#ffffff"
+                    />
+                </TouchableOpacity>
+            )}
             <View style={styles.progressContainer}>
                 <View style={getStepStyle(1)}>
                     <Text style={getStepTextStyle(1)}>1</Text>
@@ -312,116 +421,166 @@ const AddDeal = () => {
                 </View>
             </View>
 
-            {view === "Basic Information" && (
-                <>
-                    <Text style={styles.viewTitle}>{view}</Text>
-                    <Text style={styles.label}>Title</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter title..."
-                        placeholderTextColor={currentTheme.colors.textSecondary}
-                        onChangeText={handleTitleChange}
-                        value={title}
-                    />
-                    {errors.title ? <Text style={styles.errorText}>{errors.title}</Text> : null}
+            <ScrollView style={{ flex: 1 }}>
+                <Text style={styles.viewTitle}>
+                    {view === "Basic Information" && "Basic Information"}
+                    {view === "Terms" && "Terms"}
+                    {view === "Start & End Date" && "Start & End Date"}
+                </Text>
 
-                    <Text style={styles.label}>Description</Text>
-                    <TextInput
-                        style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
-                        placeholder="Enter description..."
-                        placeholderTextColor={currentTheme.colors.textSecondary}
-                        onChangeText={handleDescriptionChange}
-                        value={description}
-                        multiline
-                    />
-                    {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
-
-                    <Text style={styles.label}>Budget</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter budget..."
-                        placeholderTextColor={currentTheme.colors.textSecondary}
-                        onChangeText={(text) => handleBudgetChange(Number(text))}
-                        keyboardType="numeric"
-                        value={budget.toString()}
-                    />
-                    {errors.budget ? <Text style={styles.errorText}>{errors.budget}</Text> : null}
-
-                    <TouchableOpacity style={styles.button} onPress={handleContinueBasicInformation}>
-                        <Text style={styles.buttonText}>Continue</Text>
-                    </TouchableOpacity>
-                </>
-            )}
-
-            {view === "Terms" && (
-                <>
-                    <Text style={styles.viewTitle}>{view}</Text>
-                    <Text style={styles.label}>Terms</Text>
-                    <TextInput
-                        style={[styles.input, { height: 150, textAlignVertical: 'top' }]}
-                        placeholder="Enter terms..."
-                        placeholderTextColor={currentTheme.colors.textSecondary}
-                        onChangeText={handleTermsChange}
-                        value={terms}
-                        multiline
-                    />
-                    {errors.terms ? <Text style={styles.errorText}>{errors.terms}</Text> : null}
-
-                    <TouchableOpacity style={styles.button} onPress={handleContinueTerms}>
-                        <Text style={styles.buttonText}>Continue</Text>
-                    </TouchableOpacity>
-                </>
-            )}
-
-            {view === "Start & End Date" && (
-                <>
-                    <Text style={styles.viewTitle}>{view}</Text>
-
-                    <Text style={styles.label}>Start Date</Text>
-                    <TouchableOpacity
-                        style={styles.dateButton}
-                        onPress={() => setShowStartDatePicker(true)}
-                    >
-                        <Text style={styles.dateButtonText}>
-                            {start_date || "Select Start Date"}
-                        </Text>
-                    </TouchableOpacity>
-                    {showStartDatePicker && (
-                        <DateTimePicker
-                            value={start_date ? new Date(start_date) : new Date()}
-                            mode="date"
-                            display="default"
-                            onChange={handleStartDateChange}
+                {view === "Basic Information" && (
+                    <View>
+                        <Text style={styles.label}>Title</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter deal title"
+                            placeholderTextColor="#666"
+                            value={title}
+                            onChangeText={handleTitleChange}
                         />
-                    )}
-                    {errors.start_date ? <Text style={styles.errorText}>{errors.start_date}</Text> : null}
+                        {errors.title ? <Text style={styles.errorText}>{errors.title}</Text> : null}
 
-                    <Text style={styles.label}>End Date</Text>
-                    <TouchableOpacity
-                        style={styles.dateButton}
-                        onPress={() => setShowEndDatePicker(true)}
-                    >
-                        <Text style={styles.dateButtonText}>
-                            {end_date || "Select End Date"}
-                        </Text>
-                    </TouchableOpacity>
-                    {showEndDatePicker && (
-                        <DateTimePicker
-                            value={end_date ? new Date(end_date) : new Date()}
-                            mode="date"
-                            display="default"
-                            onChange={handleEndDateChange}
-                            minimumDate={start_date ? new Date(start_date) : undefined}
+                        <Text style={styles.label}>Description</Text>
+                        <TextInput
+                            style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                            placeholder="Enter deal description"
+                            placeholderTextColor="#666"
+                            value={description}
+                            onChangeText={handleDescriptionChange}
+                            multiline
                         />
-                    )}
-                    {errors.end_date ? <Text style={styles.errorText}>{errors.end_date}</Text> : null}
+                        {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
-                    <TouchableOpacity style={styles.button} onPress={handlePostDeal}>
-                        <Text style={styles.buttonText}>Post Deal</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.continueText}>By Continuing, you agree to the Sponsofy's Terms & Conditions</Text>
-                </>
-            )}
+                        <Text style={styles.label}>Budget</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter budget amount"
+                            placeholderTextColor="#666"
+                            value={budget}
+                            onChangeText={handleBudgetChange}
+                            keyboardType="numeric"
+                        />
+                        {errors.budget ? <Text style={styles.errorText}>{errors.budget}</Text> : null}
+
+                        <Text style={styles.label}>Rank</Text>
+                        <TouchableOpacity
+                            style={styles.input}
+                            onPress={() => setShowRankDropdown(true)}
+                        >
+                            <Text style={{ color: rank ? '#FFFFFF' : '#666' }}>
+                                {rank || "Select rank"}
+                            </Text>
+                        </TouchableOpacity>
+                        {errors.rank ? <Text style={styles.errorText}>{errors.rank}</Text> : null}
+
+                        <Modal
+                            visible={showRankDropdown}
+                            transparent={true}
+                            animationType="slide"
+                            onRequestClose={() => setShowRankDropdown(false)}
+                        >
+                            <TouchableOpacity
+                                style={styles.modalOverlay}
+                                activeOpacity={1}
+                                onPress={() => setShowRankDropdown(false)}
+                            >
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>Select Rank</Text>
+                                    {rankOptions.map((option) => (
+                                        <TouchableOpacity
+                                            key={option}
+                                            style={styles.optionItem}
+                                            onPress={() => handleRankSelect(option)}
+                                        >
+                                            <Text style={styles.optionText}>{option}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </TouchableOpacity>
+                        </Modal>
+
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={handleContinueBasicInformation}
+                        >
+                            <Text style={styles.buttonText}>Continue</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {view === "Terms" && (
+                    <View>
+                        <Text style={styles.label}>Terms</Text>
+                        <TextInput
+                            style={[styles.input, { height: 200, textAlignVertical: 'top' }]}
+                            placeholder="Enter deal terms"
+                            placeholderTextColor="#666"
+                            value={payement_terms}
+                            onChangeText={handleTermsChange}
+                            multiline
+                        />
+                        {errors.payement_terms ? <Text style={styles.errorText}>{errors.payement_terms}</Text> : null}
+
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={handleContinueTerms}
+                        >
+                            <Text style={styles.buttonText}>Continue</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {view === "Start & End Date" && (
+                    <View>
+                        <Text style={styles.label}>Start Date</Text>
+                        <TouchableOpacity
+                            style={styles.dateButton}
+                            onPress={() => setShowStartDatePicker(true)}
+                        >
+                            <Text style={styles.dateButtonText}>
+                                {start_date ? start_date : "Select Start Date"}
+                            </Text>
+                        </TouchableOpacity>
+                        {errors.start_date ? <Text style={styles.errorText}>{errors.start_date}</Text> : null}
+
+                        {showStartDatePicker && (
+                            <DateTimePicker
+                                value={start_date ? new Date(start_date) : new Date()}
+                                mode="date"
+                                display="default"
+                                onChange={handleStartDateChange}
+                            />
+                        )}
+
+                        <Text style={styles.label}>End Date</Text>
+                        <TouchableOpacity
+                            style={styles.dateButton}
+                            onPress={() => setShowEndDatePicker(true)}
+                        >
+                            <Text style={styles.dateButtonText}>
+                                {end_date ? end_date : "Select End Date"}
+                            </Text>
+                        </TouchableOpacity>
+                        {errors.end_date ? <Text style={styles.errorText}>{errors.end_date}</Text> : null}
+
+                        {showEndDatePicker && (
+                            <DateTimePicker
+                                value={end_date ? new Date(end_date) : new Date()}
+                                mode="date"
+                                display="default"
+                                onChange={handleEndDateChange}
+                            />
+                        )}
+
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={handlePostDeal}
+                        >
+                            <Text style={styles.buttonText}>Submit Deal</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </ScrollView>
         </View>
     );
 };

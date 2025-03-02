@@ -3,7 +3,7 @@ const { Contract } = require("../database/connection");
 module.exports = {
   addDeal: async (req, res) => {
     try {
-      const { title, description, budget, start_date, end_date, terms } =
+      const { title, description, budget, start_date, end_date, terms, rank } =
         req.body;
 
       // Convert string dates to Date objects
@@ -19,6 +19,7 @@ module.exports = {
         title,
         description,
         budget,
+        rank,
         start_date: parsedStartDate,
         end_date: parsedEndDate,
         payment_terms: terms, // Map 'terms' to 'payment_terms'
