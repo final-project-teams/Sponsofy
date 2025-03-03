@@ -14,7 +14,11 @@ const AddDeal = () => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [budget, setBudget] = useState("");
-    const [terms, setTerms] = useState([{ title: '', description: '' }]);
+    const [terms, setTerms] = useState([
+        { title: '', description: '' },
+        { title: '', description: '' },
+        { title: '', description: '' }
+    ]);
     const [payement_terms, setPayement_terms] = useState("");
     const [start_date, setStartDate] = useState("");
     const [end_date, setEndDate] = useState("");
@@ -393,16 +397,19 @@ const AddDeal = () => {
             color: currentTheme.colors.text,
         },
         addTermButton: {
-            flexDirection: 'row',
             alignItems: 'center',
-            padding: currentTheme.spacing.small,
-            marginBottom: currentTheme.spacing.medium,
+            justifyContent: 'center',
+            marginVertical: currentTheme.spacing.small,
         },
-        addTermText: {
-            color: currentTheme.colors.primary,
-            fontSize: currentTheme.fontSizes.medium,
-            fontFamily: currentTheme.fonts.medium,
-            marginLeft: currentTheme.spacing.small,
+        plusButtonContainer: {
+            width: '100%',
+            height: 50,
+            borderRadius: 20,
+            backgroundColor: currentTheme.colors.background,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
         },
     });
 
@@ -449,7 +456,7 @@ const AddDeal = () => {
     };
 
     const handleRemoveTerm = (index: number) => {
-        if (terms.length > 1) {
+        if (terms.length > 3) {
             const newTerms = [...terms];
             newTerms.splice(index, 1);
             setTerms(newTerms);
@@ -589,9 +596,9 @@ const AddDeal = () => {
                             <View key={index} style={styles.termContainer}>
                                 <View style={styles.termHeader}>
                                     <Text style={styles.termLabel}>Term {index + 1}</Text>
-                                    {terms.length > 1 && (
+                                    {terms.length > 3 && (
                                         <TouchableOpacity onPress={() => handleRemoveTerm(index)}>
-                                            <Ionicons name="close-circle" size={24} color={currentTheme.colors.error} />
+                                            <Ionicons name="close-circle" size={24} color="#ffffff" />
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -618,8 +625,9 @@ const AddDeal = () => {
                             style={styles.addTermButton}
                             onPress={handleAddTerm}
                         >
-                            <Ionicons name="add-circle" size={24} color={currentTheme.colors.primary} />
-                            <Text style={styles.addTermText}>Add Term</Text>
+                            <View style={styles.plusButtonContainer}>
+                                <Ionicons name="add" size={24} color={currentTheme.colors.white} />
+                            </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
