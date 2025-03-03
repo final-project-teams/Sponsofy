@@ -25,7 +25,7 @@ const AddDeal = () => {
     const [rank, setRank] = useState("");
     const [showRankDropdown, setShowRankDropdown] = useState(false);
 
-    const [view, setView] = useState("Basic Information");
+    const [view, setView] = useState<"Basic Information" | "Terms" | "Start & End Date" | "Review">("Basic Information");
 
     const [errors, setErrors] = useState({
         title: '',
@@ -139,6 +139,24 @@ const AddDeal = () => {
             setEndDate(selectedDate.toISOString().split('T')[0]);
             if (errors.end_date) setErrors({ ...errors, end_date: '' });
         }
+    };
+
+    const handleContinueDatetime = () => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!start_date) {
+            newErrors.start_date = "Start date is required";
+        }
+        if (!end_date) {
+            newErrors.end_date = "End date is required";
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setView("Review");
     };
 
     const validateForm = () => {
@@ -411,6 +429,63 @@ const AddDeal = () => {
             alignItems: 'center',
             justifyContent: 'center',
         },
+        sectionTitle: {
+            fontSize: currentTheme.fontSizes.xxlarge,
+            fontFamily: currentTheme.fonts.semibold,
+            color: currentTheme.colors.text,
+            marginBottom: currentTheme.spacing.large,
+        },
+        reviewSection: {
+            marginBottom: currentTheme.spacing.large,
+            padding: currentTheme.spacing.medium,
+            backgroundColor: currentTheme.colors.surface,
+            borderRadius: currentTheme.borderRadius.medium,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+        },
+        reviewSectionTitle: {
+            fontSize: currentTheme.fontSizes.large,
+            fontFamily: currentTheme.fonts.semibold,
+            color: currentTheme.colors.text,
+            marginBottom: currentTheme.spacing.medium,
+        },
+        reviewItem: {
+            marginBottom: currentTheme.spacing.medium,
+        },
+        reviewLabel: {
+            fontSize: currentTheme.fontSizes.medium,
+            fontFamily: currentTheme.fonts.medium,
+            color: currentTheme.colors.textSecondary,
+            marginBottom: currentTheme.spacing.xsmall,
+        },
+        reviewValue: {
+            fontSize: currentTheme.fontSizes.medium,
+            fontFamily: currentTheme.fonts.regular,
+            color: currentTheme.colors.text,
+        },
+        reviewDescription: {
+            fontSize: currentTheme.fontSizes.small,
+            fontFamily: currentTheme.fonts.regular,
+            color: currentTheme.colors.textSecondary,
+            marginTop: currentTheme.spacing.xsmall,
+        },
+        buttonContainer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: currentTheme.spacing.large,
+            marginBottom: currentTheme.spacing.xlarge,
+        },
+        editButton: {
+            flex: 1,
+            marginRight: currentTheme.spacing.small,
+            backgroundColor: currentTheme.colors.surface,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+        },
+        postButton: {
+            flex: 1,
+            marginLeft: currentTheme.spacing.small,
+        },
     });
 
     const getStepStyle = (stepNumber: number) => {
@@ -496,6 +571,7 @@ const AddDeal = () => {
                     {view === "Basic Information" && "Basic Information"}
                     {view === "Terms" && "Terms"}
                     {view === "Start & End Date" && "Start & End Date"}
+                    {view === "Review" && "Review"}
                 </Text>
 
                 {view === "Basic Information" && (
@@ -683,10 +759,77 @@ const AddDeal = () => {
 
                         <TouchableOpacity
                             style={styles.button}
-                            onPress={handlePostDeal}
+                            onPress={handleContinueDatetime}
                         >
-                            <Text style={styles.buttonText}>Submit Deal</Text>
+                            <Text style={styles.buttonText}>Continue</Text>
                         </TouchableOpacity>
+                    </View>
+                )}
+
+                {view === "Review" && (
+                    <View>
+
+                        <View style={styles.reviewSection}>
+                            <Text style={styles.reviewSectionTitle}>Basic Information</Text>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Title</Text>
+                                <Text style={styles.reviewValue}>{title}</Text>
+                            </View>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Description</Text>
+                                <Text style={styles.reviewValue}>{description}</Text>
+                            </View>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Budget</Text>
+                                <Text style={styles.reviewValue}>${budget}</Text>
+                            </View>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Rank</Text>
+                                <Text style={styles.reviewValue}>{rank}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.reviewSection}>
+                            <Text style={styles.reviewSectionTitle}>Terms</Text>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Payment Terms</Text>
+                                <Text style={styles.reviewValue}>{payement_terms}</Text>
+                            </View>
+                            {terms.filter(term => term.title.trim()).map((term, index) => (
+                                <View key={index} style={styles.reviewItem}>
+                                    <Text style={styles.reviewLabel}>Term {index + 1}</Text>
+                                    <Text style={styles.reviewValue}>{term.title}</Text>
+                                    <Text style={styles.reviewDescription}>{term.description}</Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        <View style={styles.reviewSection}>
+                            <Text style={styles.reviewSectionTitle}>Dates</Text>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Start Date</Text>
+                                <Text style={styles.reviewValue}>{start_date}</Text>
+                            </View>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>End Date</Text>
+                                <Text style={styles.reviewValue}>{end_date}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity
+                                style={[styles.button, styles.editButton]}
+                                onPress={() => setView("Basic Information")}
+                            >
+                                <Text style={styles.buttonText}>Edit Deal</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.button, styles.postButton]}
+                                onPress={handlePostDeal}
+                            >
+                                <Text style={styles.buttonText}>Post Deal</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 )}
             </ScrollView>
