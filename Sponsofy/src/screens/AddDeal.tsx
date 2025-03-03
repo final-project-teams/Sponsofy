@@ -24,8 +24,9 @@ const AddDeal = () => {
     const [end_date, setEndDate] = useState("");
     const [rank, setRank] = useState("");
     const [showRankDropdown, setShowRankDropdown] = useState(false);
+    const [followers, setFollowers] = useState("");
 
-    const [view, setView] = useState<"Basic Information" | "Terms" | "Start & End Date" | "Review">("Basic Information");
+    const [view, setView] = useState<"Basic Information" | "Terms" | "Criteria" | "Start & End Date" | "Review">("Basic Information");
 
     const [errors, setErrors] = useState({
         title: '',
@@ -35,7 +36,8 @@ const AddDeal = () => {
         payement_terms: '',
         start_date: '',
         end_date: '',
-        rank: ''
+        rank: '',
+        followers: ''
     });
 
     const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -103,26 +105,26 @@ const AddDeal = () => {
     }
 
     const handleContinueTerms = () => {
-        const newErrors: { [key: string]: string } = {};
+        const newErrors = { ...errors };
+        let isValid = true;
 
         if (!payement_terms) {
             newErrors.payement_terms = "Payment terms are required";
+            isValid = false;
         }
 
-        // Validate each term
         terms.forEach((term, index) => {
             if (!term.title) {
                 newErrors[`term_${index}`] = `Term ${index + 1} is required`;
+                isValid = false;
             }
         });
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
+        setErrors(newErrors);
 
-        // Continue to next step
-        setView("Start & End Date");
+        if (isValid) {
+            setView("Criteria");
+        }
     };
 
     const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -142,21 +144,35 @@ const AddDeal = () => {
     };
 
     const handleContinueDatetime = () => {
-        const newErrors: { [key: string]: string } = {};
+        const newErrors = { ...errors };
+        let isValid = true;
 
         if (!start_date) {
             newErrors.start_date = "Start date is required";
+            isValid = false;
         }
         if (!end_date) {
             newErrors.end_date = "End date is required";
+            isValid = false;
         }
 
-        if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+
+        if (isValid) {
+            setView("Review");
+        }
+    };
+
+    const handleContinueCriteria = () => {
+        const newErrors = { ...errors };
+
+        if (!followers || parseInt(followers) <= 0) {
+            newErrors.followers = "Valid number of followers required";
             setErrors(newErrors);
             return;
         }
 
-        setView("Review");
+        setView("Start & End Date");
     };
 
     const validateForm = () => {
@@ -213,29 +229,25 @@ const AddDeal = () => {
 
             if (userString) {
                 userData = JSON.parse(userString);
-                console.log("User data found:", userData);
-            } else {
-                console.log("User not found in storage, proceeding with deal creation anyway");
             }
 
             const dealData = {
-                title: title,
-                description: description,
+                title,
+                description,
                 budget: parseFloat(budget),
-                payement_terms: payement_terms,
-                start_date: start_date,
-                end_date: end_date,
-                rank: rank,
+                payement_terms,
+                start_date,
+                end_date,
+                rank,
                 user_id: userData?.id || null,
-                termsList: terms.filter(term => term.title.trim() !== '') // Only send terms with non-empty titles
+                termsList: terms.filter(term => term.title.trim() !== ''),
+                criteria: {
+                    name: 'followers',
+                    value: parseInt(followers)
+                }
             };
 
-            console.log("Posting deal data:", dealData);
-
             const response = await api.post("/addDeal", dealData);
-
-            console.log("Deal created successfully:", response.data);
-
             navigation.navigate("Home" as never);
 
         } catch (error) {
@@ -246,8 +258,10 @@ const AddDeal = () => {
     const handleGoBack = () => {
         if (view === "Terms") {
             setView("Basic Information");
-        } else if (view === "Start & End Date") {
+        } else if (view === "Criteria") {
             setView("Terms");
+        } else if (view === "Start & End Date") {
+            setView("Criteria");
         }
     };
 
@@ -489,7 +503,15 @@ const AddDeal = () => {
     });
 
     const getStepStyle = (stepNumber: number) => {
-        const currentStep = view === "Basic Information" ? 1 : view === "Terms" ? 2 : 3;
+        const stepMap = {
+            "Basic Information": 1,
+            "Terms": 2,
+            "Criteria": 3,
+            "Start & End Date": 4,
+            "Review": 5
+        };
+        const currentStep = stepMap[view];
+
         return [
             styles.progressStep,
             stepNumber === currentStep && styles.progressStepActive,
@@ -498,7 +520,15 @@ const AddDeal = () => {
     };
 
     const getStepTextStyle = (stepNumber: number) => {
-        const currentStep = view === "Basic Information" ? 1 : view === "Terms" ? 2 : 3;
+        const stepMap = {
+            "Basic Information": 1,
+            "Terms": 2,
+            "Criteria": 3,
+            "Start & End Date": 4,
+            "Review": 5
+        };
+        const currentStep = stepMap[view];
+
         return [
             styles.progressStepText,
             (stepNumber === currentStep || stepNumber < currentStep) && styles.progressStepTextActive,
@@ -506,7 +536,15 @@ const AddDeal = () => {
     };
 
     const getLineStyle = (lineNumber: number) => {
-        const currentStep = view === "Basic Information" ? 1 : view === "Terms" ? 2 : 3;
+        const stepMap = {
+            "Basic Information": 1,
+            "Terms": 2,
+            "Criteria": 3,
+            "Start & End Date": 4,
+            "Review": 5
+        };
+        const currentStep = stepMap[view];
+
         return [
             styles.progressLine,
             lineNumber < currentStep && styles.progressLineActive,
@@ -540,7 +578,7 @@ const AddDeal = () => {
 
     return (
         <View style={styles.container}>
-            {view !== "Basic Information" && (
+            {view !== "Basic Information" && view !== "Review" && (
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={handleGoBack}
@@ -564,12 +602,21 @@ const AddDeal = () => {
                 <View style={getStepStyle(3)}>
                     <Text style={getStepTextStyle(3)}>3</Text>
                 </View>
+                <View style={getLineStyle(3)} />
+                <View style={getStepStyle(4)}>
+                    <Text style={getStepTextStyle(4)}>4</Text>
+                </View>
+                <View style={getLineStyle(4)} />
+                <View style={getStepStyle(5)}>
+                    <Text style={getStepTextStyle(5)}>5</Text>
+                </View>
             </View>
 
             <ScrollView style={{ flex: 1 }}>
                 <Text style={styles.viewTitle}>
                     {view === "Basic Information" && "Basic Information"}
                     {view === "Terms" && "Terms"}
+                    {view === "Criteria" && "Criteria"}
                     {view === "Start & End Date" && "Start & End Date"}
                     {view === "Review" && "Review"}
                 </Text>
@@ -715,6 +762,35 @@ const AddDeal = () => {
                     </View>
                 )}
 
+                {view === "Criteria" && (
+                    <View>
+                        <Text style={styles.label}>Minimum Followers Required</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter minimum followers count"
+                            placeholderTextColor="#666"
+                            value={followers}
+                            onChangeText={(text) => {
+                                if (/^\d*$/.test(text)) {
+                                    setFollowers(text);
+                                    if (errors.followers) {
+                                        setErrors({ ...errors, followers: '' });
+                                    }
+                                }
+                            }}
+                            keyboardType="numeric"
+                        />
+                        {errors.followers ? <Text style={styles.errorText}>{errors.followers}</Text> : null}
+
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={handleContinueCriteria}
+                        >
+                            <Text style={styles.buttonText}>Continue</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {view === "Start & End Date" && (
                     <View>
                         <Text style={styles.label}>Start Date</Text>
@@ -768,7 +844,6 @@ const AddDeal = () => {
 
                 {view === "Review" && (
                     <View>
-
                         <View style={styles.reviewSection}>
                             <Text style={styles.reviewSectionTitle}>Basic Information</Text>
                             <View style={styles.reviewItem}>
@@ -805,6 +880,14 @@ const AddDeal = () => {
                         </View>
 
                         <View style={styles.reviewSection}>
+                            <Text style={styles.reviewSectionTitle}>Criteria</Text>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Minimum Followers</Text>
+                                <Text style={styles.reviewValue}>{followers.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.reviewSection}>
                             <Text style={styles.reviewSectionTitle}>Dates</Text>
                             <View style={styles.reviewItem}>
                                 <Text style={styles.reviewLabel}>Start Date</Text>
@@ -815,6 +898,8 @@ const AddDeal = () => {
                                 <Text style={styles.reviewValue}>{end_date}</Text>
                             </View>
                         </View>
+
+
 
                         <View style={styles.buttonContainer}>
                             <TouchableOpacity
