@@ -6,6 +6,7 @@ import api from "../config/axios";
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Slider from '@react-native-community/slider';
 
 const AddDeal = () => {
     const { currentTheme } = useTheme();
@@ -24,7 +25,7 @@ const AddDeal = () => {
     const [end_date, setEndDate] = useState("");
     const [rank, setRank] = useState("");
     const [showRankDropdown, setShowRankDropdown] = useState(false);
-    const [followers, setFollowers] = useState("");
+    const [followers, setFollowers] = useState("20000");
 
     const [view, setView] = useState<"Basic Information" | "Terms" | "Criteria" | "Start & End Date" | "Review">("Basic Information");
 
@@ -44,6 +45,16 @@ const AddDeal = () => {
     const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
     const rankOptions = ['plat', 'gold', 'silver'];
+
+    const followerMarks = [
+        { value: 20000, label: '20k' },
+        { value: 2000000, label: '2M' },
+        { value: 3500000, label: '3.5M' },
+        { value: 5000000, label: '5M' },
+        { value: 6500000, label: '6.5M' },
+        { value: 8000000, label: '8M' },
+        { value: 10000000, label: '10M' },
+    ];
 
     const handleTitleChange = (text: string) => {
         setTitle(text);
@@ -328,49 +339,46 @@ const AddDeal = () => {
         progressContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            marginBottom: 40,
-            marginTop: 20,
-            paddingHorizontal: 50,
+            justifyContent: 'center',
+            marginVertical: 20,
+            paddingHorizontal: 12,
+            marginTop: 70,
         },
         progressStep: {
-            width: 58,
-            height: 58,
-            borderRadius: 30,
-            backgroundColor: 'transparent',
-            justifyContent: 'center',
             alignItems: 'center',
+            justifyContent: 'center',
+        },
+        progressStepCircle: {
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#000000',
             borderWidth: 2,
-            borderColor: '#ffffff',
+            borderColor: '#FFFFFF',
+            alignItems: 'center',
+            justifyContent: 'center',
         },
         progressStepActive: {
-            backgroundColor: '#8B5CF6',
-            borderColor: '#8B5CF6',
-        },
-        progressStepCompleted: {
-            backgroundColor: '#8B5CF6',
-            borderColor: '#8B5CF6',
+            backgroundColor: currentTheme.colors.primary,
+            borderColor: currentTheme.colors.primary,
         },
         progressStepText: {
-            color: '#ffffff',
+            color: currentTheme.colors.white,
             fontSize: 16,
             fontWeight: 'bold',
         },
-        progressStepTextActive: {
-            color: '#ffffff',
-        },
         progressLine: {
-            flex: 1,
-            height: 8,
-            backgroundColor: '#4B5563',
-            marginHorizontal: 0,
+            height: 6,
+            width: 20,
+            backgroundColor: currentTheme.colors.textSecondary,
         },
         progressLineActive: {
-            backgroundColor: '#8B5CF6',
+            backgroundColor: currentTheme.colors.primary,
         },
         backButton: {
             position: 'absolute',
             left: 20,
-            top: 56,
+            top: 45,
             zIndex: 1,
         },
         continueText: {
@@ -500,55 +508,84 @@ const AddDeal = () => {
             flex: 1,
             marginLeft: currentTheme.spacing.small,
         },
+        sliderContainer: {
+            backgroundColor: '#1A1A1A',
+            borderRadius: 15,
+            padding: 20,
+            marginBottom: 20,
+        },
+        selectedValue: {
+            color: '#FFFFFF',
+            fontSize: 24,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            marginBottom: 20,
+        },
+        sliderTrack: {
+            height: 8,
+            backgroundColor: '#333333',
+            borderRadius: 4,
+            overflow: 'hidden',
+            marginBottom: 10,
+        },
+        sliderFill: {
+            position: 'absolute',
+            height: '100%',
+            backgroundColor: '#8B5CF6',
+            borderRadius: 4,
+        },
+        slider: {
+            width: '100%',
+            height: 40,
+            marginTop: -16,
+            zIndex: 1000,
+        },
+        markersContainer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingHorizontal: 10,
+        },
+        markerLabel: {
+            color: '#999999',
+            fontSize: 12,
+        },
+        stepLabelContainer: {
+            alignItems: 'flex-start',
+            marginTop: 20,
+            marginBottom: 30,
+        },
+        currentStepLabel: {
+            color: '#FFFFFF',
+            fontSize: 24,
+            fontWeight: 'bold',
+        },
     });
 
-    const getStepStyle = (stepNumber: number) => {
-        const stepMap = {
-            "Basic Information": 1,
-            "Terms": 2,
-            "Criteria": 3,
-            "Start & End Date": 4,
-            "Review": 5
-        };
-        const currentStep = stepMap[view];
-
-        return [
-            styles.progressStep,
-            stepNumber === currentStep && styles.progressStepActive,
-            stepNumber < currentStep && styles.progressStepCompleted,
-        ];
+    const getStepNumber = () => {
+        switch (view) {
+            case "Basic Information":
+                return 1;
+            case "Terms":
+                return 2;
+            case "Criteria":
+                return 3;
+            case "Start & End Date":
+                return 4;
+            case "Review":
+                return 5;
+            default:
+                return 1;
+        }
     };
 
-    const getStepTextStyle = (stepNumber: number) => {
-        const stepMap = {
-            "Basic Information": 1,
-            "Terms": 2,
-            "Criteria": 3,
-            "Start & End Date": 4,
-            "Review": 5
-        };
-        const currentStep = stepMap[view];
-
-        return [
-            styles.progressStepText,
-            (stepNumber === currentStep || stepNumber < currentStep) && styles.progressStepTextActive,
-        ];
+    const getStepStyle = (stepNumber) => {
+        const currentStep = getStepNumber();
+        return stepNumber <= currentStep ? styles.progressStepActive : {};
     };
 
-    const getLineStyle = (lineNumber: number) => {
-        const stepMap = {
-            "Basic Information": 1,
-            "Terms": 2,
-            "Criteria": 3,
-            "Start & End Date": 4,
-            "Review": 5
-        };
-        const currentStep = stepMap[view];
-
-        return [
-            styles.progressLine,
-            lineNumber < currentStep && styles.progressLineActive,
-        ];
+    const getLineStyle = (lineNumber) => {
+        const currentStep = getStepNumber();
+        return lineNumber < currentStep ? styles.progressLineActive : {};
     };
 
     const handleTermTitleChange = (text: string, index: number) => {
@@ -591,35 +628,62 @@ const AddDeal = () => {
                 </TouchableOpacity>
             )}
             <View style={styles.progressContainer}>
-                <View style={getStepStyle(1)}>
-                    <Text style={getStepTextStyle(1)}>1</Text>
+                <View style={styles.progressStep}>
+                    <View style={[styles.progressStepCircle, getStepStyle(1)]}>
+                        <Text style={styles.progressStepText}>1</Text>
+                    </View>
                 </View>
-                <View style={getLineStyle(1)} />
-                <View style={getStepStyle(2)}>
-                    <Text style={getStepTextStyle(2)}>2</Text>
+
+                <View style={[styles.progressLine, getLineStyle(1)]} />
+
+                <View style={styles.progressStep}>
+                    <View style={[styles.progressStepCircle, getStepStyle(2)]}>
+                        <Text style={styles.progressStepText}>2</Text>
+                    </View>
                 </View>
-                <View style={getLineStyle(2)} />
-                <View style={getStepStyle(3)}>
-                    <Text style={getStepTextStyle(3)}>3</Text>
+
+                <View style={[styles.progressLine, getLineStyle(2)]} />
+
+                <View style={styles.progressStep}>
+                    <View style={[styles.progressStepCircle, getStepStyle(3)]}>
+                        <Text style={styles.progressStepText}>3</Text>
+                    </View>
                 </View>
-                <View style={getLineStyle(3)} />
-                <View style={getStepStyle(4)}>
-                    <Text style={getStepTextStyle(4)}>4</Text>
+
+                <View style={[styles.progressLine, getLineStyle(3)]} />
+
+                <View style={styles.progressStep}>
+                    <View style={[styles.progressStepCircle, getStepStyle(4)]}>
+                        <Text style={styles.progressStepText}>4</Text>
+                    </View>
                 </View>
-                <View style={getLineStyle(4)} />
-                <View style={getStepStyle(5)}>
-                    <Text style={getStepTextStyle(5)}>5</Text>
+
+                <View style={[styles.progressLine, getLineStyle(4)]} />
+
+                <View style={styles.progressStep}>
+                    <View style={[styles.progressStepCircle, getStepStyle(5)]}>
+                        <Text style={styles.progressStepText}>5</Text>
+                    </View>
                 </View>
             </View>
 
+            <View style={styles.stepLabelContainer}>
+                <Text style={styles.currentStepLabel}>
+                    {view === "Basic Information" ? "Basic Information" :
+                        view === "Terms" ? "Terms" :
+                            view === "Criteria" ? "Criteria" :
+                                view === "Start & End Date" ? "Start & End Date" : "Review"}
+                </Text>
+            </View>
+
             <ScrollView style={{ flex: 1 }}>
-                <Text style={styles.viewTitle}>
+                {/* <Text style={styles.viewTitle}>
                     {view === "Basic Information" && "Basic Information"}
                     {view === "Terms" && "Terms"}
                     {view === "Criteria" && "Criteria"}
                     {view === "Start & End Date" && "Start & End Date"}
                     {view === "Review" && "Review"}
-                </Text>
+                </Text> */}
 
                 {view === "Basic Information" && (
                     <View>
@@ -765,21 +829,27 @@ const AddDeal = () => {
                 {view === "Criteria" && (
                     <View>
                         <Text style={styles.label}>Minimum Followers Required</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter minimum followers count"
-                            placeholderTextColor="#666"
-                            value={followers}
-                            onChangeText={(text) => {
-                                if (/^\d*$/.test(text)) {
-                                    setFollowers(text);
-                                    if (errors.followers) {
-                                        setErrors({ ...errors, followers: '' });
-                                    }
-                                }
-                            }}
-                            keyboardType="numeric"
-                        />
+                        <View style={styles.sliderContainer}>
+                            <Text style={styles.selectedValue}>{parseInt(followers).toLocaleString()}</Text>
+                            <View style={styles.sliderTrack}>
+                                <View style={[styles.sliderFill, { width: `${(parseInt(followers) / 10000000) * 100}%` }]} />
+                                <Slider
+                                    style={styles.slider}
+                                    minimumValue={20000}
+                                    maximumValue={10000000}
+                                    value={parseInt(followers)}
+                                    onValueChange={(value) => setFollowers(value.toString())}
+                                    minimumTrackTintColor="transparent"
+                                    maximumTrackTintColor="transparent"
+                                    thumbTintColor="#ffffff"
+                                />
+                            </View>
+                            <View style={styles.markersContainer}>
+                                {followerMarks.map((mark, index) => (
+                                    <Text key={index} style={styles.markerLabel}>{mark.label}</Text>
+                                ))}
+                            </View>
+                        </View>
                         {errors.followers ? <Text style={styles.errorText}>{errors.followers}</Text> : null}
 
                         <TouchableOpacity
@@ -898,8 +968,6 @@ const AddDeal = () => {
                                 <Text style={styles.reviewValue}>{end_date}</Text>
                             </View>
                         </View>
-
-
 
                         <View style={styles.buttonContainer}>
                             <TouchableOpacity

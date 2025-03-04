@@ -1,4 +1,4 @@
-const { Deal, Term, Contract } = require("../database/connection");
+const { Deal, Term, Contract, Criteria } = require("../database/connection");
 
 module.exports = {
   addDeal: async (req, res) => {
@@ -12,7 +12,8 @@ module.exports = {
         payement_terms, 
         rank,
         user_id,
-        termsList 
+        termsList,
+        criteria  // { name: string, description: string }
       } = req.body;
 
       // Convert string dates to Date objects
@@ -33,37 +34,52 @@ module.exports = {
         start_date: parsedStartDate,
         end_date: parsedEndDate,
         payment_terms: payement_terms,
-        company_id: user_id // Assuming user_id is the company ID
+        company_id: user_id
       });
 
       // Create the deal associated with the contract
       const deal = await Deal.create({
-        content_creator_id: 1, // You might want to get this from the request
+        content_creator_id: 1,
         company_id: user_id || 1,
         deal_terms: payement_terms,
         price: budget,
         status: 'pending',
-        ContractId: contract.id // Associate with the contract
+        ContractId: contract.id
       });
 
-      // Create terms if provided, associated with the deal
+      // Create terms if provided
       if (termsList && termsList.length > 0) {
         const termsPromises = termsList.map(term => {
           return Term.create({
             title: term.title,
             description: term.description || '',
             status: 'negotiating',
-            DealId: deal.id // Associate with the deal, not the contract
+            DealId: deal.id
           });
         });
         
         await Promise.all(termsPromises);
       }
 
-      // Return the created deal with its terms
+      // Create criteria and associate it with the contract
+      if (criteria) {
+        await Criteria.create({
+          name: criteria.name,
+          description: criteria.description,
+          ContractId: contract.id
+        });
+      }
+
+      // Return the created deal with its terms and criteria
       const dealWithTerms = await Deal.findOne({
         where: { id: deal.id },
-        include: [{ model: Term }]
+        include: [
+          { model: Term },
+          { 
+            model: Contract,
+            include: [{ model: Criteria }]
+          }
+        ]
       });
 
       res.status(201).json(dealWithTerms);
