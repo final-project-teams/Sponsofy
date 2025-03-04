@@ -21,7 +21,7 @@ const darkColors = {
   text: '#F4F4F4',
   textSecondary: '#5F5F5F',
   primaryborder: '#8F6AFF',
-  border: '#292929',
+  border: '#262626',
   error: '#FF3A3A',
   white: '#F4F4F4',
   black: '#0E0E0E',

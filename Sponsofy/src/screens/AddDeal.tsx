@@ -38,23 +38,28 @@ const AddDeal = () => {
         start_date: '',
         end_date: '',
         rank: '',
-        followers: ''
+        followers: '',
+        criteria: '',
+        subcriteria: ''
     });
 
     const [showStartDatePicker, setShowStartDatePicker] = useState(false);
     const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
+    const [selectedCriteria, setSelectedCriteria] = useState<string[]>([]);
+    const [selectedSubCriteria, setSelectedSubCriteria] = useState<{ [key: string]: string }>({});
+
     const rankOptions = ['plat', 'gold', 'silver'];
 
-    const followerMarks = [
-        { value: 20000, label: '20k' },
-        { value: 2000000, label: '2M' },
-        { value: 3500000, label: '3.5M' },
-        { value: 5000000, label: '5M' },
-        { value: 6500000, label: '6.5M' },
-        { value: 8000000, label: '8M' },
-        { value: 10000000, label: '10M' },
-    ];
+    // const followerMarks = [
+    //     { value: 20000, label: '20k' },
+    //     { value: 2000000, label: '2M' },
+    //     { value: 3500000, label: '3.5M' },
+    //     { value: 5000000, label: '5M' },
+    //     { value: 6500000, label: '6.5M' },
+    //     { value: 8000000, label: '8M' },
+    //     { value: 10000000, label: '10M' },
+    // ];
 
     const handleTitleChange = (text: string) => {
         setTitle(text);
@@ -177,8 +182,18 @@ const AddDeal = () => {
     const handleContinueCriteria = () => {
         const newErrors = { ...errors };
 
-        if (!followers || parseInt(followers) <= 0) {
-            newErrors.followers = "Valid number of followers required";
+        if (selectedCriteria.length === 0) {
+            newErrors.criteria = "Please select at least one criteria";
+            setErrors(newErrors);
+            return;
+        }
+
+        const hasAllSubcriteria = selectedCriteria.every(
+            criteria => selectedSubCriteria[criteria]
+        );
+
+        if (!hasAllSubcriteria) {
+            newErrors.criteria = "Please select ranges for all criteria";
             setErrors(newErrors);
             return;
         }
@@ -252,10 +267,10 @@ const AddDeal = () => {
                 rank,
                 user_id: userData?.id || null,
                 termsList: terms.filter(term => term.title.trim() !== ''),
-                criteria: {
-                    name: 'followers',
-                    value: parseInt(followers)
-                }
+                criteria: selectedCriteria.map(criteria => ({
+                    name: criteria.toLowerCase(),
+                    description: selectedSubCriteria[criteria]
+                }))
             };
 
             const response = await api.post("/addDeal", dealData);
@@ -555,9 +570,36 @@ const AddDeal = () => {
             marginBottom: 30,
         },
         currentStepLabel: {
-            color: '#FFFFFF',
+            color: currentTheme.colors.text,
             fontSize: 24,
             fontWeight: 'bold',
+        },
+        criteriaContainer: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 10,
+            marginBottom: currentTheme.spacing.medium,
+        },
+        criteriaButton: {
+            paddingVertical: 8,
+            paddingHorizontal: 20,
+            borderRadius: 12,
+            backgroundColor: currentTheme.colors.surface,
+            minWidth: 100,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+        },
+        criteriaButtonActive: {
+            backgroundColor: currentTheme.colors.primary,
+        },
+        criteriaButtonText: {
+            color: currentTheme.colors.text,
+            fontSize: 16,
+            fontFamily: currentTheme.fonts.medium,
+            textAlign: 'center',
+        },
+        criteriaSectionContainer: {
+            marginBottom: 24,
         },
     });
 
@@ -613,12 +655,123 @@ const AddDeal = () => {
         }
     };
 
+    const getSubCriteriaOptions = (criteria: string) => {
+        switch (criteria.toLowerCase()) {
+            case 'followers':
+                return ['Above 20k', 'Above 100k', 'Above 500k', 'Above 1M'];
+            case 'views':
+                return ['Above 50k', 'Above 200k', 'Above 1M', 'Above 5M'];
+            case 'posts':
+                return ['Above 100', 'Above 500', 'Above 1000'];
+            default:
+                return [];
+        }
+    };
+
+    const handleStepNavigation = (targetStep: "Basic Information" | "Terms" | "Criteria" | "Start & End Date" | "Review") => {
+        const currentStep = getStepNumber();
+        const targetStepNumber = {
+            "Basic Information": 1,
+            "Terms": 2,
+            "Criteria": 3,
+            "Start & End Date": 4,
+            "Review": 5
+        }[targetStep];
+
+        // Allow going backwards without validation
+        if (targetStepNumber < currentStep) {
+            setView(targetStep);
+            return;
+        }
+
+        // For moving forward, validate current step
+        let isValid = false;
+        const newErrors = { ...errors };
+
+        switch (view) {
+            case "Basic Information":
+                isValid = title.trim() !== '' &&
+                    description.trim() !== '' &&
+                    budget !== '' &&
+                    rank !== '';
+
+                if (!title.trim()) newErrors.title = 'Title is required';
+                if (!description.trim()) newErrors.description = 'Description is required';
+                if (!budget) newErrors.budget = 'Budget is required';
+                if (!rank) newErrors.rank = 'Rank is required';
+                break;
+
+            case "Terms":
+                isValid = payement_terms.trim() !== '' &&
+                    terms.every(term => term.title.trim() !== '');
+
+                if (!payement_terms.trim()) newErrors.payement_terms = 'Payment terms are required';
+                terms.forEach((term, index) => {
+                    if (!term.title.trim()) {
+                        newErrors[`term_${index}`] = `Term ${index + 1} is required`;
+                    }
+                });
+                break;
+
+            case "Criteria":
+                isValid = selectedCriteria.length > 0 &&
+                    selectedCriteria.every(criteria => selectedSubCriteria[criteria]);
+
+                if (selectedCriteria.length === 0) {
+                    newErrors.criteria = "Please select at least one criteria";
+                } else if (!selectedCriteria.every(criteria => selectedSubCriteria[criteria])) {
+                    newErrors.criteria = "Please select ranges for all criteria";
+                }
+                break;
+
+            case "Start & End Date":
+                isValid = start_date !== '' && end_date !== '';
+
+                if (!start_date) newErrors.start_date = "Start date is required";
+                if (!end_date) newErrors.end_date = "End date is required";
+                break;
+
+            default:
+                isValid = false;
+        }
+
+        if (isValid) {
+            setView(targetStep);
+        } else {
+            setErrors(newErrors);
+        }
+    };
+
+    const handleStepClick = (stepNumber: number) => {
+        const stepMap = {
+            1: "Basic Information",
+            2: "Terms",
+            3: "Criteria",
+            4: "Start & End Date",
+            5: "Review"
+        } as const;
+
+        handleStepNavigation(stepMap[stepNumber]);
+    };
+
     return (
         <View style={styles.container}>
             {view !== "Basic Information" && view !== "Review" && (
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={handleGoBack}
+                    onPress={() => {
+                        switch (view) {
+                            case "Terms":
+                                handleStepNavigation("Basic Information");
+                                break;
+                            case "Criteria":
+                                handleStepNavigation("Terms");
+                                break;
+                            case "Start & End Date":
+                                handleStepNavigation("Criteria");
+                                break;
+                        }
+                    }}
                 >
                     <Ionicons
                         name="arrow-back"
@@ -628,43 +781,58 @@ const AddDeal = () => {
                 </TouchableOpacity>
             )}
             <View style={styles.progressContainer}>
-                <View style={styles.progressStep}>
+                <TouchableOpacity
+                    style={styles.progressStep}
+                    onPress={() => handleStepClick(1)}
+                >
                     <View style={[styles.progressStepCircle, getStepStyle(1)]}>
                         <Text style={styles.progressStepText}>1</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 <View style={[styles.progressLine, getLineStyle(1)]} />
 
-                <View style={styles.progressStep}>
+                <TouchableOpacity
+                    style={styles.progressStep}
+                    onPress={() => handleStepClick(2)}
+                >
                     <View style={[styles.progressStepCircle, getStepStyle(2)]}>
                         <Text style={styles.progressStepText}>2</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 <View style={[styles.progressLine, getLineStyle(2)]} />
 
-                <View style={styles.progressStep}>
+                <TouchableOpacity
+                    style={styles.progressStep}
+                    onPress={() => handleStepClick(3)}
+                >
                     <View style={[styles.progressStepCircle, getStepStyle(3)]}>
                         <Text style={styles.progressStepText}>3</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 <View style={[styles.progressLine, getLineStyle(3)]} />
 
-                <View style={styles.progressStep}>
+                <TouchableOpacity
+                    style={styles.progressStep}
+                    onPress={() => handleStepClick(4)}
+                >
                     <View style={[styles.progressStepCircle, getStepStyle(4)]}>
                         <Text style={styles.progressStepText}>4</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 <View style={[styles.progressLine, getLineStyle(4)]} />
 
-                <View style={styles.progressStep}>
+                <TouchableOpacity
+                    style={styles.progressStep}
+                    onPress={() => handleStepClick(5)}
+                >
                     <View style={[styles.progressStepCircle, getStepStyle(5)]}>
                         <Text style={styles.progressStepText}>5</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
 
             <View style={styles.stepLabelContainer}>
@@ -828,32 +996,58 @@ const AddDeal = () => {
 
                 {view === "Criteria" && (
                     <View>
-                        <Text style={styles.label}>Minimum Followers Required</Text>
-                        <View style={styles.sliderContainer}>
-                            <Text style={styles.selectedValue}>{parseInt(followers).toLocaleString()}</Text>
-                            <View style={styles.sliderTrack}>
-                                <View style={[styles.sliderFill, { width: `${(parseInt(followers) / 10000000) * 100}%` }]} />
-                                <Slider
-                                    style={styles.slider}
-                                    minimumValue={20000}
-                                    maximumValue={10000000}
-                                    value={parseInt(followers)}
-                                    onValueChange={(value) => setFollowers(value.toString())}
-                                    minimumTrackTintColor="transparent"
-                                    maximumTrackTintColor="transparent"
-                                    thumbTintColor="#ffffff"
-                                />
-                            </View>
-                            <View style={styles.markersContainer}>
-                                {followerMarks.map((mark, index) => (
-                                    <Text key={index} style={styles.markerLabel}>{mark.label}</Text>
-                                ))}
-                            </View>
+                        <Text style={styles.label}>Select Criteria (Multiple)</Text>
+                        <View style={styles.criteriaContainer}>
+                            {['Followers', 'Views', 'Posts'].map((criteriaName) => (
+                                <TouchableOpacity
+                                    key={criteriaName}
+                                    style={[
+                                        styles.criteriaButton,
+                                        selectedCriteria.includes(criteriaName) && styles.criteriaButtonActive
+                                    ]}
+                                    onPress={() => {
+                                        if (selectedCriteria.includes(criteriaName)) {
+                                            setSelectedCriteria(selectedCriteria.filter(c => c !== criteriaName));
+                                            const newSubCriteria = { ...selectedSubCriteria };
+                                            delete newSubCriteria[criteriaName];
+                                            setSelectedSubCriteria(newSubCriteria);
+                                        } else {
+                                            setSelectedCriteria([...selectedCriteria, criteriaName]);
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.criteriaButtonText}>{criteriaName}</Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-                        {errors.followers ? <Text style={styles.errorText}>{errors.followers}</Text> : null}
+
+                        {selectedCriteria.map((criteria) => (
+                            <View key={criteria} style={styles.criteriaSectionContainer}>
+                                <Text style={styles.label}>Select {criteria} Range</Text>
+                                <View style={styles.criteriaContainer}>
+                                    {getSubCriteriaOptions(criteria).map((option) => (
+                                        <TouchableOpacity
+                                            key={option}
+                                            style={[
+                                                styles.criteriaButton,
+                                                selectedSubCriteria[criteria] === option && styles.criteriaButtonActive
+                                            ]}
+                                            onPress={() => setSelectedSubCriteria({
+                                                ...selectedSubCriteria,
+                                                [criteria]: option
+                                            })}
+                                        >
+                                            <Text style={styles.criteriaButtonText}>{option}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ))}
+
+                        {errors.criteria ? <Text style={styles.errorText}>{errors.criteria}</Text> : null}
 
                         <TouchableOpacity
-                            style={styles.button}
+                            style={[styles.button, { marginTop: 32 }]}
                             onPress={handleContinueCriteria}
                         >
                             <Text style={styles.buttonText}>Continue</Text>
@@ -951,10 +1145,12 @@ const AddDeal = () => {
 
                         <View style={styles.reviewSection}>
                             <Text style={styles.reviewSectionTitle}>Criteria</Text>
-                            <View style={styles.reviewItem}>
-                                <Text style={styles.reviewLabel}>Minimum Followers</Text>
-                                <Text style={styles.reviewValue}>{followers.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</Text>
-                            </View>
+                            {selectedCriteria.map((criteria) => (
+                                <View key={criteria} style={styles.reviewItem}>
+                                    <Text style={styles.reviewLabel}>{criteria} Requirement</Text>
+                                    <Text style={styles.reviewValue}>{selectedSubCriteria[criteria]}</Text>
+                                </View>
+                            ))}
                         </View>
 
                         <View style={styles.reviewSection}>

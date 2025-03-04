@@ -1,4 +1,4 @@
-const { Deal, Term, Contract, Criteria } = require("../database/connection");
+const { Deal, Term, Contract, Criteria, SubCriteria } = require("../database/connection");
 
 module.exports = {
   addDeal: async (req, res) => {
@@ -13,7 +13,7 @@ module.exports = {
         rank,
         user_id,
         termsList,
-        criteria  // { name: string, description: string }
+        criteria  // Now this is an array of { name: string, description: string }
       } = req.body;
 
       // Convert string dates to Date objects
@@ -37,7 +37,7 @@ module.exports = {
         company_id: user_id
       });
 
-      // Create the deal associated with the contract
+      // Create the deal
       const deal = await Deal.create({
         content_creator_id: 1,
         company_id: user_id || 1,
@@ -61,13 +61,25 @@ module.exports = {
         await Promise.all(termsPromises);
       }
 
-      // Create criteria and associate it with the contract
-      if (criteria) {
-        await Criteria.create({
-          name: criteria.name,
-          description: criteria.description,
-          ContractId: contract.id
+      // Create multiple criteria and their subcriteria
+      if (criteria && Array.isArray(criteria)) {
+        const criteriaPromises = criteria.map(async (criterion) => {
+          const createdCriteria = await Criteria.create({
+            name: criterion.name,
+            description: `${criterion.name} requirement`,
+            ContractId: contract.id
+          });
+
+          await SubCriteria.create({
+            name: criterion.description,
+            description: `${criterion.name} range: ${criterion.description}`,
+            CriteriaId: createdCriteria.id
+          });
+
+          return createdCriteria;
         });
+
+        await Promise.all(criteriaPromises);
       }
 
       // Return the created deal with its terms and criteria
@@ -77,7 +89,10 @@ module.exports = {
           { model: Term },
           { 
             model: Contract,
-            include: [{ model: Criteria }]
+            include: [{
+              model: Criteria,
+              include: [SubCriteria]
+            }]
           }
         ]
       });
