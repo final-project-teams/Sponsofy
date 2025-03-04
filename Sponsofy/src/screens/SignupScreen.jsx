@@ -2,18 +2,21 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { showMessage } from 'react-native-flash-message';
+import Icon from 'react-native-vector-icons/FontAwesome'; // Import the Icon component
 import api from '../config/axios'; // Import the axios instance
+import { getTheme } from "../theme/theme";
 
-import {getTheme} from "../theme/theme"
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false); // You can manage dark mode state here
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State to toggle confirm password visibility
 
-  const theme = getTheme(isDarkMode); // Get the current theme
+  const theme = getTheme(isDarkMode);
 
   const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
@@ -80,46 +83,6 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
-
-
-
-
-
-  //----------------- google ------------------------------------------------------------------------------------------// 
-
-//   const handleGoogleSignIn = async () => {
-//     try {
-//         await GoogleSignin.hasPlayServices();
-//         const userInfo = await GoogleSignin.signIn();
-//         const { idToken } = userInfo;
-
-//         // Send the Google ID token to your backend
-//         const response = await api.post('/user/google-auth', {
-//             token: idToken,
-//         });
-
-//         if (response.data) {
-//             // Save the token to AsyncStorage
-//             await AsyncStorage.setItem('userToken', response.data.token);
-
-//             // Navigate to the home screen
-//             navigation.navigate('Home');
-//         }
-//     } catch (error) {
-//         if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-//             Alert.alert('Error', 'Google Sign-In was cancelled');
-//         } else if (error.code === statusCodes.IN_PROGRESS) {
-//             Alert.alert('Error', 'Google Sign-In is already in progress');
-//         } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-//             Alert.alert('Error', 'Play services not available or outdated');
-//         } else {
-//             Alert.alert('Error', 'Google Sign-In failed');
-//         }
-//     }
-// };
-
-  //----------------- google ------------------------------------------------------------------------------------------// 
-
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: theme.colors.background }]} 
@@ -140,7 +103,7 @@ const SignupScreen = ({ navigation }) => {
             <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>Instagram</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.googleButton}>
-                <Text style={styles.googleButtonText}>Sign Up with Google</Text>
+            <Text style={styles.googleButtonText}>Sign Up with Google</Text>
           </TouchableOpacity>
         </View>
 
@@ -169,14 +132,19 @@ const SignupScreen = ({ navigation }) => {
 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Password</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
-            placeholder="xxxxxxxx"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={password}
-            onChangeText={handlePasswordChange}
-            secureTextEntry
-          />
+          <View style={[styles.passwordInputContainer, { backgroundColor: theme.colors.surface }]}>
+            <TextInput
+              style={[styles.input, { color: theme.colors.text, flex: 1 }]}
+              placeholder="xxxxxxxx"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={password}
+              onChangeText={handlePasswordChange}
+              secureTextEntry={!showPassword} // Toggle secureTextEntry based on showPassword state
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Icon name={showPassword ? 'eye-slash' : 'eye'} size={20} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.passwordHint, { color: theme.colors.textSecondary }]}>
             Password must contain:
             <Text style={validatePassword(password) ? styles.valid : styles.invalid}> 8+ characters</Text>
@@ -187,14 +155,19 @@ const SignupScreen = ({ navigation }) => {
 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Confirm Password</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
-            placeholder="xxxxxxxx"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
+          <View style={[styles.passwordInputContainer, { backgroundColor: theme.colors.surface }]}>
+            <TextInput
+              style={[styles.input, { color: theme.colors.text, flex: 1 }]}
+              placeholder="xxxxxxxx"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword} // Toggle secureTextEntry based on showConfirmPassword state
+            />
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+              <Icon name={showConfirmPassword ? 'eye-slash' : 'eye'} size={20} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {passwordError ? <Text style={[styles.errorText, { color: theme.colors.error }]}>{passwordError}</Text> : null}
@@ -257,17 +230,19 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 20,
   },
-  label: {
-    color: '#FFFFFF',
-    marginBottom: 8,
-    fontSize: 16,
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingRight: 10, // Add padding to the right for the eye icon
   },
   input: {
-    backgroundColor: '#1A1A1A',
     borderRadius: 10,
     padding: 15,
-    color: '#FFFFFF',
     fontSize: 16,
+  },
+  eyeIcon: {
+    padding: 10,
   },
   passwordHint: {
     color: '#999999',

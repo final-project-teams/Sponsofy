@@ -16,25 +16,25 @@ const LoginScreen = ({ navigation }) => {
   const theme = getTheme(isDarkMode); // Get the current theme
 
   // Handle traditional email/password login
-  // const handleLogin = async () => {
-  //   try {
-  //     const response = await api.post('/user/login', {
-  //       email,
-  //       password,
-  //     });
+  const handleLogin = async () => {
+    try {
+      const response = await api.post('/user/login', {
+        email,
+        password,
+      });
 
-  //     if (response.data) {
-  //       // Save the token to AsyncStorage
-  //       await AsyncStorage.setItem('userToken', response.data.token);
+      if (response.data) {
+        // Save the token to AsyncStorage
+        await AsyncStorage.setItem('userToken', response.data.token);
 
-  //       Alert.alert('Success', 'Login successful!');
-  //       navigation.navigate('Home'); // Navigate to the home screen
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
-  //     console.error(error);
-  //   }
-  // };
+        Alert.alert('Success', 'Login successful!');
+        navigation.navigate('Home'); // Navigate to the home screen
+      }
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
+      console.error(error);
+    }
+  };
 
   // Handle Google Sign-In
   // const handleGoogleSignIn = async () => {
@@ -105,14 +105,14 @@ const LoginScreen = ({ navigation }) => {
             secureTextEntry
           />
         </View>
-        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} >
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleLogin}>
           <Text style={[styles.buttonText, { color: theme.colors.white }]}>Login</Text>
         </TouchableOpacity>
 
         {/* Google Sign-In Button */}
         <TouchableOpacity
           style={[styles.googleButton, { backgroundColor: theme.colors.surface }]}
-         
+        
         >
           <Text style={[styles.googleButtonText, { color: theme.colors.text }]}>Sign in with Google</Text>
         </TouchableOpacity>
