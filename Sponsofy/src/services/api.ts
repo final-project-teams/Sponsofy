@@ -36,7 +36,7 @@ export const chatService = {
 export const userService = {
   getProfile: async (userId: string) => {
     try {
-      const response = await api.get(`/users/${userId}`);
+      const response = await api.get(`/user/users/${userId}`);
       return response.data;
     } catch (error) {
       throw error;

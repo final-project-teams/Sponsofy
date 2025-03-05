@@ -4,6 +4,8 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import { Ionicons } from '@expo/vector-icons';
 import { contractService, searchService } from "../services/api";
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 // Define colors
 const colors = {
@@ -27,7 +29,15 @@ const debounce = (func, delay) => {
   };
 };
 
+// Define your navigation stack types
+type RootStackParamList = {
+  ProfileContent: undefined; // Define other routes as needed
+  // ... other routes
+};
+
 const DealCard = ({ title, description, startDate, endDate, status, color, rank }) => {
+
+  
   return (
     <View style={styles.card}>
       <View style={styles.userInfo}>
@@ -65,6 +75,8 @@ const DealCard = ({ title, description, startDate, endDate, status, color, rank 
 };
 
 export default function DealsScreen() {
+
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>(); // Correctly typed navigation
   const [deals, setDeals] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredDeals, setFilteredDeals] = useState([]);
@@ -375,6 +387,8 @@ export default function DealsScreen() {
           )}
         </View>
       )}
+
+      
       
       {/* Deals list */}
       <FlatList
@@ -402,7 +416,10 @@ export default function DealsScreen() {
         <TouchableOpacity style={[styles.navItem, styles.activeNav]}>
           <Ionicons name="chatbubble-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('ProfileContent')} // Navigate to ProfileContent
+        >
           <Ionicons name="person-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
