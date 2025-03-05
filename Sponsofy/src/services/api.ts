@@ -1,4 +1,5 @@
 import api from '../config/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const chatService = {
   getMessages: async (chatId: string) => {
@@ -113,6 +114,69 @@ export const searchService = {
       throw error;
     }
   }
+  
+
+};
+export const contentCreatorService = {
+  getContentCreators: async () => {
+    const response = await api.get('/contentcreator');
+    return response.data;
+  },
+  getContentCreatorById: async (id: string) => {
+    const response = await api.get(`/contentcreator/${id}`);
+    return response.data;
+  },
+  createContentCreator: async (contentCreator: any) => {
+    const response = await api.post('/contentcreator', contentCreator);
+    return response.data;
+  }
+  
+};
+export const paymentService = {
+  async createPaymentIntent(amount: number, tokenToUse: string) {
+    try {
+      const response = await api.post(
+        '/payment/create-payment-intent',
+        { amount }, 
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': tokenToUse
+          }
+        }
+      );
+      
+      console.log('Payment intent created successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Payment service error:', error);
+      
+      // Check if it's an auth issue and handle appropriately
+      if (error.response?.data?.error === 'jwt malformed') {
+        console.error('Authentication token is malformed. User might need to login again.');
+        // Handle re-authentication logic here if needed
+      }
+      
+      throw error;
+    }
+  },
+  getTerms: async () => {
+    const response = await api.get('/terms');
+    return response.data;
+  },
+  addTerm: async (termData: any) => {
+    const response = await api.post('/terms', termData);
+    return response.data;
+  },
+  editTerm: async (termData: any) => {
+    const response = await api.put('/terms', termData);
+    return response.data;
+  },
+  confirmTerm: async (termId: string) => {
+    const response = await api.post(`/terms/confirm/${termId}`);
+    return response.data;
+  },
+
 };
 
 

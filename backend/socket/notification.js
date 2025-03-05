@@ -14,7 +14,11 @@ module.exports = function(socket) {
   
     // When the user disconnects from notifications
     socket.on('disconnect', () => {
+      
       console.log('A user disconnected from notifications');
+
     });
+    
+
   };
   
