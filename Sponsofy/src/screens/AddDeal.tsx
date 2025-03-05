@@ -275,21 +275,20 @@ const AddDeal = () => {
 
             const response = await api.post("/addDeal", dealData);
             navigation.navigate("Home" as never);
-
         } catch (error) {
             console.error('Error posting deal:', error);
         }
     };
 
-    const handleGoBack = () => {
-        if (view === "Terms") {
-            setView("Basic Information");
-        } else if (view === "Criteria") {
-            setView("Terms");
-        } else if (view === "Start & End Date") {
-            setView("Criteria");
-        }
-    };
+    // const handleGoBack = () => {
+    //     if (view === "Terms") {
+    //         setView("Basic Information");
+    //     } else if (view === "Criteria") {
+    //         setView("Terms");
+    //     } else if (view === "Start & End Date") {
+    //         setView("Criteria");
+    //     }
+    // };
 
     const styles = StyleSheet.create({
         container: {

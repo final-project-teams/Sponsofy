@@ -49,6 +49,11 @@ const App = () => {
             component={VideoCallScreen} 
             options={{ headerShown: false }}
           />
+          <Stack.Screen 
+            name="Home" 
+            component={HomeScreen} 
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
         <FlashMessage position="top" />
       </NavigationContainer>
