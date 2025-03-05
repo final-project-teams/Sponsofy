@@ -250,12 +250,20 @@ const AddDeal = () => {
         }
 
         try {
-            const userString = await AsyncStorage.getItem('user');
-            let userData = null;
+            // Get both user data and token from AsyncStorage
+            const userString = await AsyncStorage.getItem('userData');
+            const token = await AsyncStorage.getItem('userToken');
 
-            if (userString) {
-                userData = JSON.parse(userString);
+            if (!userString || !token) {
+                console.error('User or token not found in storage');
+                // You might want to redirect to login here
+                return;
             }
+
+            const userData = JSON.parse(userString);
+
+            // Set the authorization header
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
             const dealData = {
                 title,
@@ -265,16 +273,22 @@ const AddDeal = () => {
                 start_date,
                 end_date,
                 rank,
-                user_id: userData?.id || null,
+                company_id: userData.id, // Use company_id instead of user_id
                 termsList: terms.filter(term => term.title.trim() !== ''),
-                criteria: selectedCriteria.map(criteria => ({
+                criteriaList: selectedCriteria.map(criteria => ({
                     name: criteria.toLowerCase(),
                     description: selectedSubCriteria[criteria]
                 }))
             };
 
             const response = await api.post("/addDeal", dealData);
-            navigation.navigate("Home" as never);
+
+            if (response.data.success) {
+                navigation.navigate("Home" as never);
+            } else {
+                console.error('Error response:', response.data);
+            }
+
         } catch (error) {
             console.error('Error posting deal:', error);
         }

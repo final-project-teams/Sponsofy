@@ -1,8 +1,23 @@
 const { Deal, Term, Contract, Criteria, SubCriteria } = require("../database/connection");
+const jwt = require('jsonwebtoken');
 
 module.exports = {
   addDeal: async (req, res) => {
     try {
+      // Get token from header
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (!token) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'No token provided' 
+        });
+      }
+
+      // Verify token and get company ID
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const companyId = decoded.id; // Assuming the token contains the company's ID
+
       const { 
         title, 
         description, 
@@ -11,9 +26,8 @@ module.exports = {
         end_date, 
         payement_terms, 
         rank,
-        user_id,
         termsList,
-        criteria  // Now this is an array of { name: string, description: string }
+        criteriaList 
       } = req.body;
 
       // Convert string dates to Date objects
@@ -25,22 +39,23 @@ module.exports = {
         return res.status(400).json({ error: "Invalid date format" });
       }
 
-      // Create the contract first
+      // Create the contract
       const contract = await Contract.create({
         title,
         description,
-        budget,
-        rank,
+        amount: budget,
+        payment_terms: payement_terms,
         start_date: parsedStartDate,
         end_date: parsedEndDate,
-        payment_terms: payement_terms,
-        company_id: user_id
+        rank,
+        company_id: companyId, // Use the company ID from the token
+        status: 'active'
       });
 
       // Create the deal
       const deal = await Deal.create({
-        content_creator_id: 1,
-        company_id: user_id || 1,
+        content_creator_id: 1, // This will be updated when a creator accepts the deal
+        company_id: companyId, // Use the company ID from the token
         deal_terms: payement_terms,
         price: budget,
         status: 'pending',
@@ -57,50 +72,46 @@ module.exports = {
             DealId: deal.id
           });
         });
-        
         await Promise.all(termsPromises);
       }
 
-      // Create multiple criteria and their subcriteria
-      if (criteria && Array.isArray(criteria)) {
-        const criteriaPromises = criteria.map(async (criterion) => {
-          const createdCriteria = await Criteria.create({
-            name: criterion.name,
-            description: `${criterion.name} requirement`,
+      // Create criteria if provided
+      if (criteriaList && criteriaList.length > 0) {
+        const criteriaPromises = criteriaList.map(criteria => {
+          return Criteria.create({
+            name: criteria.name,
+            description: criteria.description,
             ContractId: contract.id
           });
-
-          await SubCriteria.create({
-            name: criterion.description,
-            description: `${criterion.name} range: ${criterion.description}`,
-            CriteriaId: createdCriteria.id
-          });
-
-          return createdCriteria;
         });
-
         await Promise.all(criteriaPromises);
       }
 
-      // Return the created deal with its terms and criteria
-      const dealWithTerms = await Deal.findOne({
+      // Return the created deal with its terms and contract
+      const dealWithDetails = await Deal.findOne({
         where: { id: deal.id },
         include: [
           { model: Term },
           { 
             model: Contract,
-            include: [{
-              model: Criteria,
-              include: [SubCriteria]
-            }]
+            include: [{ model: Criteria }]
           }
         ]
       });
 
-      res.status(201).json(dealWithTerms);
+      res.status(201).json({
+        success: true,
+        message: 'Deal created successfully',
+        deal: dealWithDetails
+      });
+
     } catch (error) {
       console.error("Error creating deal:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error creating deal',
+        error: error.message 
+      });
     }
   },
 };
