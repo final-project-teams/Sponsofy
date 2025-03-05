@@ -8,34 +8,49 @@ import api from '../config/axios'; // Import the axios instance
 import { getTheme } from "../theme/theme";
 import { Ionicons } from '@expo/vector-icons';
 
-const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(true); // Set to true for dark mode by default
-  const [showPassword, setShowPassword] = useState(false);
 
-  const theme = getTheme(isDarkMode); // Get the current theme
+const LoginScreen = ({ navigation, route }) => {
+  const { userType } = route.params || {};
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const theme = getTheme(isDarkMode);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
     try {
-      const response = await api.post('/user/login', {
+      const response = await api.post("/user/login", {
         email,
         password,
       });
 
       if (response.data) {
-        // Save the token to AsyncStorage
-        await AsyncStorage.setItem('userToken', response.data.token);
-        console.log("token", response.data.token);
-        // console.log("token", await AsyncStorage.getItem('userToken'))
+        await AsyncStorage.setItem("userToken", response.data.token);
+        await AsyncStorage.setItem("userRole", response.data.user.role);
+        await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
+        console.log("response.data.token",response.data.token)
 
-        Alert.alert('Success', 'Login successful!');
-        navigation.navigate('Home'); // Navigate to the home screen
+        if (response.data.user.role === "content_creator") {
+          navigation.navigate("SocialAccounts");
+        } else if (response.data.user.role === "company") {
+          navigation.navigate("Home");
+        } else {
+          navigation.navigate("Home");
+        }
       }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
+      Alert.alert("Error", error.response?.data?.message || "An error occurred during login");
       console.error(error);
     }
+  };
+
+  const handleSocialLogin = () => {
+    navigation.navigate("SocialAccounts");
   };
 
   return (
@@ -123,8 +138,8 @@ const styles = StyleSheet.create({
   title: {
     color: 'white',
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 20,
   },
   signInText: {
@@ -187,7 +202,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   signupContainer: {
     flexDirection: 'row',
@@ -205,4 +220,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+export default LoginScreen

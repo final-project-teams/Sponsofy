@@ -16,9 +16,10 @@ import { contractService, searchService } from "../services/api";
 import ChatScreen from './ChatScreen';
 import BottomNavBar from '../components/BottomNavBar';
 import Header from '../components/Header';
+import { RootStackParamList, HomeScreenNavigationProp } from "../navigation/types"; // Adjust the path as necessary
+import { RouteProp } from '@react-navigation/native';
 
-const HomeScreen = () => {
-  const navigation = useNavigation();
+const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteProp<RootStackParamList, 'Home'> }> = ({ navigation }) => {
   const [deals, setDeals] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -138,6 +139,11 @@ const HomeScreen = () => {
         onNotificationPress={() => console.log('Notifications pressed')} 
         onMessagePress={() => console.log('Messages pressed')} 
       />
+
+      {/* Add Person Icon for Profile Navigation */}
+   
+
+  
 
       {/* Deals title and search */}
       <View style={styles.dealsHeader}>
@@ -308,6 +314,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  profileButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    zIndex: 1,
+  },
+  premiumButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    zIndex: 1,
   },
 });
 

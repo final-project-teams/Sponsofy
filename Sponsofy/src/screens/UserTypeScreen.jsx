@@ -1,17 +1,17 @@
-"use client"
-
-import { useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
+import { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
 const UserTypeScreen = ({ navigation }) => {
-  const [selectedType, setSelectedType] = useState(null)
+  const [selectedType, setSelectedType] = useState(null);
 
   const handleContinue = () => {
     if (selectedType) {
-      // Pass the user type to the signup screen
-      navigation.navigate("Signup", { userType: selectedType })
+      // Map the selected type to the database role value
+      const role = selectedType === "influencer" ? "content_creator" : "company";
+      // Pass the user type and role to the signup screen
+      navigation.navigate("Signup", { userType: selectedType, role });
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -43,8 +43,8 @@ const UserTypeScreen = ({ navigation }) => {
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -107,6 +107,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-})
+});
 
-export default UserTypeScreen
+export default UserTypeScreen;

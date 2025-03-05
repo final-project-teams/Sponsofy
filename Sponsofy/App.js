@@ -17,25 +17,29 @@ import SplashScreen from "./src/screens/SplashScreen"
 import WelcomeScreen from "./src/screens/WelcomeScreen"
 import UserTypeScreen from "./src/screens/UserTypeScreen"
 import TermsScreen from "./src/screens/terms"
+import SocialAccountsScreen from "./src/screens/SocialAccountsScreen"
+
+
 const lightTheme=lightColors
 const Stack = createStackNavigator();
-const darkTheme=darkColors
+
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Terms">
-      <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Signup" component={SignupScreen} />
-        <Stack.Screen name="ContractDetail" component={ContractDetail} />
-        <Stack.Screen name="ProfileContent" component={ProfileContent} />
-        <Stack.Screen name="ChatScreen" component={ChatScreen} />
-        <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} />
-        <Stack.Screen name="PremiumScreen" component={PremiumScreen} />
-        <Stack.Screen name="SplashScreen" component={SplashScreen} />
-        <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="UserType" component={UserTypeScreen} />
-        <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="UserType" component={UserTypeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
+        <Stack.Screen name="PremiumScreen" component={PremiumScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ContractDetail" component={ContractDetail} options={{ headerShown: false }} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} options={{ headerShown: false }} />
+        
       </Stack.Navigator>
       <FlashMessage position="top" />
     </NavigationContainer>

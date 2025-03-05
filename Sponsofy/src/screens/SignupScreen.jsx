@@ -20,11 +20,12 @@ const SignupScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [role, setRole] = useState('content_creator'); // Default role
   const [isDarkMode, setIsDarkMode] = useState(true); // Set dark mode to true by default
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const theme = getTheme(isDarkMode); // Get the current theme
+  const theme = getTheme(isDarkMode);
 
   const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
@@ -34,58 +35,59 @@ const SignupScreen = ({ navigation }) => {
   const handlePasswordChange = (text) => {
     setPassword(text);
     if (!validatePassword(text)) {
-      setPasswordError('Password must contain at least 8 characters, one uppercase letter, and one number');
+      setPasswordError("Password must contain at least 8 characters, one uppercase letter, and one number");
     } else {
-      setPasswordError('');
+      setPasswordError("");
     }
   };
 
   const validatePasswords = () => {
     if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError("Passwords do not match");
       return false;
     }
     if (!validatePassword(password)) {
-      setPasswordError('Password must contain at least 8 characters, one uppercase letter, and one number');
+      setPasswordError("Password must contain at least 8 characters, one uppercase letter, and one number");
       return false;
     }
-    setPasswordError('');
+    setPasswordError("");
     return true;
   };
 
   const handleSignup = async () => {
     if (!validatePasswords()) {
       showMessage({
-        message: 'Validation Error',
+        message: "Validation Error",
         description: passwordError,
-        type: 'danger',
-        icon: 'auto',
+        type: "danger",
+        icon: "auto",
       });
       return;
     }
 
     try {
-      const response = await api.post('/user/register', {
+      const response = await api.post("/user/register", {
         username,
         email,
         password,
+        role, // Use the role state here
       });
 
       if (response.data) {
         showMessage({
-          message: 'Success',
-          description: 'Registration successful!',
-          type: 'success',
-          icon: 'auto',
+          message: "Success",
+          description: "Registration successful!",
+          type: "success",
+          icon: "auto",
         });
-        navigation.navigate('Login');
+        navigation.navigate("Login"); // Navigate to Login screen after successful registration
       }
     } catch (error) {
       showMessage({
-        message: 'Error',
-        description: error.response?.data?.message || 'Registration failed',
-        type: 'danger',
-        icon: 'auto',
+        message: "Error",
+        description: error.response?.data?.message || "Registration failed",
+        type: "danger",
+        icon: "auto",
       });
       console.error(error);
     }
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   loginContainer: {
     flexDirection: 'row',
