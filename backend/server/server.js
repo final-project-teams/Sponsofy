@@ -16,8 +16,17 @@ const notificationSocket = require('../socket/notification');
 const io = socketIo(server);
 const contract = require('../router/contractrouter');
 const searchRoutes = require('../router/searchrouter');
-
+const ContentCreatorRouter = require('../router/ContentCreatorRouter');
+const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
+const termsRouter = require("../router/termsrouter")
+
+
+
+
+
+
+app.use(express.json());
 
 async function initializeDatabase() {
   try {
@@ -43,11 +52,14 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
+
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contract);
+app.use('/api/contentcreator', ContentCreatorRouter);
+app.use('/api/payment', paymentRouter);
+app.use('/api/terms', termsRouter(io));
 // Body parser middleware
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Create uploads directory if it doesn't exist
@@ -116,6 +128,7 @@ io.on('connection', (socket) => {
     console.log('A user disconnected');
   });
 });
+
 
 // Change app.listen to server.listen
 server.listen(PORT, () => {

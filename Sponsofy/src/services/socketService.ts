@@ -56,6 +56,44 @@ class SocketService {
       this.socket = null;
     }
   }
+  onNewTerm(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('newTerm', callback);
+    }
+  }
+  onTermConfirmed(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termConfirmed', callback);
+    }
+  }
+  onTermUpdated(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termUpdated', callback);
+    }
+  }
+  onNotification(callback: (notification: any) => void) {
+    if (this.socket) {
+      this.socket.on('notification', callback);
+    }
+  }
+  onTermRejected(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termRejected', callback);
+    }
+  }
+  onTermAccepted(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termAccepted', callback);
+    }
+  }
+  onTermNegotiating(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termNegotiating', callback);
+    }
+  }
+  
+  
+
 }
 
 export const socketService = new SocketService();
