@@ -1,38 +1,52 @@
-import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform
-} from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../config/axios'; // Import the axios instance
-import {getTheme} from "../theme/theme"
+import { useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../config/axios";
+import { getTheme } from "../theme/theme";
 
-const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false); // You can manage dark mode state here
+const LoginScreen = ({ navigation, route }) => {
+  const { userType } = route.params || {};
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const theme = getTheme(isDarkMode); // Get the current theme
+  const theme = getTheme(isDarkMode);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
     try {
-      const response = await api.post('/user/login', {
+      const response = await api.post("/user/login", {
         email,
         password,
       });
 
       if (response.data) {
-        // Save the token to AsyncStorage
-        await AsyncStorage.setItem('userToken', response.data.token);
-        // console.log("token", await AsyncStorage.getItem('userToken'))
+        await AsyncStorage.setItem("userToken", response.data.token);
+        await AsyncStorage.setItem("userRole", response.data.user.role);
+        await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
+        console.log("response.data.token",response.data.token)
 
-        Alert.alert('Success', 'Login successful!');
-        navigation.navigate('Home'); // Navigate to the home screen
+        if (response.data.user.role === "content_creator") {
+          navigation.navigate("AddDeal");
+        } else if (response.data.user.role === "company") {
+          navigation.navigate("AddDeal");
+        } else {
+          navigation.navigate("AddDeal");
+        }
       }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
+      Alert.alert("Error", error.response?.data?.message || "An error occurred during login");
       console.error(error);
     }
+  };
+
+  const handleSocialLogin = () => {
+    navigation.navigate("AddDeal");
   };
 
   return (
@@ -43,7 +57,11 @@ const LoginScreen = ({ navigation }) => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.inner}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Login</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          Sign In To Sponsofy
+          {userType ? ` as ${userType === 'influencer' ? 'an Influencer' : 'a Company'}` : ''}
+        </Text>
+
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
           <TextInput
@@ -53,6 +71,7 @@ const LoginScreen = ({ navigation }) => {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
         </View>
         <View style={styles.inputContainer}>
@@ -66,12 +85,21 @@ const LoginScreen = ({ navigation }) => {
             secureTextEntry
           />
         </View>
+
         <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleLogin}>
           <Text style={[styles.buttonText, { color: theme.colors.white }]}>Login</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.colors.secondary, marginTop: 10 }]}
+          onPress={handleSocialLogin}
+        >
+          <Text style={[styles.buttonText, { color: theme.colors.white }]}>Login with Social Media</Text>
+        </TouchableOpacity>
+
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+          <TouchableOpacity onPress={() => navigation.navigate("UserType")}>
             <Text style={[styles.footerLink, { color: theme.colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>
         </View>
@@ -89,12 +117,12 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 20,
   },
   inputContainer: {
@@ -112,16 +140,16 @@ const styles = StyleSheet.create({
   button: {
     padding: 15,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 20,
   },
   footerText: {

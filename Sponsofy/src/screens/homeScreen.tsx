@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, Image, TouchableOpacity, TextInput, FlatList, StyleSheet, Modal } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { Ionicons } from '@expo/vector-icons';
 import { contractService, searchService } from "../services/api";
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 // Define colors
 const colors = {
@@ -18,7 +19,7 @@ const colors = {
 const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {
-    console.log("debounce",args); 
+    console.log("debounce", args);
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
@@ -28,7 +29,15 @@ const debounce = (func, delay) => {
   };
 };
 
+// Define your navigation stack types
+type RootStackParamList = {
+  ProfileContent: undefined; // Define other routes as needed
+  // ... other routes
+};
+
 const DealCard = ({ title, description, startDate, endDate, status, color, rank }) => {
+
+
   return (
     <View style={styles.card}>
       <View style={styles.userInfo}>
@@ -57,7 +66,7 @@ const DealCard = ({ title, description, startDate, endDate, status, color, rank 
         </TouchableOpacity>
       </View>
       {status && (
-        <View style={[styles.ribbon, { backgroundColor: color || '#00BCD4' }]}> 
+        <View style={[styles.ribbon, { backgroundColor: color || '#00BCD4' }]}>
           <Text style={styles.ribbonText}>{status}</Text>
         </View>
       )}
@@ -66,6 +75,8 @@ const DealCard = ({ title, description, startDate, endDate, status, color, rank 
 };
 
 export default function DealsScreen() {
+
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>(); // Correctly typed navigation
   const [deals, setDeals] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredDeals, setFilteredDeals] = useState([]);
@@ -79,7 +90,6 @@ export default function DealsScreen() {
   const [error, setError] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
-  const navigation = useNavigation();
 
   // Fetch all deals initially
   useEffect(() => {
@@ -107,12 +117,12 @@ export default function DealsScreen() {
       setFilteredDeals(deals); // Reset to all deals if both search and rank filters are empty
       return;
     }
-    
+
     setIsFiltering(true);
     try {
       const response = await searchService.searchContracts(searchQuery, selectedRank);
       console.log("Search results:", response);
-      
+
       // Check if the response has the expected structure
       if (response && response.data) {
         setFilteredDeals(response.data);
@@ -132,13 +142,13 @@ export default function DealsScreen() {
   const handleRankFilter = async (rank) => {
     setSelectedRank(rank);
     setIsFiltering(true);
-    
+
     try {
       if (rank) {
         console.log("Filtering by rank:", rank);
         const response = await searchService.searchContractsByRank(rank);
         console.log("Rank filter results:", response);
-        
+
         if (response && response.data) {
           setFilteredDeals(response.data);
         } else {
@@ -183,7 +193,7 @@ export default function DealsScreen() {
           <TouchableOpacity
             key={rank}
             style={[
-              styles.rankButton, 
+              styles.rankButton,
               selectedRank === rank && styles.activeRankButton
             ]}
             onPress={() => handleRankFilter(rank)}
@@ -193,7 +203,7 @@ export default function DealsScreen() {
         ))}
         <TouchableOpacity
           style={[
-            styles.rankButton, 
+            styles.rankButton,
             selectedRank === null && styles.activeRankButton
           ]}
           onPress={() => handleRankFilter(null)}
@@ -228,8 +238,8 @@ export default function DealsScreen() {
     return (
       <View style={[styles.container, styles.centeredContent]}>
         <Text style={{ color: '#ff6b6b', fontSize: 18 }}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.button} 
+        <TouchableOpacity
+          style={styles.button}
           onPress={() => window.location.reload()}
         >
           <Text style={styles.buttonText}>Retry</Text>
@@ -262,7 +272,7 @@ export default function DealsScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.searchBar}>
         <TextInput
           style={styles.searchInput}
@@ -278,7 +288,7 @@ export default function DealsScreen() {
           <Ionicons name="filter" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
-      
+
       {/* Filter modal */}
       <Modal
         animationType="slide"
@@ -309,7 +319,7 @@ export default function DealsScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.rankOption,
                 selectedRank === null && styles.activeRankOption
@@ -352,19 +362,19 @@ export default function DealsScreen() {
 
       {/* Rank filter buttons */}
       {renderRankButtons()}
-      
+
       {/* No results message */}
       {!isFiltering && filteredDeals.length === 0 && (
         <View style={styles.noResultsContainer}>
           <Ionicons name="search-outline" size={50} color="#444" />
           <Text style={styles.noResultsText}>No deals found</Text>
           <Text style={styles.noResultsSubtext}>
-            {selectedRank 
+            {selectedRank
               ? `No deals available with rank: ${selectedRank}`
               : 'Try adjusting your search or filters'}
           </Text>
           {(searchQuery.trim() || selectedRank) && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.resetButton}
               onPress={() => {
                 setSearchQuery('');
@@ -377,7 +387,9 @@ export default function DealsScreen() {
           )}
         </View>
       )}
-      
+
+
+
       {/* Deals list */}
       <FlatList
         data={filteredDeals}
@@ -398,13 +410,16 @@ export default function DealsScreen() {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="search-outline" size={24} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("AddDeal" as never)}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="add-circle-outline" size={24} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity style={[styles.navItem, styles.activeNav]}>
           <Ionicons name="chatbubble-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('ProfileContent')} // Navigate to ProfileContent
+        >
           <Ionicons name="person-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
@@ -415,9 +430,9 @@ export default function DealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: colors.background, 
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
     padding: 20,
     paddingBottom: 70, // Extra padding for bottom nav
   },
@@ -442,27 +457,27 @@ const styles = StyleSheet.create({
   iconButton: {
     marginLeft: 16,
   },
-  searchBar: { 
-    flexDirection: "row", 
+  searchBar: {
+    flexDirection: "row",
     marginBottom: 20,
     borderRadius: 10,
     overflow: 'hidden',
   },
-  searchInput: { 
-    flex: 1, 
-    backgroundColor: "#222", 
-    padding: 10, 
-    color: "#fff" 
+  searchInput: {
+    flex: 1,
+    backgroundColor: "#222",
+    padding: 10,
+    color: "#fff"
   },
   searchButton: {
     backgroundColor: "#9B59B6",
     padding: 10,
     borderRadius: 5,
   },
-  filterButton: { 
+  filterButton: {
     backgroundColor: "#9B59B6",
-    padding: 10, 
-    borderRadius: 5 
+    padding: 10,
+    borderRadius: 5
   },
   statusContainer: {
     marginBottom: 10,
@@ -487,83 +502,83 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 20,
   },
-  card: { 
-    backgroundColor: colors.cardBackground, 
-    padding: 15, 
-    borderRadius: 10, 
-    marginBottom: 15, 
+  card: {
+    backgroundColor: colors.cardBackground,
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
     position: "relative",
-    borderWidth: 1, 
+    borderWidth: 1,
     borderColor: '#9B59B6',
   },
-  userInfo: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    marginBottom: 10 
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10
   },
-  avatar: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    marginRight: 10 
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10
   },
-  username: { 
-    color: "#fff", 
-    fontWeight: "bold" 
+  username: {
+    color: "#fff",
+    fontWeight: "bold"
   },
-  time: { 
-    color: "#888" 
+  time: {
+    color: "#888"
   },
-  description: { 
-    color: "#ddd", 
-    marginBottom: 10 
+  description: {
+    color: "#ddd",
+    marginBottom: 10
   },
-  actions: { 
-    flexDirection: "row", 
+  actions: {
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: 'center',
   },
-  button: { 
-    flexDirection: "row", 
-    alignItems: "center", 
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#9B59B6",
-    padding: 8, 
-    borderRadius: 5 
+    padding: 8,
+    borderRadius: 5
   },
   buttonText: { color: "#fff", marginLeft: 5 },
-  actionText: { 
-    color: "#aaa", 
-    marginLeft: 5 
+  actionText: {
+    color: "#aaa",
+    marginLeft: 5
   },
-  ribbon: { 
-    position: "absolute", 
-    top: 10, 
-    right: 10, 
-    padding: 5, 
-    borderTopRightRadius: 10, 
-    borderBottomLeftRadius: 10 
+  ribbon: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    padding: 5,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 10
   },
-  ribbonText: { 
-    color: "#fff", 
-    fontWeight: "bold" 
+  ribbonText: {
+    color: "#fff",
+    fontWeight: "bold"
   },
-  bottomNav: { 
-    flexDirection: "row", 
-    justifyContent: "space-around", 
-    paddingVertical: 10, 
-    backgroundColor: "#111", 
-    position: "absolute", 
-    bottom: 0, 
+  bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 10,
+    backgroundColor: "#111",
+    position: "absolute",
+    bottom: 0,
     left: 0,
     right: 0,
     paddingBottom: 20, // Extra padding for iOS home indicator
   },
-  navItem: { 
+  navItem: {
     alignItems: "center",
     padding: 10,
   },
-  activeNav: { 
-    borderBottomWidth: 2, 
+  activeNav: {
+    borderBottomWidth: 2,
     borderBottomColor: '#00BCD4',
   },
   rankFilter: {

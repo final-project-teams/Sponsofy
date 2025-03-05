@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 async function seedDatabase() {
   try {
     // Sync the database
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     
     console.log('Clearing existing data...');
     
