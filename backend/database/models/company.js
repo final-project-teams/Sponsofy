@@ -1,34 +1,37 @@
-// models/company.js
+const { DataTypes } = require('sequelize');
 
-
-module.exports = (sequelize, DataTypes) => {
-const Company = sequelize.define('Company', {
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  industry: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  location: {
-    type: DataTypes.STRING,
-  },
-  description: {
-    type: DataTypes.TEXT,
-  },
+module.exports = (sequelize) => {
+  const Company = sequelize.define('Company', {
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    industry: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    location: {
+      type: DataTypes.STRING,
+    },
+    description: {
+      type: DataTypes.TEXT,
+    },
     verified: {
-        type: DataTypes.BOOLEAN,
+      type: DataTypes.BOOLEAN,
     },
     isPremium: {
-        type: DataTypes.BOOLEAN,
+      type: DataTypes.BOOLEAN,
     },
     codeFiscal: {
-        type: DataTypes.STRING,
+      type: DataTypes.STRING,
     },
-}, {
-  tableName: 'companies',
-  timestamps: true,
-});
-return Company;
-}
+    category: {
+      type: DataTypes.STRING,
+      allowNull: true
+    }
+  }, {
+    tableName: 'companies',
+    timestamps: true,
+  });
+  return Company;
+};

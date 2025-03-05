@@ -14,7 +14,7 @@ const api = axios.create({
 
 const getAuthToken = async () => {
   try {
-    return await AsyncStorage.getItem('authToken');
+    return await AsyncStorage.getItem('userToken');
   } catch (error) {
     console.error('Error getting auth token:', error);
     return null;
