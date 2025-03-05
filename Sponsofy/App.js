@@ -7,6 +7,9 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import FlashMessage from 'react-native-flash-message';
 
 // Import screens
+// import ChatScreen from './src/screens/ChatScreen';
+// import VideoCallScreen from './src/screens/VideoCallScreen';
+import HomeScreen from './src/screens/homeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import CompanyList from './src/components/company/CompanyList';
@@ -29,21 +32,9 @@ const MainApp = () => {
         barStyle={isDarkMode ? "light-content" : "dark-content"} 
         backgroundColor={currentTheme.colors.background} 
       />
-      <Stack.Navigator
-        initialRouteName="Login"
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: currentTheme.colors.headerBackground || currentTheme.colors.surface,
-            elevation: 0, // for Android
-            shadowOpacity: 0, // for iOS
-            borderBottomWidth: 0,
-          },
-          headerTintColor: currentTheme.colors.text,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
+      
+      <Stack.Navigator initialRouteName="CompanyProfile">
+      <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen

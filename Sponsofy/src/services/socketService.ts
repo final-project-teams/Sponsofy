@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 
 class SocketService {
   private socket: typeof Socket | null = null;
-  private serverUrl = 'http://192.168.11.93:3304'; // Update with your server IP
+  private serverUrl = 'http://192.168.110.131:3304'; // Updated to match current network configuration
   private userId: string | null = null;
   private connectionAttempts = 0;
   private maxConnectionAttempts = 3;

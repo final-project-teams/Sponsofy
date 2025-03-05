@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { theme } from '../../theme/theme';
 
+
 interface CardProps {
   children: React.ReactNode;
   variant?: 'flat' | 'elevated' | 'outlined';

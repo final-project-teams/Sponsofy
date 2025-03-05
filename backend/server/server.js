@@ -21,6 +21,11 @@ const io = socketIo(server, {
   }
 });
 
+const contract = require('../router/contractrouter');
+const searchRoutes = require('../router/searchrouter');
+
+
+
 async function initializeDatabase() {
   try {
     console.log('Connecting to database...');
@@ -50,6 +55,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// Use the search routes
+app.use('/api/search', searchRoutes);
+app.use('/api/contract', contract);
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -70,6 +78,11 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'API is working!' });
 });
 
+// Important: Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+require('dotenv').config();
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -77,6 +90,8 @@ app.use((err, req, res, next) => {
 });
 
 // Root route
+
+app.use("/api/user", userRouter)
 app.get('/', (req, res) => {
   res.send('Sponsofy API Server');
 });
@@ -132,3 +147,21 @@ server.listen(PORT, () => {
 });
 
 module.exports = { app, server, io };
+
+// Add this near the top of your server.js file
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  const startTime = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
+  });
+  
+  next();
+});
+
+// Add a test endpoint to check connectivity
+app.get('/api/test', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});

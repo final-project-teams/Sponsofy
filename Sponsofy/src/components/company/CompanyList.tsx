@@ -30,19 +30,19 @@ const CompanyList: React.FC = () => {
 
   const fetchCompanies = async () => {
     try {
+      setLoading(true);
       setError(null);
       console.log('Fetching companies from API...');
       
-      const fetchedCompanies = await companyApi.getCompanies();
+      const fetchedCompanies = await companyApi.getAllCompanies();
       
       setCompanies(fetchedCompanies);
       console.log('Companies loaded successfully:', fetchedCompanies.length);
-    } catch (err: any) {
-      console.error('Error loading companies:', err);
-      setError('Unable to load companies. Please check your connection.');
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      setError('Failed to load companies. Please try again.');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 

@@ -1,37 +1,42 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../config/axios'; // Import the axios instance
-import {getTheme} from "../theme/theme"
+import { getTheme } from '../theme/theme';
+import { companyApi } from '../services/api/companyApi';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false); // You can manage dark mode state here
 
   const theme = getTheme(isDarkMode); // Get the current theme
 
   const handleLogin = async () => {
     try {
-      const response = await api.post('/user/login', {
-        email,
-        password,
-      });
-
-      if (response.data) {
-        // Save the token to AsyncStorage
-        await AsyncStorage.setItem('userToken', response.data.token);
-        // console.log("token", await AsyncStorage.getItem('userToken'))
-
+      setIsLoading(true);
+      
+      // Use the improved login function from companyApi
+      console.log('Logging in with email:', email || 'default@example.com');
+      const token = await companyApi.login();
+      
+      if (token) {
+        console.log('Login successful');
         Alert.alert('Success', 'Login successful!');
-        navigation.navigate('Home'); // Navigate to the home screen
+        
+        // Navigate to Home screen
+        navigation.navigate('Home');
+      } else {
+        Alert.alert('Error', 'Login failed. Please try again.');
       }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred during login');
+      Alert.alert('Error', 'An error occurred during login');
       console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -66,8 +71,14 @@ const LoginScreen = ({ navigation }) => {
             secureTextEntry
           />
         </View>
-        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleLogin}>
-          <Text style={[styles.buttonText, { color: theme.colors.white }]}>Login</Text>
+        <TouchableOpacity 
+          style={[styles.button, { backgroundColor: theme.colors.primary }]} 
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          <Text style={[styles.buttonText, { color: theme.colors.white }]}>
+            {isLoading ? 'Logging in...' : 'Login'}
+          </Text>
         </TouchableOpacity>
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Don't have an account? </Text>

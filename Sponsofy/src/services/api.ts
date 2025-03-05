@@ -43,40 +43,81 @@ export const userService = {
     }
   },
 };
+export const contractService = {
+  getContracts: async () => {
+    try {
+      const response = await api.get('/contract');
+      console.log("response",response.data);
+      
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  createContract: async (contractData: any) => {
+    try {
+      const response = await api.post('/contracts', contractData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  updateContract: async (contractId: string, contractData: any) => {
+    try {
+      const response = await api.put(`/contracts/${contractId}`, contractData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  deleteContract: async (contractId: string) => {
+    try {
+      const response = await api.delete(`/contracts/${contractId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
 
-export const callService = {
-  // Get call history
-  getCallHistory: async () => {
+export const searchService = {
+  searchCompanies: async (query: string) => {
     try {
-      const response = await api.get('/calls/history');
+      const response = await api.get(`/search/companies?query=${query}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
-  
-  // Log a call
-  logCall: async (callData: {
-    calleeId: string;
-    duration: number;
-    callType: 'video' | 'audio';
-    status: 'completed' | 'missed' | 'rejected';
-  }) => {
+  searchContentCreators: async (query: string) => {
     try {
-      const response = await api.post('/calls/log', callData);
+      const response = await api.get(`/search/content-creators?query=${query}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
-  
-  // Check if user is available for calls
-  checkUserAvailability: async (userId: string) => {
+  searchContracts: async (query: string, rank?: string) => {
     try {
-      const response = await api.get(`/users/${userId}/availability`);
+      const response = await api.get(`/search/contracts?query=${query}${rank ? `&rank=${rank}` : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  searchContractsByRank: async (rank: string) => {
+    try {
+      const response = await api.get(`/search/contracts/rank?rank=${rank}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   }
 };
+
+
+
+
+
+
+      

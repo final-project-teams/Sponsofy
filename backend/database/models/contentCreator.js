@@ -20,6 +20,10 @@ const ContentCreator = sequelize.define('ContentCreator', {
   location: {
     type: DataTypes.STRING,
   },
+  category: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
   verified: {
     type: DataTypes.BOOLEAN,
   },
