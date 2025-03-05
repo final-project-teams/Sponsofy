@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { showMessage } from 'react-native-flash-message';
-import Icon from 'react-native-vector-icons/FontAwesome'; // Import the Icon component
-import api from '../config/axios'; // Import the axios instance
+import React, { useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { showMessage } from "react-native-flash-message";
+import Icon from "react-native-vector-icons/FontAwesome";
+import api from "../config/axios";
 import { getTheme } from "../theme/theme";
 
-const SignupScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+const SignupScreen = ({ navigation, route }) => {
+  const { userType, role } = route.params || {}; // Access userType and role from navigation params
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State to toggle confirm password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const theme = getTheme(isDarkMode);
 
@@ -26,86 +27,78 @@ const SignupScreen = ({ navigation }) => {
   const handlePasswordChange = (text) => {
     setPassword(text);
     if (!validatePassword(text)) {
-      setPasswordError('Password must contain at least 8 characters, one uppercase letter, and one number');
+      setPasswordError("Password must contain at least 8 characters, one uppercase letter, and one number");
     } else {
-      setPasswordError('');
+      setPasswordError("");
     }
   };
 
   const validatePasswords = () => {
     if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError("Passwords do not match");
       return false;
     }
     if (!validatePassword(password)) {
-      setPasswordError('Password must contain at least 8 characters, one uppercase letter, and one number');
+      setPasswordError("Password must contain at least 8 characters, one uppercase letter, and one number");
       return false;
     }
-    setPasswordError('');
+    setPasswordError("");
     return true;
   };
 
   const handleSignup = async () => {
     if (!validatePasswords()) {
       showMessage({
-        message: 'Validation Error',
+        message: "Validation Error",
         description: passwordError,
-        type: 'danger',
-        icon: 'auto',
+        type: "danger",
+        icon: "auto",
       });
       return;
     }
 
     try {
-      const response = await api.post('/user/register', {
+      const response = await api.post("/user/register", {
         username,
         email,
         password,
+        role: role || "content_creator", // Default to 'content_creator' if role is not provided
       });
 
       if (response.data) {
         showMessage({
-          message: 'Success',
-          description: 'Registration successful!',
-          type: 'success',
-          icon: 'auto',
+          message: "Success",
+          description: "Registration successful!",
+          type: "success",
+          icon: "auto",
         });
-        navigation.navigate('Login');
+        navigation.navigate("Login"); // Navigate to Login screen after successful registration
       }
     } catch (error) {
       showMessage({
-        message: 'Error',
-        description: error.response?.data?.message || 'Registration failed',
-        type: 'danger',
-        icon: 'auto',
+        message: "Error",
+        description: error.response?.data?.message || "Registration failed",
+        type: "danger",
+        icon: "auto",
       });
       console.error(error);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={[styles.container, { backgroundColor: theme.colors.background }]} 
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
-      <KeyboardAwareScrollView 
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollViewContent}
-        enableOnAndroid={true} 
-        extraScrollHeight={100} 
+        enableOnAndroid={true}
+        extraScrollHeight={100}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={[styles.title, { color: theme.colors.text }]}>Get Started With Sponsofy</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Sign up with</Text>
-
-        <View style={styles.socialButtonsContainer}>
-          <TouchableOpacity style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>Instagram</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.googleButton}>
-            <Text style={styles.googleButtonText}>Sign Up with Google</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Sign up as {userType}</Text>
 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Username</Text>
@@ -139,10 +132,10 @@ const SignupScreen = ({ navigation }) => {
               placeholderTextColor={theme.colors.textSecondary}
               value={password}
               onChangeText={handlePasswordChange}
-              secureTextEntry={!showPassword} // Toggle secureTextEntry based on showPassword state
+              secureTextEntry={!showPassword}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Icon name={showPassword ? 'eye-slash' : 'eye'} size={20} color={theme.colors.textSecondary} />
+              <Icon name={showPassword ? "eye-slash" : "eye"} size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <Text style={[styles.passwordHint, { color: theme.colors.textSecondary }]}>
@@ -162,10 +155,10 @@ const SignupScreen = ({ navigation }) => {
               placeholderTextColor={theme.colors.textSecondary}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword} // Toggle secureTextEntry based on showConfirmPassword state
+              secureTextEntry={!showConfirmPassword}
             />
             <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-              <Icon name={showConfirmPassword ? 'eye-slash' : 'eye'} size={20} color={theme.colors.textSecondary} />
+              <Icon name={showConfirmPassword ? "eye-slash" : "eye"} size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -178,7 +171,7 @@ const SignupScreen = ({ navigation }) => {
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
             <Text style={[styles.footerLink, { color: theme.colors.primary }]}>Login</Text>
           </TouchableOpacity>
         </View>
@@ -190,7 +183,7 @@ const SignupScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   scrollViewContent: {
     flexGrow: 1,
@@ -200,41 +193,25 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#999999',
-    textAlign: 'center',
+    color: "#999999",
+    textAlign: "center",
     marginBottom: 20,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  socialButton: {
-    backgroundColor: '#1A1A1A',
-    padding: 15,
-    borderRadius: 10,
-    width: '48%',
-    alignItems: 'center',
-  },
-  socialButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
   },
   inputContainer: {
     marginBottom: 20,
   },
   passwordInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 10,
-    paddingRight: 10, // Add padding to the right for the eye icon
+    paddingRight: 10,
   },
   input: {
     borderRadius: 10,
@@ -245,46 +222,46 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   passwordHint: {
-    color: '#999999',
+    color: "#999999",
     fontSize: 12,
     marginTop: 5,
   },
   valid: {
-    color: '#4CAF50', // Green for valid
+    color: "#4CAF50",
   },
   invalid: {
-    color: '#FF6B6B', // Red for invalid
+    color: "#FF6B6B",
   },
   button: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: "#8B5CF6",
     padding: 15,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 20,
   },
   footerText: {
-    color: '#999999',
+    color: "#999999",
     fontSize: 14,
   },
   footerLink: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
   },
   errorText: {
-    color: '#FF6B6B',
+    color: "#FF6B6B",
     fontSize: 14,
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
 

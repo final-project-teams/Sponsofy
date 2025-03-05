@@ -23,4 +23,5 @@ router.get('/users/:userId', getUserById);
 // New route to update content creator profile
 router.put('/content-creator/:userId', updateContentCreatorProfile);
 
+
 module.exports = router;
