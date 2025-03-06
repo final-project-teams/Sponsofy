@@ -17,8 +17,11 @@
       "assets/fonts/*"
     ],
     "extra": {
-      "API_URL": "http://192.168.1.204:3304/api",
-      "SOCKET_URL": "http://192.168.11.36:3000"
+      "API_URL": "http://192.168.11.118:3304/api",
+      "SOCKET_URL": "http://192.168.11.36:3000",
+      "eas": {
+        "projectId": "4c695c25-7e82-44c6-b0de-50a1c5081ef8"
+      }
     },
     "fonts": [
       {
@@ -52,6 +55,7 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "owner": "melek8548"
   }
 }

@@ -6,9 +6,7 @@ const UserTypeScreen = ({ navigation }) => {
 
   const handleContinue = () => {
     if (selectedType) {
-      // Map the selected type to the database role value
       const role = selectedType === "influencer" ? "content_creator" : "company";
-      // Pass the user type and role to the signup screen
       navigation.navigate("Signup", { userType: selectedType, role });
     }
   };
@@ -19,7 +17,10 @@ const UserTypeScreen = ({ navigation }) => {
         <Text style={styles.title}>Are you an Influencer or a Company?</Text>
 
         <TouchableOpacity
-          style={[styles.optionButton, selectedType === "influencer" && styles.selectedOption]}
+          style={[
+            styles.optionButton,
+            selectedType === "influencer" && styles.selectedOption,
+          ]}
           onPress={() => setSelectedType("influencer")}
         >
           <Text style={styles.optionText}>Influencer</Text>
@@ -27,7 +28,10 @@ const UserTypeScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.optionButton, selectedType === "company" && styles.selectedOption]}
+          style={[
+            styles.optionButton,
+            selectedType === "company" && styles.selectedOption,
+          ]}
           onPress={() => setSelectedType("company")}
         >
           <Text style={styles.optionText}>Company</Text>
@@ -76,9 +80,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    transition: "all 0.2s ease-in-out",
   },
   selectedOption: {
     backgroundColor: "#8B5CF6",
+    paddingVertical: 20, // Increased height for selected button
   },
   optionText: {
     color: "#FFFFFF",

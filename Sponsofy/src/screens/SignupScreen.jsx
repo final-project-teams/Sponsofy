@@ -1,13 +1,23 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { showMessage } from "react-native-flash-message";
 import Icon from "react-native-vector-icons/FontAwesome";
-import api from "../config/axios";
+import { FIREBASE_AUTH, GOOGLE_PROVIDER } from "../../firebaseConfig";
+import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { getTheme } from "../theme/theme";
 
 const SignupScreen = ({ navigation, route }) => {
-  const { userType, role } = route.params || {}; // Access userType and role from navigation params
+  const { userType, role } = route.params || {};
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,30 +68,43 @@ const SignupScreen = ({ navigation, route }) => {
     }
 
     try {
-      const response = await api.post("/user/register", {
-        username,
-        email,
-        password,
-        role: role || "content_creator", // Default to 'content_creator' if role is not provided
+      const userCredential = await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
+      const user = userCredential.user;
+      showMessage({
+        message: "Success",
+        description: "Registration successful!",
+        type: "success",
+        icon: "auto",
       });
-
-      if (response.data) {
-        showMessage({
-          message: "Success",
-          description: "Registration successful!",
-          type: "success",
-          icon: "auto",
-        });
-        navigation.navigate("Login"); // Navigate to Login screen after successful registration
-      }
+      navigation.navigate("Login");
     } catch (error) {
       showMessage({
         message: "Error",
-        description: error.response?.data?.message || "Registration failed",
+        description: error.message,
         type: "danger",
         icon: "auto",
       });
-      console.error(error);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      const result = await signInWithPopup(FIREBASE_AUTH, GOOGLE_PROVIDER);
+      const user = result.user;
+      showMessage({
+        message: "Success",
+        description: "Registration successful!",
+        type: "success",
+        icon: "auto",
+      });
+      navigation.navigate("Home");
+    } catch (error) {
+      showMessage({
+        message: "Error",
+        description: error.message,
+        type: "danger",
+        icon: "auto",
+      });
     }
   };
 
@@ -167,6 +190,13 @@ const SignupScreen = ({ navigation, route }) => {
 
         <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleSignup}>
           <Text style={[styles.buttonText, { color: theme.colors.white }]}>Continue</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.colors.secondary, marginTop: 10 }]}
+          onPress={handleGoogleSignup}
+        >
+          <Text style={[styles.buttonText, { color: theme.colors.white }]}>Sign up with Google</Text>
         </TouchableOpacity>
 
         <View style={styles.footer}>
