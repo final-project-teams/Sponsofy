@@ -11,7 +11,7 @@ import {
 import { useTheme } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { socketService } from '../services/chat/socketService';
-import { chatService } from '../services/chat/api';
+import { chatService } from '../services/api';
 
 interface Message {
   id: string;

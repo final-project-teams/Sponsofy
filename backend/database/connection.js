@@ -25,13 +25,14 @@ const Signature = require('./models/signature')(sequelize, DataTypes);
 const Notification = require('./models/notification')(sequelize, DataTypes);
 const Room = require('./models/room')(sequelize, DataTypes);
 const Message = require('./models/message')(sequelize, DataTypes);
+const Payment = require('./models/payment')(sequelize, DataTypes);
+const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
 
 // Create associations here
 
 // User -> ContentCreator (One-to-One)
 User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
 ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-
 // User -> Company (One-to-One)
 User.hasOne(Company, { foreignKey: 'userId', as: 'company' });
 Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -39,10 +40,14 @@ Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 // ContentCreator -> Media (Profile Picture, One-to-One)
 ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
 Media.hasMany(ContentCreator, { foreignKey: 'profilePictureId' });
+// ContentCreator -> DealReques  (Many-to-Many)
+ContentCreator.belongsToMany(Deal,{through:DealRequest});
+Deal.belongsToMany(ContentCreator,{through:DealRequest});
 
 // ContentCreator -> Deal (One-to-Many)
 ContentCreator.hasMany(Deal);
 Deal.belongsTo(ContentCreator);
+
 
 // Company -> Deal (One-to-Many)
 Company.hasMany(Contract);
@@ -157,6 +162,8 @@ sequelize.authenticate()
 // Export models and sequelize instance
 
 module.exports = {
+  DealRequest,
+  Payment,
   sequelize,
   User,
   ContentCreator,

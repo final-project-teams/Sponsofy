@@ -3,22 +3,24 @@ const path = require('path');
 require('dotenv').config();
 const PORT = process.env.DB_PORT;
 const { sequelize } = require('../database/connection');
+const { Server } =require ("socket.io")
 const fs = require('fs');
 const cors = require('cors');
-const http = require('http');
-const socketIo = require('socket.io');
-const jwt = require('jsonwebtoken');
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+const http = require('http');
 const seedDatabase = require('../database/seeders/seed');
-const chatSocket = require('../socket/chat');
-const notificationSocket = require('../socket/notification');
-const messageRoutes = require('../router/messageRoutes');
-
 const contract = require('../router/contractrouter');
 const searchRoutes = require('../router/searchrouter');
-const userRouter = require('../router/userRoutes');
+const ContentCreatorRouter = require('../router/ContentCreatorRouter');
+const paymentRouter = require('../router/paymetnRouter');
+const userRouter = require("../router/userRoutes")
+const { setupChatSocket } =require ("../sockets/chatSocket.js");
+const { setupNotificationSocket } =require ("../sockets/notificationSocket.js");
+const { setupRequestSocket } =require ("../sockets/requestSocket.js");
+
+const server = http.createServer(app);
+app.use(express.json());
+
 const upload = require('../config/multer'); // Import Multer configuration
 
 // Database initialization function
@@ -46,9 +48,34 @@ app.use(
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
 );
+// Use the search routes
+app.use('/api/search', searchRoutes);
+app.use('/api/contract', contract);
+app.use('/api/contentcreator', ContentCreatorRouter);
+app.use('/api/payment', paymentRouter);
+app.use('/api/search', searchRoutes);
+app.use('/api/contract', contract);
+app.use('/api/user', userRouter);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+// Setup different namespaces
+const chatIO = io.of("/chat");
+const notificationIO = io.of("/notification");
+const requestIO = io.of("/request");
+
+// Initialize socket handlers
+setupChatSocket(chatIO);
+setupNotificationSocket(notificationIO);
+setupRequestSocket(requestIO);
+
+
 
 // Body parser middleware
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Create uploads directory if it doesn't exist
@@ -66,54 +93,8 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
-
-// Use message routes
-app.use('/api/chat', messageRoutes);
-
-// Routes
-app.use('/api/search', searchRoutes);
-app.use('/api/contract', contract);
-app.use('/api/user', userRouter);
-
-// Root route
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
-// Socket.io setup
-const chatNamespace = io.of('/chat');
-chatNamespace.on('connection', (socket) => {
-  console.log('A user connected to /chat');
-  chatSocket(socket); // Use the chat socket logic
-  socket.on('disconnect', () => {
-    console.log('A user disconnected from /chat');
-  });
-});
-
-const notificationNamespace = io.of('/notification');
-notificationNamespace.on('connection', (socket) => {
-  console.log('A user connected to /notification');
-  notificationSocket(socket); // Use the notification socket logic
-  socket.on('disconnect', () => {
-    console.log('A user disconnected from /notification');
-  });
-});
-
-io.on('connection', (socket) => {
-  console.log('A user connected');
-  socket.emit('message', 'Welcome to the Socket.io server!'); // Send a welcome message
-  socket.on('clientMessage', (msg) => {
-    console.log('Message from client:', msg);
-    socket.emit('message', `Server received: ${msg}`);
-  });
-  socket.on('disconnect', () => {
-    console.log('A user disconnected');
-  });
-});
-
-// Start the server
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });
 
-module.exports = { app, server, io };
+module.exports = {io, app, server };

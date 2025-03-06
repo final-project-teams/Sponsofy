@@ -1,19 +1,27 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { showMessage } from "react-native-flash-message";
-import Icon from "react-native-vector-icons/FontAwesome";
-import api from "../config/axios";
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { showMessage } from 'react-native-flash-message';
+import api from '../config/axios'; // Import the axios instance
 import { getTheme } from "../theme/theme";
+import { Ionicons } from '@expo/vector-icons';
 
-const SignupScreen = ({ navigation, route }) => {
-  const { userType, role } = route.params || {}; // Access userType and role from navigation params
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(false);
+const SignupScreen = ({ navigation }) => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [role, setRole] = useState('content_creator'); // Default role
+  const [isDarkMode, setIsDarkMode] = useState(true); // Set dark mode to true by default
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -62,7 +70,7 @@ const SignupScreen = ({ navigation, route }) => {
         username,
         email,
         password,
-        role: role || "content_creator", // Default to 'content_creator' if role is not provided
+        role, // Use the role state here
       });
 
       if (response.data) {
@@ -86,182 +94,208 @@ const SignupScreen = ({ navigation, route }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-    >
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollViewContent}
-        enableOnAndroid={true}
-        extraScrollHeight={100}
-        keyboardShouldPersistTaps="handled"
+    <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
       >
-        <Text style={[styles.title, { color: theme.colors.text }]}>Get Started With Sponsofy</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Sign up as {userType}</Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Username</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
-            placeholder="username..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={username}
-            onChangeText={setUsername}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
-            placeholder="example@gmail.com"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Password</Text>
-          <View style={[styles.passwordInputContainer, { backgroundColor: theme.colors.surface }]}>
-            <TextInput
-              style={[styles.input, { color: theme.colors.text, flex: 1 }]}
-              placeholder="xxxxxxxx"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={password}
-              onChangeText={handlePasswordChange}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Icon name={showPassword ? "eye-slash" : "eye"} size={20} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
+        <Ionicons name="chevron-back" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <Text style={styles.title}>Get Started With</Text>
+      <Text style={styles.title}>Sponsofy</Text>
+      
+      <Text style={styles.signupText}>sign up with</Text>
+      
+      <View style={styles.socialButtonsContainer}>
+        <TouchableOpacity style={styles.socialButton}>
+          <View style={styles.instagramIconContainer}>
+            <Ionicons name="logo-instagram" size={20} color="white" />
           </View>
-          <Text style={[styles.passwordHint, { color: theme.colors.textSecondary }]}>
-            Password must contain:
-            <Text style={validatePassword(password) ? styles.valid : styles.invalid}> 8+ characters</Text>
-            <Text style={/[A-Z]/.test(password) ? styles.valid : styles.invalid}>, one uppercase</Text>
-            <Text style={/\d/.test(password) ? styles.valid : styles.invalid}>, one number</Text>
-          </Text>
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Confirm Password</Text>
-          <View style={[styles.passwordInputContainer, { backgroundColor: theme.colors.surface }]}>
-            <TextInput
-              style={[styles.input, { color: theme.colors.text, flex: 1 }]}
-              placeholder="xxxxxxxx"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-            />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-              <Icon name={showConfirmPassword ? "eye-slash" : "eye"} size={20} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {passwordError ? <Text style={[styles.errorText, { color: theme.colors.error }]}>{passwordError}</Text> : null}
-
-        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleSignup}>
-          <Text style={[styles.buttonText, { color: theme.colors.white }]}>Continue</Text>
+          <Text style={styles.socialButtonText}>Instagram</Text>
         </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-            <Text style={[styles.footerLink, { color: theme.colors.primary }]}>Login</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAwareScrollView>
-    </KeyboardAvoidingView>
+        
+        <TouchableOpacity style={styles.socialButton}>
+          <View style={styles.googleIconContainer}>
+            <Ionicons name="logo-google" size={20} color="white" />
+          </View>
+          <Text style={styles.socialButtonText}>Google</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <Text style={styles.inputLabel}>Username</Text>
+      <View style={styles.inputContainer}>
+        <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="username..."
+          placeholderTextColor="#666"
+          value={username}
+          onChangeText={setUsername}
+        />
+      </View>
+      
+      <Text style={styles.inputLabel}>Email</Text>
+      <View style={styles.inputContainer}>
+        <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="example@gmail.com"
+          placeholderTextColor="#666"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+      </View>
+      
+      <Text style={styles.inputLabel}>Password</Text>
+      <View style={styles.inputContainer}>
+        <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="xxxxxxxx"
+          placeholderTextColor="#666"
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={handlePasswordChange}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Ionicons 
+            name={showPassword ? "eye-outline" : "eye-off-outline"} 
+            size={20} 
+            color="#666" 
+          />
+        </TouchableOpacity>
+      </View>
+      
+      <Text style={styles.inputLabel}>Confirm Password</Text>
+      <View style={styles.inputContainer}>
+        <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="xxxxxxxx"
+          placeholderTextColor="#666"
+          secureTextEntry={!showConfirmPassword}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+          <Ionicons 
+            name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
+            size={20} 
+            color="#666" 
+          />
+        </TouchableOpacity>
+      </View>
+      
+      <TouchableOpacity style={styles.continueButton} onPress={handleSignup}>
+        <Text style={styles.continueButtonText}>Continue</Text>
+      </TouchableOpacity>
+      
+      <View style={styles.loginContainer}>
+        <Text style={styles.alreadyAccountText}>Already have an account? </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.loginText}>Login</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
-  },
-  scrollViewContent: {
-    flexGrow: 1,
+    backgroundColor: '#000',
     padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
+  },
+  backButton: {
+    marginTop: 15,
+    marginBottom: 15,
   },
   title: {
+    color: 'white',
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  signupText: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 20,
     marginBottom: 10,
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#999999",
-    textAlign: "center",
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 20,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 5,
+    padding: 10,
+    width: '48%',
+  },
+  instagramIconContainer: {
+    marginRight: 8,
+  },
+  googleIconContainer: {
+    marginRight: 8,
+  },
+  socialButtonText: {
+    color: 'white',
+    fontSize: 14,
+  },
+  inputLabel: {
+    color: 'white',
+    fontSize: 16,
+    marginBottom: 8,
+    marginTop: 15,
   },
   inputContainer: {
-    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 5,
   },
-  passwordInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 10,
-    paddingRight: 10,
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
+    flex: 1,
+    color: 'white',
+    paddingVertical: 12,
   },
-  eyeIcon: {
-    padding: 10,
+  continueButton: {
+    backgroundColor: '#8A2BE2', // Purple color
+    borderRadius: 5,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 20,
   },
-  passwordHint: {
-    color: "#999999",
-    fontSize: 12,
-    marginTop: 5,
-  },
-  valid: {
-    color: "#4CAF50",
-  },
-  invalid: {
-    color: "#FF6B6B",
-  },
-  button: {
-    backgroundColor: "#8B5CF6",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "#FFFFFF",
+  continueButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: "bold",
   },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginTop: 20,
   },
-  footerText: {
-    color: "#999999",
+  alreadyAccountText: {
+    color: '#666',
     fontSize: 14,
   },
-  footerLink: {
-    color: "#FFFFFF",
+  loginText: {
+    color: 'white',
     fontSize: 14,
-  },
-  errorText: {
-    color: "#FF6B6B",
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: "center",
+    fontWeight: 'bold',
   },
 });
 
