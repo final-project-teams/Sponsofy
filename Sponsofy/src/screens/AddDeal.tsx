@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, Platform, StyleSheet, TouchableOpacity, ScrollView, Modal } from "react-native";
+import { View, Text, TextInput, Button, Platform, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert } from "react-native";
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from "../theme/ThemeContext";
 import api from "../config/axios";
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Slider from '@react-native-community/slider';
 
 const AddDeal = () => {
     const { currentTheme } = useTheme();
@@ -251,20 +250,20 @@ const AddDeal = () => {
 
         try {
             // Get both user data and token from AsyncStorage
-            const userString = await AsyncStorage.getItem('userData');
-            const token = await AsyncStorage.getItem('userToken');
+            const [userString, token] = await Promise.all([
+                AsyncStorage.getItem('userData'),
+                AsyncStorage.getItem('userToken')
+            ]);
 
             if (!userString || !token) {
-                console.error('User or token not found in storage');
-                // You might want to redirect to login here
+                console.error('User data or token not found');
+                // Handle the error appropriately (e.g., redirect to login)
                 return;
             }
 
             const userData = JSON.parse(userString);
 
-            // Set the authorization header
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
+            // Create the deal data
             const dealData = {
                 title,
                 description,
@@ -273,7 +272,7 @@ const AddDeal = () => {
                 start_date,
                 end_date,
                 rank,
-                company_id: userData.id, // Use company_id instead of user_id
+                company_id: userData.id,
                 termsList: terms.filter(term => term.title.trim() !== ''),
                 criteriaList: selectedCriteria.map(criteria => ({
                     name: criteria.toLowerCase(),
@@ -281,16 +280,28 @@ const AddDeal = () => {
                 }))
             };
 
-            const response = await api.post("/addDeal", dealData);
+            // Make the API call with the token in headers
+            const response = await api.post("/addDeal", dealData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
             if (response.data.success) {
                 navigation.navigate("Home" as never);
             } else {
                 console.error('Error response:', response.data);
+                // Handle the error appropriately
+                Alert.alert('Error', response.data.message || 'Failed to create deal');
             }
 
         } catch (error) {
             console.error('Error posting deal:', error);
+            Alert.alert(
+                'Error',
+                'Failed to create deal. Please check your connection and try again.'
+            );
         }
     };
 

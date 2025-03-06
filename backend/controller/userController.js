@@ -1,7 +1,8 @@
-const { User, ContentCreator, Company } = require("../database/connection");
+const { User, ContentCreator, Company,Media } = require("../database/connection");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
+const { sequelize } = require("../database/connection");
 
 const path = require("path");
 const fs = require("fs");
@@ -21,10 +22,10 @@ const validateEmail = (email) => {
 module.exports = {
   Login: async (req, res) => {
     try {
-      const { email, username, password } = req.body;
+      const { email, password } = req.body;
 
       // Check if either email or username is provided
-      if ((!email && !username) || !password) {
+      if (!email || !password) {
         return res
           .status(400)
           .json({ message: "Email/Username and password are required" });
@@ -33,7 +34,8 @@ module.exports = {
       // Find user by email or username
       const user = await User.findOne({
         where: {
-          [Op.or]: [{ email: email || null }, { username: username || null }],
+         email: email 
+        
         },
       });
 
@@ -78,13 +80,21 @@ module.exports = {
 
   Register: async (req, res) => {
     try {
-      const { username, email, password, role } = req.body;
+      const { username, email, password, role, first_name, last_name, industry, codeFiscal } = req.body;
 
       // Check for required fields
-      if (!username || !email || !password) {
+      if (!username || !email || !password || !role) {
         return res.status(400).json({
           error: true,
-          message: "Username, email, and password are required",
+          message: "Username, email, password and role are required",
+        });
+      }
+
+      // Validate role
+      if (!['content_creator', 'company'].includes(role)) {
+        return res.status(400).json({
+          error: true,
+          message: "Invalid role specified",
         });
       }
 
@@ -100,8 +110,7 @@ module.exports = {
       if (!validatePassword(password)) {
         return res.status(400).json({
           error: true,
-          message:
-            "Password must be at least 8 characters long, contain numbers, letters, and at least one uppercase letter",
+          message: "Password must be at least 8 characters long, contain numbers, letters, and at least one uppercase letter",
         });
       }
 
@@ -111,6 +120,7 @@ module.exports = {
           [Op.or]: [{ email }, { username }],
         },
       });
+
       if (existingUser) {
         return res.status(400).json({
           error: true,
@@ -121,54 +131,77 @@ module.exports = {
       // Hash password
       const hashPassword = await bcrypt.hash(password, 10);
 
-      const user = await User.create({
-        username,
-        email: email.toLowerCase(),
-        password_hash: hashPassword,
-        role: role || "content_creator", // Default to 'content_creator' if role is not provided
-        verified: false, // Default to false
-        isPremium: false, // Default to false
-      });
+      // Create user with transaction to ensure data consistency
+      const result = await sequelize.transaction(async (t) => {
+        // Create the user first
+        const user = await User.create({
+          username,
+          email: email.toLowerCase(),
+          password_hash: hashPassword,
+          role,
+          verified: false,
+          isPremium: false,
+        }, { transaction: t });
 
-      // If the user is a content creator, create a corresponding ContentCreator record
-      if (user.role === "content_creator") {
-        await ContentCreator.create({
-          first_name: username,
-          userId: user.id,
-          verified: user.verified,
-          isPremium: user.isPremium,
-        });
-      } else if (user.role === "company") {
-        await Company.create({
-          name: username,
-          userId: user.id,
-          verified: user.verified,
-          isPremium: user.isPremium,
-        });
-      }
+        // Based on role, create either ContentCreator or Company
+        if (role === 'content_creator') {
+          await ContentCreator.create({
+            userId: user.id,
+            first_name: first_name || username,
+            last_name,
+            verified: false,
+            isPremium: false,
+          }, { transaction: t });
+        } else if (role === 'company') {
+          await Company.create({
+            userId: user.id,
+            name: username,
+            industry,
+            codeFiscal,
+            verified: false,
+            isPremium: false,
+          }, { transaction: t });
+        }
+
+        return user;
+      });
 
       // Generate JWT token
       const accessToken = jwt.sign(
         {
-          userId: user.id,
-          role: user.role,
+          userId: result.id,
+          role: result.role,
         },
         process.env.JWT_SECRET,
-        { expiresIn: "24h" } // Standardized to 24h
+        { expiresIn: "24h" }
       );
+
+      // After successful registration, fetch the complete user data
+      const completeUser = await User.findOne({
+        where: { id: result.id },
+        attributes: { exclude: ['password_hash'] },
+        include: [
+          {
+            model: role === 'content_creator' ? ContentCreator : Company,
+            as: role === 'content_creator' ? 'contentCreator' : 'company'
+          }
+        ]
+      });
 
       return res.status(201).json({
         error: false,
         user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          verified: user.verified,
-          isPremium: user.isPremium,
+          id: completeUser.id,
+          username: completeUser.username,
+          email: completeUser.email,
+          role: completeUser.role,
+          verified: completeUser.verified,
+          isPremium: completeUser.isPremium,
+          profile: role === 'content_creator' ? completeUser.contentCreator : completeUser.company
         },
         accessToken,
       });
+
     } catch (error) {
       console.error("Registration error:", error);
       return res.status(500).json({
@@ -303,6 +336,59 @@ module.exports = {
       res
         .status(500)
         .json({ message: "Failed to update profile", error: error.message });
+    }
+  },
+
+  getCurrentUser: async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Find user with associated data based on role
+      const user = await User.findOne({
+        where: { id: decoded.userId },
+        attributes: { exclude: ['password_hash'] },
+        include: [
+          {
+            model: decoded.role === 'content_creator' ? ContentCreator : Company,
+            as: decoded.role === 'content_creator' ? 'contentCreator' : 'company',
+            include: [{
+              model: Media,
+              as: decoded.role === 'content_creator' ? 'Portfolio' : undefined
+            }]
+          }
+        ]
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          verified: user.verified,
+          isPremium: user.isPremium,
+          profile: decoded.role === 'content_creator' ? user.contentCreator : user.company
+        }
+      });
+
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        return res.status(401).json({ message: 'Token expired' });
+      }
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+      console.error('Error fetching current user:', error);
+      res.status(500).json({ message: 'Error fetching user data' });
     }
   },
 };

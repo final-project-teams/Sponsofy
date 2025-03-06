@@ -1,108 +1,50 @@
-const { Deal, Term, Contract, Criteria, SubCriteria } = require("../database/connection");
+const { Deal, Term, Contract, Company, ContentCreator } = require("../database/connection");
 const jwt = require('jsonwebtoken');
 
 module.exports = {
   addDeal: async (req, res) => {
     try {
-      // Get token from header
-      const token = req.headers.authorization?.split(' ')[1];
-      
-      if (!token) {
-        return res.status(401).json({ 
+      const decoded = req.user;
+      const { contractId, termsList, companyId,price } = req.body;
+
+      const contentCreator = await ContentCreator.findOne({ where: { userId: decoded.userId } });
+
+      const contract = await Contract.findOne({ where: { id: contractId, CompanyId: companyId } });
+
+      if (!contract) {
+        return res.status(404).json({ 
           success: false, 
-          message: 'No token provided' 
+          message: 'Contract not found' 
         });
       }
 
-      // Verify token and get company ID
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const companyId = decoded.id; // Assuming the token contains the company's ID
-
-      const { 
-        title, 
-        description, 
-        budget, 
-        start_date, 
-        end_date, 
-        payement_terms, 
-        rank,
-        termsList,
-        criteriaList 
-      } = req.body;
-
-      // Convert string dates to Date objects
-      const parsedStartDate = new Date(start_date);
-      const parsedEndDate = new Date(end_date);
-
-      // Validate dates
-      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
-        return res.status(400).json({ error: "Invalid date format" });
-      }
-
-      // Create the contract
-      const contract = await Contract.create({
-        title,
-        description,
-        amount: budget,
-        payment_terms: payement_terms,
-        start_date: parsedStartDate,
-        end_date: parsedEndDate,
-        rank,
-        company_id: companyId, // Use the company ID from the token
-        status: 'active'
-      });
-
-      // Create the deal
       const deal = await Deal.create({
-        content_creator_id: 1, // This will be updated when a creator accepts the deal
-        company_id: companyId, // Use the company ID from the token
-        deal_terms: payement_terms,
-        price: budget,
+        contentCreatorId: contentCreator.id,
+        deal_terms: contract.payment_terms,
+        price: contract.amount,
         status: 'pending',
-        ContractId: contract.id
+        ContractId: contract.id,
+        price
       });
 
-      // Create terms if provided
       if (termsList && termsList.length > 0) {
-        const termsPromises = termsList.map(term => {
+        await Promise.all(termsList.map(term => {
           return Term.create({
             title: term.title,
             description: term.description || '',
             status: 'negotiating',
             DealId: deal.id
           });
-        });
-        await Promise.all(termsPromises);
+        }));
       }
-
-      // Create criteria if provided
-      if (criteriaList && criteriaList.length > 0) {
-        const criteriaPromises = criteriaList.map(criteria => {
-          return Criteria.create({
-            name: criteria.name,
-            description: criteria.description,
-            ContractId: contract.id
-          });
-        });
-        await Promise.all(criteriaPromises);
-      }
-
-      // Return the created deal with its terms and contract
-      const dealWithDetails = await Deal.findOne({
-        where: { id: deal.id },
-        include: [
-          { model: Term },
-          { 
-            model: Contract,
-            include: [{ model: Criteria }]
-          }
-        ]
-      });
 
       res.status(201).json({
         success: true,
         message: 'Deal created successfully',
-        deal: dealWithDetails
+        deal: {
+          id: deal.id,
+          status: deal.status
+        }
       });
 
     } catch (error) {
@@ -114,4 +56,70 @@ module.exports = {
       });
     }
   },
+
+  getDealById: async (req, res) => {
+    try {
+      const { dealId } = req.params;
+
+      const deal = await Deal.findOne({
+        where: { id: dealId },
+        include: [
+          {
+            model: Contract,
+            include: [
+              {
+                model: Company,
+               
+              }
+            ]
+          },
+          {
+            model: ContentCreator,
+            as: 'ContentCreatorDeals'
+          },
+          {
+            model: Term
+          }
+        ]
+      });
+
+      if (!deal) {
+        return res.status(404).json({
+          success: false,
+          message: 'Deal not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        deal
+      });
+
+    } catch (error) {
+      console.error("Error fetching deal:", error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching deal',
+        error: error.message
+      });
+    }
+  }
 };
+
+// Sample request body for creating a deal
+/*
+{
+  "contractId": 1,
+  "termsList": [
+    {
+      "title": "Term 1",
+      "description": "Description for term 1"
+    },
+    {
+      "title": "Term 2",
+      "description": "Description for term 2"
+    }
+  ],
+  "companyId": 1
+}
+*/

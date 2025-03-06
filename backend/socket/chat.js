@@ -1,17 +1,23 @@
-// sockets/chat.js
-module.exports = function(socket) {
-    console.log('A user connected to the chat');
-    
-    // Handle chat message event
-    socket.on('chatMessage', (msg) => {
-      console.log('Chat message received:', msg);
-      // Emit message to all connected clients
-      socket.broadcast.emit('message', `New chat message: ${msg}`);
+module.exports.chatSetup = (io) => {
+  io.on("connection", (socket) => {
+    console.log("User connected to chat namespace");
+
+    socket.on("join_room", (room) => {
+      socket.join(room);
+      console.log(`User joined room: ${room}`);
     });
-  
-    // When the user disconnects from chat
-    socket.on('disconnect', () => {
-      console.log('A user disconnected from the chat');
+
+    socket.on("send_message", (data) => {
+      console.log(`User sent message: ${data.message}`);
+      io.to(data.room).emit("receive_message", {
+        message: data.message,
+        sender: data.sender,
+        timestamp: new Date(),
+      });
     });
-  };
-  
+
+    socket.on("disconnect", () => {
+      console.log("User disconnected from chat namespace");
+    });
+  });
+};
