@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -11,17 +11,20 @@ import {
   RefreshControl,
   Animated,
   Modal,
-  FlatList,
-  Alert
+  FlatList
 } from 'react-native';
 import { Text, Avatar, Button, Divider } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Company, companyApi } from '../services/api/companyApi';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useTheme } from '../theme/ThemeContext';
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+
+// Import ThemeProvider and useTheme
+import { ThemeProvider } from '../theme/ThemeContext';
+import { useTheme as useThemeHook } from '../theme/ThemeContext';
+import Sidebar from '../components/Sidebar';
 
 const { width } = Dimensions.get('window');
 
@@ -30,51 +33,19 @@ type RootStackParamList = {
   CompanyProfile: { company?: Company; companyId?: number; shouldRefresh?: boolean };
   EditProfile: { company: Company };
   ShareProfile: { company: Company };
-  VideoCall: { roomId?: string; remoteUserId?: string; isIncoming?: boolean };
   Deals: { companyId: number };
   CompanyDeals: { companyId: number };
-  TempScreen: { title: string; content: string; companyId: number };
+  Notifications: undefined;
+  ContractDetail: { contract: any };
 };
 
 type CompanyProfileScreenRouteProp = RouteProp<RootStackParamList, 'CompanyProfile'>;
 
-// Define the base URL for your API
-// Make sure this IP address is correct and accessible from your device
-const API_BASE_URL = 'http://192.168.110.131:3304/api'; 
-
-// Create API instance with better error handling
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000, // Increased timeout to 30 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
-});
-
-// Update the checkServerConnection function to be more reliable
-export const checkServerConnection = async () => {
-  try {
-    // Use a very short timeout for the connection check
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-    
-    try {
-      await axios.get(`${API_BASE_URL}/health`, {
-        // @ts-ignore - Signal property may not be in older Axios type definitions
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      return true;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.log('Server connection failed:', error.message);
-      return false;
-    }
-  } catch (error) {
-    console.log('Server connection check error:', error);
-    return false;
-  }
+// Define API base URL and endpoints for this component
+const API_BASE_URL = 'http://192.168.11.94:3304/api';
+const API_ENDPOINTS = {
+  HEALTH: '/health',
+  DEALS: '/deals'
 };
 
 // Define Deal interface based on your seed.js structure
@@ -89,39 +60,54 @@ interface Deal {
   updatedAt?: string;
 }
 
-// Add this mock data at the top of your file
-const MOCK_DEALS = [
-  {
-    id: 1,
-    content_creator_id: 101,
-    company_id: 1,
-    deal_terms: "Social media promotion for new product launch",
-    price: 2500,
-    status: "pending"
-  },
-  {
-    id: 2,
-    content_creator_id: 102,
-    company_id: 1,
-    deal_terms: "Video content creation for marketing campaign",
-    price: 3800,
-    status: "accepted"
-  },
-  {
-    id: 3,
-    content_creator_id: 103,
-    company_id: 1,
-    deal_terms: "Instagram story series featuring product demos",
-    price: 1200,
-    status: "completed"
+// Define fallback theme
+const fallbackTheme = {
+  colors: {
+    primary: '#701FF1',
+    secondary: '#5D5FEF',
+    background: '#000000',
+    surface: '#121212',
+    text: '#FFFFFF',
+    textSecondary: '#AAAAAA',
+    border: '#333333',
+    error: '#FF5252',
+    success: '#4CAF50',
+    warning: '#FFC107',
+    info: '#2196F3',
+    white: '#FFFFFF',
+    black: '#000000',
   }
-];
+};
 
-export default function CompanyProfileScreen() {
+// Create a hook that safely uses the theme
+const useSafeTheme = () => {
+  try {
+    return useThemeHook();
+  } catch (error) {
+    // Return a default theme object if the hook fails
+    return {
+      currentTheme: fallbackTheme,
+      isDarkMode: true,
+      toggleTheme: () => console.log('Theme toggle not available')
+    };
+  }
+};
+
+// Create a wrapper component that includes ThemeProvider
+const CompanyProfileScreenWithTheme = (props) => {
+  return (
+    <ThemeProvider>
+      <CompanyProfileScreenContent {...props} />
+    </ThemeProvider>
+  );
+};
+
+// The actual component content
+const CompanyProfileScreenContent = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<CompanyProfileScreenRouteProp>();
   const { company: routeCompany, companyId, shouldRefresh } = route.params || {};
-  const { currentTheme, isDarkMode, toggleTheme } = useTheme();
+  const { currentTheme, isDarkMode, toggleTheme } = useSafeTheme();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,20 +160,7 @@ export default function CompanyProfileScreen() {
   
   // Toggle sidebar function
   const toggleSidebar = () => {
-    if (sidebarVisible) {
-      Animated.timing(slideAnim, {
-        toValue: -300,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => setSidebarVisible(false));
-    } else {
-      setSidebarVisible(true);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
+    setSidebarVisible(!sidebarVisible);
   };
 
   const handleEditProfile = () => {
@@ -200,15 +173,6 @@ export default function CompanyProfileScreen() {
     if (profileData) {
       navigation.navigate('ShareProfile', { company: profileData });
     }
-  };
-
-  const handleVideoCall = () => {
-    const roomId = `room-${profileData.id}-${Date.now()}`;
-    navigation.navigate('VideoCall', {
-      roomId,
-      remoteUserId: profileData.name,
-      isIncoming: false
-    });
   };
 
   // Add a function to toggle dark mode
@@ -298,21 +262,34 @@ export default function CompanyProfileScreen() {
   // Add state for deals
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loadingDeals, setLoadingDeals] = useState(false);
+  const [dealsError, setDealsError] = useState<string | null>(null);
   
-  // Fetch deals for the sidebar
+  // Update the fetchDeals function
   const fetchDeals = async () => {
     try {
       setLoadingDeals(true);
-      
-      // Make a direct API call to your deals endpoint
+      setDealsError(null);
+
+      // Use direct axios call instead of apiClient
       try {
-        const response = await axios.get(`${API_BASE_URL}/deals?company_id=${profileData.id}`);
-        // Use type assertion to tell TypeScript this is a Deal array
-        setDeals(response.data as Deal[]);
-        console.log('Fetched deals:', response.data);
+        const response = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.DEALS}?company_id=${profileData.id}`, {
+          timeout: 3000
+        });
+        
+        if (response.data && Array.isArray(response.data)) {
+          // Validate that each item has the expected Deal properties
+          const validDeals = response.data.filter((item: any) => 
+            typeof item.id === 'number' && 
+            typeof item.company_id === 'number'
+          );
+          setDeals(validDeals as Deal[]);
+        } else {
+          // If data is not an array, set an empty array
+          setDeals([]);
+        }
       } catch (error) {
         console.error('Error fetching deals:', error);
-        // Only use mock data as a fallback if the API call fails
+        // Use mock data as fallback
         setDeals([
           {
             id: 1,
@@ -326,19 +303,20 @@ export default function CompanyProfileScreen() {
             id: 2,
             content_creator_id: 102,
             company_id: profileData.id,
-            deal_terms: "Video content creation for marketing campaign",
-            price: 3800,
+            deal_terms: "YouTube video review of product",
+            price: 3500,
             status: "accepted"
           },
           {
             id: 3,
             content_creator_id: 103,
             company_id: profileData.id,
-            deal_terms: "Instagram story series featuring product demos",
-            price: 1200,
+            deal_terms: "Instagram story features",
+            price: 1500,
             status: "completed"
           }
         ]);
+        setDealsError('Using offline data (server unavailable)');
       }
     } finally {
       setLoadingDeals(false);
@@ -361,24 +339,6 @@ export default function CompanyProfileScreen() {
       case 'completed': return '#2196F3';
       default: return '#757575';
     }
-  };
-
-  // Update the navigation function to use a more reliable approach
-  const navigateToDeals = () => {
-    toggleSidebar(); // Close sidebar first
-    
-    // Create a temporary screen to show deals
-    navigation.navigate('Home', {
-      screen: 'Home',
-      params: {
-        showDealsOverlay: true,
-        companyId: profileData.id,
-        returnToProfile: true,
-        mockDeals: MOCK_DEALS // Pass mock data directly to avoid API calls
-      }
-    });
-    
-    console.log('Navigating to Home with deals overlay params and mock data');
   };
 
   if (loading) {
@@ -407,165 +367,25 @@ export default function CompanyProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : currentTheme.colors.background }}>
-      {/* Sidebar Modal */}
-      {sidebarVisible && (
-        <TouchableOpacity 
-          style={styles.overlay} 
-          activeOpacity={1} 
-          onPress={toggleSidebar}
-        />
-      )}
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
+        <TouchableOpacity onPress={toggleSidebar} style={styles.menuButton}>
+          <Icon name="menu" size={24} color={currentTheme.colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: currentTheme.colors.text }]}>Company Profile</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+          <Icon name="bell" size={24} color={currentTheme.colors.text} />
+        </TouchableOpacity>
+      </View>
       
       {/* Sidebar */}
-      <Modal
-        visible={sidebarVisible}
-        transparent={true}
-        animationType="none"
-        onRequestClose={toggleSidebar}
-      >
-        <View style={styles.modalContainer}>
-          <Animated.View 
-            style={[
-              styles.sidebar, 
-              { 
-                backgroundColor: isDarkMode ? '#121212' : '#1A1A1A',
-                transform: [{ translateX: slideAnim }] 
-              }
-            ]}
-          >
-            {/* Sidebar Header */}
-            <View style={styles.sidebarHeader}>
-              <Text style={[styles.sidebarLogo, { color: '#701FF1' }]}>Sponsofy</Text>
-            </View>
-            
-            {/* Navigation Menu */}
-            <ScrollView style={styles.sidebarContent}>
-              <TouchableOpacity style={styles.sidebarItem}>
-                <Icon name="account-outline" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>Profile</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.sidebarItem}
-                onPress={navigateToDeals}
-              >
-                <Icon name="handshake-outline" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>Deals</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.sidebarItem}>
-                <Icon name="file-document-outline" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>Ongoing Contracts</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.sidebarItem}>
-                <Icon name="clock-outline" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>Pending Contracts</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.sidebarItem}>
-                <Icon name="credit-card-outline" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>Payment Methods</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.sidebarItem}>
-                <Icon name="history" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>History Transactions</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.sidebarItem}>
-                <Icon name="cog-outline" size={22} color="#FFFFFF" style={styles.sidebarIcon} />
-                <Text style={styles.sidebarItemText}>Settings</Text>
-              </TouchableOpacity>
-              
-              {/* Recent Chats Section */}
-              <View style={styles.recentChatsSection}>
-                <Text style={styles.recentChatsTitle}>Recent Chats</Text>
-                
-                <TouchableOpacity style={styles.chatItem}>
-                  <Avatar.Text size={36} label="U" style={styles.chatAvatar} />
-                  <View style={styles.chatInfo}>
-                    <Text style={styles.chatUsername}>Username</Text>
-                    <Text style={styles.chatMessage}>last message</Text>
-                  </View>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.chatItem}>
-                  <Avatar.Text size={36} label="U" style={styles.chatAvatar} />
-                  <View style={styles.chatInfo}>
-                    <Text style={styles.chatUsername}>Username</Text>
-                    <Text style={styles.chatMessage}>last message</Text>
-                  </View>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.seeAllButton}>
-                  <Text style={[styles.seeAllText, { color: 'rgba(255, 255, 255, 0.6)' }]}>See all</Text>
-                </TouchableOpacity>
-              </View>
-              
-              {/* Premium Button */}
-              <TouchableOpacity style={styles.premiumButton}>
-                <Text style={styles.premiumButtonText}>Join Sponsofy Premium</Text>
-              </TouchableOpacity>
-              
-              {/* Theme Toggle */}
-              <View style={styles.themeToggleContainer}>
-                <TouchableOpacity 
-                  style={[styles.themeToggleButton, !isDarkMode && styles.activeTheme]} 
-                  onPress={() => !isDarkMode && toggleTheme()}
-                >
-                  <Icon name="white-balance-sunny" size={18} color={!isDarkMode ? "#FFFFFF" : "#888888"} />
-                  <Text style={[styles.themeToggleText, !isDarkMode && styles.activeThemeText]}>Light</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.themeToggleButton, isDarkMode && styles.activeTheme]} 
-                  onPress={() => isDarkMode && toggleTheme()}
-                >
-                  <Icon name="moon-waning-crescent" size={18} color={isDarkMode ? "#FFFFFF" : "#888888"} />
-                  <Text style={[styles.themeToggleText, isDarkMode && styles.activeThemeText]}>Dark</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-            
-            {/* Deals Section */}
-            <View style={styles.dealsSection}>
-              <Text style={styles.dealsSectionTitle}>Recent Deals</Text>
-              
-              {loadingDeals ? (
-                <ActivityIndicator size="small" color="#FFFFFF" style={{ marginVertical: 10 }} />
-              ) : deals.length > 0 ? (
-                deals.slice(0, 3).map((deal) => (
-                  <View key={deal.id} style={styles.dealItem}>
-                    <Text style={styles.dealTerms} numberOfLines={2}>
-                      {deal.deal_terms}
-                    </Text>
-                    <View style={styles.dealFooter}>
-                      <Text style={styles.dealPrice}>${deal.price}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(deal.status) }]}>
-                        <Text style={styles.statusText}>{deal.status}</Text>
-                      </View>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noDealsText}>No deals found</Text>
-              )}
-              
-              <TouchableOpacity 
-                style={styles.seeAllButton}
-                onPress={() => {
-                  toggleSidebar();
-                  console.log('Would navigate to deals screen if it existed');
-                }}
-              >
-                <Text style={styles.seeAllText}>See all deals</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+      <Sidebar 
+        isVisible={sidebarVisible} 
+        onClose={() => setSidebarVisible(false)} 
+        companyData={profileData}
+        navigation={navigation}
+        currentScreen="CompanyProfile"
+      />
       
       {/* Main Content */}
       <ScrollView
@@ -575,24 +395,12 @@ export default function CompanyProfileScreen() {
       >
         {/* Header */}
         <View style={[styles.headerBackground, { 
-          backgroundColor: isDarkMode ? '#000000' : currentTheme.colors.profileHeaderBackground || currentTheme.colors.primary,
+          backgroundColor: isDarkMode ? '#000000' : currentTheme.colors.primary,
           height: 180
         }]}>
           <View style={styles.headerContent}>
             <View style={styles.headerActions}>
-              <TouchableOpacity 
-                style={[styles.iconButton, { 
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }]} 
-                onPress={toggleSidebar}
-              >
-                <Icon name="menu" size={24} color={isDarkMode ? '#FFFFFF' : currentTheme.colors.white} />
-              </TouchableOpacity>
+              {/* Remove the sidebar toggle button */}
               <TouchableOpacity 
                 style={[styles.iconButton, { 
                   backgroundColor: 'rgba(255,255,255,0.1)',
@@ -933,7 +741,11 @@ export default function CompanyProfileScreen() {
                 padding: 15,
                 marginBottom: 15,
                 borderLeftWidth: 0,
-                ...currentTheme.shadows.small,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+                elevation: 2,
                 position: 'relative',
                 overflow: 'hidden'
               }
@@ -993,7 +805,11 @@ export default function CompanyProfileScreen() {
                 padding: 15,
                 marginBottom: 15,
                 borderLeftWidth: 0,
-                ...currentTheme.shadows.small,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+                elevation: 2,
                 position: 'relative',
                 overflow: 'hidden'
               }
@@ -1051,37 +867,6 @@ export default function CompanyProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
       
-      {/* Video Call Button */}
-      <TouchableOpacity 
-        style={[styles.videoCallButton, { 
-          backgroundColor: currentTheme.colors.primary,
-          borderRadius: 30,
-          paddingVertical: 12,
-          paddingHorizontal: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'absolute',
-          bottom: 80,
-          right: 20,
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
-          borderWidth: 0,
-          zIndex: 999
-        }]}
-        onPress={handleVideoCall}
-      >
-        <Icon name="video" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={{ 
-          color: "#FFFFFF", 
-          fontWeight: '600',
-          fontSize: 16
-        }}>Video</Text>
-      </TouchableOpacity>
-      
       {/* Bottom Navigation */}
       <View style={[styles.bottomNav, { 
         backgroundColor: isDarkMode ? '#000000' : currentTheme.colors.surface,
@@ -1115,7 +900,7 @@ export default function CompanyProfileScreen() {
       </View>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -1361,9 +1146,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
   },
+  contractFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   contractDate: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    opacity: 0.7,
   },
   analyticsIconContainer: {
     width: 32,
@@ -1387,12 +1177,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 5,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
-    borderWidth: 1,
+    shadowRadius: 4,
+    borderWidth: 0,
+    zIndex: 999
   },
   previousContractCard: {
     borderRadius: 12,
@@ -1601,61 +1392,20 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     fontSize: 12,
   },
-  dealsSection: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
-  dealsSectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  dealItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  dealTerms: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  dealFooter: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 10,
   },
-  dealPrice: {
-    color: '#FFFFFF',
+  headerTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    fontSize: 14,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+  menuButton: {
+    padding: 8,
   },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  noDealsText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    textAlign: 'center',
-    marginVertical: 10,
-    fontSize: 12,
-  },
-  seeAllButton: {
-    marginTop: 5,
-    marginBottom: 20,
-  },
-  seeAllText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-}); 
+});
+
+// Export the wrapped component
+export default CompanyProfileScreenWithTheme; 

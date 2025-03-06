@@ -13,11 +13,11 @@ import { Company, companyApi } from '../../services/api/companyApi';
 import CompanyCard from './CompanyCard';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
 
 // Define your navigation parameters
 type RootStackParamList = {
   CompanyProfile: { company: Company };
-  ShareProfile: { company: Company };
 };
 
 const CompanyList: React.FC = () => {
@@ -30,19 +30,15 @@ const CompanyList: React.FC = () => {
 
   const fetchCompanies = async () => {
     try {
-      setLoading(true);
       setError(null);
-      console.log('Fetching companies from API...');
-      
-      const fetchedCompanies = await companyApi.getAllCompanies();
-      
-      setCompanies(fetchedCompanies);
-      console.log('Companies loaded successfully:', fetchedCompanies.length);
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-      setError('Failed to load companies. Please try again.');
+      const data = await companyApi.getAll();
+      setCompanies(data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Unable to load companies');
+      console.error('Error fetching companies:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 

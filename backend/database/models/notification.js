@@ -1,7 +1,4 @@
-// models/notification.js
-const { DataTypes } = require('sequelize');
-const {sequelize} = require('../connection');  // Import the connection
-const User = require('./user');  // Import User model
+
 module.exports = (sequelize, DataTypes) => {
 const Notification = sequelize.define('Notification', {
   message: {
@@ -27,4 +24,6 @@ const Notification = sequelize.define('Notification', {
   timestamps: false,  // We don't need updatedAt for notifications
 });
 return Notification;
+
+
 }

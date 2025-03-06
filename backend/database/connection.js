@@ -1,149 +1,149 @@
-const { Sequelize, DataTypes, Model } = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 const config = require('./config');
 
-// Create Sequelize instance first
 const sequelize = new Sequelize(config.development.database, config.development.username, config.development.password, {
     host: config.development.host,
-    dialect: config.development.dialect,
-    logging: false // Disable logging to reduce console noise
-});
-
-// Create a module.exports object early to avoid circular references
-const db = {
-  sequelize: sequelize,
-  Sequelize: Sequelize,
-  DataTypes: DataTypes
-};
-
-// Export the db object immediately
-module.exports = db;
+    dialect: config.development.dialect, 
+  });
 
 // Import models
-db.User = require('./models/user')(sequelize, DataTypes);
-db.ContentCreator = require('./models/contentCreator')(sequelize, DataTypes);
-db.Media = require('./models/media')(sequelize, DataTypes);
-db.Deal = require('./models/deal')(sequelize, DataTypes);
-db.Company = require('./models/company')(sequelize, DataTypes);
-db.Account = require('./models/account')(sequelize, DataTypes);
-db.Post = require('./models/post')(sequelize, DataTypes);
-db.Contract = require('./models/contract')(sequelize, DataTypes);
-db.Term = require('./models/term')(sequelize, DataTypes);
-db.Negotiation = require('./models/negotiation')(sequelize, DataTypes);
-db.Criteria = require('./models/criteria')(sequelize, DataTypes);
-db.SubCriteria = require('./models/subCriteria')(sequelize, DataTypes);
-db.ContractCriteria = require('./models/contract_criteria')(sequelize, DataTypes);
-db.Signature = require('./models/signature')(sequelize, DataTypes);
-db.Notification = require('./models/notification')(sequelize, DataTypes);
-db.Room = require('./models/room')(sequelize, DataTypes);
-db.Message = require('./models/message')(sequelize, DataTypes);
+const User = require('./models/user')(sequelize, DataTypes);
+const ContentCreator = require('./models/contentCreator')(sequelize, DataTypes);
+const Media = require('./models/media')(sequelize, DataTypes);
+const Deal = require('./models/deal')(sequelize, DataTypes);
+const Company = require('./models/company')(sequelize, DataTypes);
+const Account = require('./models/account')(sequelize, DataTypes);
+const Post = require('./models/post')(sequelize, DataTypes);
+const Contract = require('./models/contract')(sequelize, DataTypes);
+const Term = require('./models/term')(sequelize, DataTypes);
+const Negotiation = require('./models/negotiation')(sequelize, DataTypes);
+const Criteria = require('./models/criteria')(sequelize, DataTypes);
+const SubCriteria = require('./models/subCriteria')(sequelize, DataTypes);
+const ContractCriteria = require('./models/contract_criteria')(sequelize, DataTypes);
+const Signature = require('./models/signature')(sequelize, DataTypes);
+const Notification = require('./models/notification')(sequelize, DataTypes);
+const Room = require('./models/room')(sequelize, DataTypes);
+const Message = require('./models/message')(sequelize, DataTypes);
+const Payment = require('./models/payment')(sequelize, DataTypes);
+const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
 
-// Define associations
+// Create associations here
+
 // User -> ContentCreator (One-to-One)
-db.User.hasOne(db.ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
-db.ContentCreator.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
-
+User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
+ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 // User -> Company (One-to-One)
-db.User.hasOne(db.Company, { foreignKey: 'userId', as: 'company' });
-db.Company.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
+User.hasOne(Company, { foreignKey: 'userId', as: 'company' });
+Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // ContentCreator -> Media (Profile Picture, One-to-One)
-db.ContentCreator.belongsTo(db.Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
-db.Media.hasMany(db.ContentCreator, { foreignKey: 'profilePictureId' });
+ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
+Media.hasMany(ContentCreator, { foreignKey: 'profilePictureId' });
+// ContentCreator -> DealReques  (Many-to-Many)
+ContentCreator.belongsToMany(Deal,{through:DealRequest});
+Deal.belongsToMany(ContentCreator,{through:DealRequest});
 
 // ContentCreator -> Deal (One-to-Many)
-db.ContentCreator.hasMany(db.Deal);
-db.Deal.belongsTo(db.ContentCreator);
+ContentCreator.hasMany(Deal);
+Deal.belongsTo(ContentCreator);
+
 
 // Company -> Deal (One-to-Many)
-db.Company.hasMany(db.Contract);
-db.Contract.belongsTo(db.Company);
+Company.hasMany(Contract);
+Contract.belongsTo(Company);
 
-db.Contract.hasMany(db.Deal);
-db.Deal.belongsTo(db.Contract);
+Contract.hasMany(Deal);
+Deal.belongsTo(Contract);
 
-db.Contract.belongsToMany(db.Criteria, {
-  through: db.ContractCriteria,
-  foreignKey: 'contractId',
-  as: 'criteria',
+Contract.belongsToMany(Criteria, {
+  through: ContractCriteria, // Use the join table
+  foreignKey: 'contractId', // Foreign key in the join table
+  as: 'criteria', // Alias for the association
 });
 
 // Criteria belongs to many Contracts (through ContractCriteria)
-db.Criteria.belongsToMany(db.Contract, {
-  through: db.ContractCriteria,
-  foreignKey: 'criteriaId',
-  as: 'contracts',
+Criteria.belongsToMany(Contract, {
+  through: ContractCriteria, // Use the join table
+  foreignKey: 'criteriaId', // Foreign key in the join table
+  as: 'contracts', // Alias for the association
 });
 
+
 // Company -> Media (One-to-Many)
-db.Company.hasMany(db.Media);
-db.Media.belongsTo(db.Company);
+Company.hasMany(Media);
+Media.belongsTo(Company);
 
 // ContentCreator -> Media (Many-to-One, Portfolio)
-db.ContentCreator.hasMany(db.Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
-db.Media.belongsTo(db.ContentCreator, { foreignKey: 'contentCreatorId' });
+ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+Media.belongsTo(ContentCreator, { foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
-db.Deal.hasMany(db.Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
-db.Media.belongsTo(db.Deal, { foreignKey: 'dealId' });
+Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
+Media.belongsTo(Deal, { foreignKey: 'dealId' });
 
 // Account -> Post (One-to-Many)
-db.Account.hasMany(db.Post);
-db.Post.belongsTo(db.Account);
+Account.hasMany(Post);
+Post.belongsTo(Account);
 
 // Contract -> Deal (One-to-Many)
-db.Contract.hasMany(db.Deal);
-db.Deal.belongsTo(db.Contract);
+Contract.hasMany(Deal);
+Deal.belongsTo(Contract);
 
 // Deal -> Term (One-to-Many)
-db.Deal.hasMany(db.Term);
-db.Term.belongsTo(db.Deal);
+Deal.hasMany(Term);
+Term.belongsTo(Deal);
 
 // Term -> Negotiation (One-to-Many)
-db.Term.hasMany(db.Negotiation);
-db.Negotiation.belongsTo(db.Term);
+Term.hasMany(Negotiation);
+Negotiation.belongsTo(Term);
+
+// Contract -> Criteria (Many-to-Many through contract_criteria)
+Contract.belongsTo(Criteria, { through: ContractCriteria });
+Criteria.belongsTo(Contract, { through: ContractCriteria });
 
 // Criteria -> SubCriteria (One-to-Many)
-db.Criteria.hasMany(db.SubCriteria);
-db.SubCriteria.belongsTo(db.Criteria);
+Criteria.hasMany(SubCriteria);
+SubCriteria.belongsTo(Criteria);
 
 // A user has one signature
-db.User.hasOne(db.Signature);
-db.Signature.belongsTo(db.User);
+User.hasOne(Signature);
+Signature.belongsTo(User);
 
 // A user has many notifications
-db.User.hasMany(db.Notification);
-db.Notification.belongsTo(db.User);
+User.hasMany(Notification);
+Notification.belongsTo(User);
 
 // A room has many messages
-db.Room.hasMany(db.Message);
-db.Message.belongsTo(db.Room);
+Room.hasMany(Message);
+Message.belongsTo(Room);
 
 // A message belongs to a user (either content creator or company)
-db.User.hasMany(db.Message);
-db.Message.belongsTo(db.User);
+User.hasMany(Message);
+Message.belongsTo(User);
 
-// ContentCreator can participate in many rooms
-db.ContentCreator.belongsTo(db.Room);
-db.Room.belongsTo(db.ContentCreator);
+// ContentCreator can participate in many rooms (many-to-many relationship with room)
+ContentCreator.belongsTo(Room);
+Room.belongsTo(ContentCreator);
 
-// Company can participate in many rooms
-db.Company.belongsTo(db.Room);
-db.Room.belongsTo(db.Company);
+// Company can participate in many rooms (many-to-many relationship with room)
+Company.belongsTo(Room);
+Room.belongsTo(Company);
+
+Criteria.hasMany(SubCriteria);
+SubCriteria.belongsTo(Criteria);
 
 // ContentCreator has many Accounts
-db.ContentCreator.hasMany(db.Account, {
+ContentCreator.hasMany(Account, {
   foreignKey: 'contentCreatorId',
   as: 'accounts',
 });
 
 // Account belongs to a ContentCreator
-db.Account.belongsTo(db.ContentCreator, {
+Account.belongsTo(ContentCreator, {
   foreignKey: 'contentCreatorId',
   as: 'contentCreator',
 });
-
-// Test database connection
 sequelize.authenticate()
   .then(() => {
     console.log('Connection to the database has been established successfully.');
@@ -162,22 +162,24 @@ sequelize.authenticate()
 // Export models and sequelize instance
 
 module.exports = {
+  DealRequest,
+  Payment,
   sequelize,
-  User: db.User,
-  ContentCreator: db.ContentCreator,
-  Media: db.Media,
-  Deal: db.Deal,
-  Company: db.Company,
-  Account: db.Account,
-  Post: db.Post,
-  Contract: db.Contract,
-    Term: db.Term,
-    Negotiation: db.Negotiation,
-    Criteria: db.Criteria,
-    SubCriteria: db.SubCriteria,
-    ContractCriteria: db.ContractCriteria,
-    Notification: db.Notification,
-    Signature: db.Signature,
-    Room: db.Room,
-    Message: db.Message
+  User,
+  ContentCreator,
+  Media,
+  Deal,
+  Company,
+  Account,
+  Post,
+  Contract,
+    Term,
+    Negotiation,
+    Criteria,
+    SubCriteria,
+    ContractCriteria,
+    Notification,
+    Signature,
+    Room,
+    Message
 };

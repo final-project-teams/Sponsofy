@@ -171,162 +171,79 @@ class SocketService {
   }
 
   joinRoom(roomId: string) {
-    if (!this.socket || !this.socket.connected) {
-      console.warn('Socket not connected when trying to join room');
-      return;
-    }
-    
-    console.log('Joining room:', roomId);
-    this.socket.emit('join-room', { roomId, userId: this.userId });
-  }
-
-  leaveRoom(roomId: string) {
-    if (!this.socket || !this.socket.connected) {
-      console.warn('Socket not connected when trying to leave room');
-      return;
-    }
-    
-    console.log('Leaving room:', roomId);
-    this.socket.emit('leave-room', { roomId, userId: this.userId });
-  }
-
-  sendMessage(roomId: string, message: string) {
-    if (!this.socket || !this.socket.connected) {
-      console.warn('Socket not connected when trying to send message');
-      return;
-    }
-    
-    this.socket.emit('send-message', { roomId, userId: this.userId, message });
-  }
-
-  onMessage(callback: (data: any) => void) {
-    if (!this.socket) {
-      console.warn('Socket not initialized when setting up message listener');
-      return;
-    }
-    
-    this.socket.on('receive-message', callback);
-  }
-
-  onUserJoined(callback: (data: any) => void) {
-    if (!this.socket) {
-      console.warn('Socket not initialized when setting up user joined listener');
-      return;
-    }
-    
-    this.socket.on('user-joined', callback);
-  }
-
-  onUserLeft(callback: (data: any) => void) {
-    if (!this.socket) {
-      console.warn('Socket not initialized when setting up user left listener');
-      return;
-    }
-    
-    this.socket.on('user-left', callback);
-  }
-
-  // Call management methods
-  initiateCall(data: { callerId: string; calleeId: string; roomId: string; callType: 'video' | 'audio' }) {
     if (this.socket) {
-      console.log('Initiating call to:', data.calleeId);
-      this.socket.emit('initiate_call', data);
+      this.socket.emit('join_room', roomId);
     }
   }
 
-  acceptCall(data: { callerId: string; calleeId: string; roomId: string }) {
+  sendMessage(data: { roomId: string; message: string; userId: string }) {
     if (this.socket) {
-      console.log('Accepting call from:', data.callerId);
-      this.socket.emit('accept_call', data);
-    }
-  }
-
-  rejectCall(data: { callerId: string; calleeId: string; reason?: string }) {
-    if (this.socket) {
-      console.log('Rejecting call from:', data.callerId);
-      this.socket.emit('reject_call', data);
-    }
-  }
-
-  endCall(data: { roomId: string; userId: string }) {
-    if (this.socket) {
-      console.log('Ending call in room:', data.roomId);
-      this.socket.emit('end_call', data);
-    }
-  }
-
-  // Call event listeners
-  onIncomingCall(callback: (data: { callerId: string; roomId: string; callType: 'video' | 'audio' }) => void) {
-    if (this.socket) {
-      this.socket.on('incoming_call', callback);
-    }
-  }
-
-  onIncomingCallDetails(callback: (data: { 
-    callerId: string; 
-    callerName: string; 
-    callerAvatar?: string;
-    roomId: string; 
-    callType: 'video' | 'audio' 
-  }) => void) {
-    if (this.socket) {
-      this.socket.on('incoming_call_details', callback);
-    }
-  }
-
-  onCallAccepted(callback: (data: { roomId: string }) => void) {
-    if (this.socket) {
-      this.socket.on('call_accepted', callback);
-    }
-  }
-
-  onCallRejected(callback: (data: { reason?: string }) => void) {
-    if (this.socket) {
-      this.socket.on('call_rejected', callback);
-    }
-  }
-
-  onCallEnded(callback: (data: { roomId: string; endedBy: string }) => void) {
-    if (this.socket) {
-      this.socket.on('call_ended', callback);
-    }
-  }
-
-  // User status methods
-  updateUserStatus(status: 'online' | 'offline' | 'busy' | 'away') {
-    if (this.socket) {
-      this.socket.emit('update_status', { userId: this.userId, status });
-    }
-  }
-
-  onUserStatusChanged(callback: (data: { userId: string; status: string }) => void) {
-    if (this.socket) {
-      this.socket.on('user_status_changed', callback);
-    }
-  }
-
-  // Remove specific listener
-  removeListener(event: string) {
-    if (this.socket) {
-      this.socket.off(event);
-    }
-  }
-
-  // Remove all listeners
-  removeAllListeners() {
-    if (this.socket) {
-      this.socket.removeAllListeners();
+      this.socket.emit('send_message', data);
     }
   }
 
   onReceiveMessage(callback: (message: any) => void) {
-    if (!this.socket) {
-      console.warn('Socket not initialized when setting up message listener');
-      return;
+    if (this.socket) {
+      this.socket.on('receive_message', callback);
     }
-    
-    this.socket.on('receive-message', callback);
   }
+
+  emitTyping(data: { roomId: string; username: string }) {
+    if (this.socket) {
+      this.socket.emit('typing', data);
+    }
+  }
+
+  onUserTyping(callback: (data: { username: string }) => void) {
+    if (this.socket) {
+      this.socket.on('user_typing', callback);
+    }
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+  }
+  onNewTerm(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('newTerm', callback);
+    }
+  }
+  onTermConfirmed(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termConfirmed', callback);
+    }
+  }
+  onTermUpdated(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termUpdated', callback);
+    }
+  }
+  onNotification(callback: (notification: any) => void) {
+    if (this.socket) {
+      this.socket.on('notification', callback);
+    }
+  }
+  onTermRejected(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termRejected', callback);
+    }
+  }
+  onTermAccepted(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termAccepted', callback);
+    }
+  }
+  onTermNegotiating(callback: (term: any) => void) {
+    if (this.socket) {
+      this.socket.on('termNegotiating', callback);
+    }
+  }
+  
+  
+
 }
 
 export const socketService = new SocketService();

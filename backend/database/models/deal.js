@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
 const Deal = sequelize.define('Deal', {
   content_creator_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   company_id: {
     type: DataTypes.INTEGER,

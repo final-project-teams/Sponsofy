@@ -437,7 +437,7 @@ export default function DealsScreen() {
               >
                 <Text style={[
                   styles.rankOptionText,
-                  selectedRank === rank && styles.actziveRankOptionText
+                  selectedRank === rank && styles.activeRankOptionText
                 ]}>
                   {rank.charAt(0).toUpperCase() + rank.slice(1)}
                 </Text>

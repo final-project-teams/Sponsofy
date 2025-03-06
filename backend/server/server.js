@@ -4,11 +4,11 @@ require('dotenv').config();
 const PORT = process.env.DB_PORT || 3304;
 const { sequelize } = require('../database/connection');
 const fs = require('fs');
-const cors = require("cors");
+const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
 const companyRoutes = require('../router/companyRoutes');
-const userRouter = require("../router/userRoutes");
+
 const app = express();
 const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
@@ -23,11 +23,30 @@ const io = socketIo(server, {
 
 const contract = require('../router/contractrouter');
 const searchRoutes = require('../router/searchrouter');
+const ContentCreatorRouter = require('../router/ContentCreatorRouter');
+const paymentRouter = require('../router/paymetnRouter');
+const userRouter = require("../router/userRoutes")
+const termsRouter = require("../router/termsrouter")
+
+
+
+
+
+
+app.use(express.json());
+
+const upload = require('../config/multer'); // Import Multer configuration
+
+// Database initialization function
 
 
 
 async function initializeDatabase() {
   try {
+    await sequelize.sync({ alter: true }); // Sync database with models
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Add a small delay before seeding
+    await seedDatabase(); // Seed the database
+    console.log('Database initialized successfully');
     console.log('Connecting to database...');
     await sequelize.authenticate();
     console.log('Database connection established successfully');
@@ -45,8 +64,20 @@ async function initializeDatabase() {
   }
 }
 
+// Uncomment to initialize the database (use with caution in production)
 // Uncomment this to initialize the database
 // initializeDatabase();
+
+// CORS configuration
+app.use(
+  cors({
+    origin: ['http://localhost:5173', 'http://192.168.1.10:5173'], // Allowed origins
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  })
+);
 
 // CORS configuration - place this before any routes
 app.use(cors({
@@ -58,8 +89,10 @@ app.use(cors({
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contract);
+app.use('/api/contentcreator', ContentCreatorRouter);
+app.use('/api/payment', paymentRouter);
+app.use('/api/terms', termsRouter(io));
 // Body parser middleware
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static files
@@ -78,10 +111,8 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'API is working!' });
 });
 
-// Important: Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-
-require('dotenv').config();
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(uploadDir));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -89,35 +120,33 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
 
+// Routes
+app.use('/api/search', searchRoutes);
+app.use('/api/contract', contract);
+app.use('/api/user', userRouter);
 // Root route
 
-app.use("/api/user", userRouter)
+// Root route
 app.get('/', (req, res) => {
   res.send('Sponsofy API Server');
 });
 
 // Socket.io setup
+// Socket.io setup
 // Create a namespace for /chat
 const chatNamespace = io.of('/chat');
 chatNamespace.on('connection', (socket) => {
   console.log('A user connected to /chat');
-  // Use the chat socket logic
-  chatSocket(socket);
-
-  // When the user disconnects
+  chatSocket(socket); // Use the chat socket logic
   socket.on('disconnect', () => {
     console.log('A user disconnected from /chat');
   });
 });
 
-// Create a namespace for /notification
 const notificationNamespace = io.of('/notification');
 notificationNamespace.on('connection', (socket) => {
   console.log('A user connected to /notification');
-  // Use the notification socket logic
-  notificationSocket(socket);
-
-  // When the user disconnects
+  notificationSocket(socket); // Use the notification socket logic
   socket.on('disconnect', () => {
     console.log('A user disconnected from /notification');
   });
@@ -125,23 +154,19 @@ notificationNamespace.on('connection', (socket) => {
 
 io.on('connection', (socket) => {
   console.log('A user connected');
-  
-  // Send a welcome message to the client
-  socket.emit('message', 'Welcome to the Socket.io server!');
-
-  // Listen for a message from the client
+  socket.emit('message', 'Welcome to the Socket.io server!'); // Send a welcome message
   socket.on('clientMessage', (msg) => {
     console.log('Message from client:', msg);
     socket.emit('message', `Server received: ${msg}`);
   });
-
-  // When the user disconnects
   socket.on('disconnect', () => {
     console.log('A user disconnected');
   });
 });
 
+
 // Change app.listen to server.listen
+// Start the server
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });
