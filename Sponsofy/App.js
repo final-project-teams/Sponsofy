@@ -16,17 +16,17 @@ import PremiumScreen from './src/screens/PremiumScreen';
 import SplashScreen from "./src/screens/SplashScreen"
 import WelcomeScreen from "./src/screens/WelcomeScreen"
 import UserTypeScreen from "./src/screens/UserTypeScreen"
-import TermsScreen from "./src/screens/terms"
 import SocialAccountsScreen from "./src/screens/SocialAccountsScreen"
+import ContractSection from "./src/screens/ContractSection"
 
 
 const lightTheme=lightColors
 const Stack = createStackNavigator();
-
+//rabi maakom :)
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
+      <Stack.Navigator initialRouteName="ContractSection">
         <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="UserType" component={UserTypeScreen} options={{ headerShown: false }} />
@@ -39,7 +39,8 @@ const App = () => {
         <Stack.Screen name="ContractDetail" component={ContractDetail} options={{ headerShown: false }} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
         <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} options={{ headerShown: false }} />
-        
+        <Stack.Screen name="ContractSection" component={ContractSection} options={{ headerShown: false }} />
+
       </Stack.Navigator>
       <FlashMessage position="top" />
     </NavigationContainer>

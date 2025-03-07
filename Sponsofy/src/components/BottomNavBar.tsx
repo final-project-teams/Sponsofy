@@ -8,7 +8,7 @@ const BottomNavBar = ({ navigation }) => {
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('HomeScreen')}>
         <Ionicons name="home-outline" size={26} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ExploreScreen')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('PremiumScreen')}>
         <Ionicons name="compass-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem}>
@@ -22,9 +22,8 @@ const BottomNavBar = ({ navigation }) => {
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileContent')}>
         <Ionicons name="person-outline" size={26} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('PremiumScreen')}>
-        <Ionicons name="star-outline" size={26} color="#666" />
-      </TouchableOpacity>
+      
+     
     </View>
   );
 };

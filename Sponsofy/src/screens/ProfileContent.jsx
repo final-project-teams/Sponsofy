@@ -35,7 +35,7 @@ const ProfileContent = () => {
         if (token) {
           const decodedToken = jwtDecode(token);
           const userId = decodedToken.userId;
-
+          console.log("Decoded userId:", userId);
           // Fetch user profile from the backend
           const profile = await userService.getProfile(userId);
           console.log("Retrieved user profile:", profile);
@@ -44,12 +44,10 @@ const ProfileContent = () => {
           setUserProfile(profile.user);
         }
       } catch (error) {
-        console.error("Error fetching user profile:", error);
-      } finally {
-        setLoading(false); // Stop loading
+        console.error("Error details:", error.response?.data || error.message);
+        throw error;
       }
-    };
-
+      } 
     fetchUserProfile();
   }, []);
 
@@ -96,7 +94,7 @@ const ProfileContent = () => {
             {userProfile?.profile_picture ? (
               <Image
                 source={{
-                  uri: `http://192.168.1.40:3304/uploads/${userProfile.profile_picture}`,
+                  uri: `http://192.168.119.201:3304/uploads/${userProfile.profile_picture}`,
                 }}
                 style={styles.avatar}
               />

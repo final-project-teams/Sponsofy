@@ -26,6 +26,10 @@ const User = sequelize.define('User', {
     isPremium: {
         type: DataTypes.BOOLEAN,
     },
+    fcmToken: {
+      type: DataTypes.STRING,
+      allowNull: true, // Allow null for users without FCM tokens
+  },
 }, {
   tableName: 'users',
   timestamps: true,

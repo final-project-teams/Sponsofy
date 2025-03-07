@@ -31,6 +31,7 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
     fetchDeals();
   }, []);
 
+  
   useEffect(() => {
     console.log("Deals state updated:", deals);
   }, [deals]);

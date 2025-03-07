@@ -6,20 +6,19 @@ const { sequelize } = require('../database/connection');
 const fs = require('fs');
 const cors = require('cors');
 const http = require('http');
-const socketIo = require('socket.io');
+const {Server} = require('socket.io');
 const jwt = require('jsonwebtoken');
 const app = express();
-const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
 const chatSocket = require('../socket/chat');
 const notificationSocket = require('../socket/notification');
-const io = socketIo(server);
+const notificationRouter = require('../router/NotificationRouter');
 const contract = require('../router/contractrouter');
 const searchRoutes = require('../router/searchrouter');
 const ContentCreatorRouter = require('../router/ContentCreatorRouter');
 const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
-const termsRouter = require("../router/termsrouter")
+const { initSocket } = require('../services/SocketService');
 
 
 
@@ -27,8 +26,16 @@ const termsRouter = require("../router/termsrouter")
 
 
 app.use(express.json());
+const server = http.createServer(app);
+initSocket(server);
+
+
+// Socket.IO connection handling
+
+
 
 const upload = require('../config/multer'); // Import Multer configuration
+  
 
 // Database initialization function
 async function initializeDatabase() {
@@ -62,7 +69,10 @@ app.use('/api/search', searchRoutes);
 app.use('/api/contract', contract);
 app.use('/api/contentcreator', ContentCreatorRouter);
 app.use('/api/payment', paymentRouter);
-app.use('/api/terms', termsRouter(io));
+app.use('/api/search', searchRoutes);
+app.use('/api/contract', contract);
+app.use('/api/user', userRouter);
+app.use('/api/notification', notificationRouter);
 // Body parser middleware
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,51 +92,18 @@ app.use((err, req, res, next) => {
 });
 
 // Routes
-app.use('/api/search', searchRoutes);
-app.use('/api/contract', contract);
-app.use('/api/user', userRouter);
 
 // Root route
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
+
 // Socket.io setup
-const chatNamespace = io.of('/chat');
-chatNamespace.on('connection', (socket) => {
-  console.log('A user connected to /chat');
-  chatSocket(socket); // Use the chat socket logic
-  socket.on('disconnect', () => {
-    console.log('A user disconnected from /chat');
-  });
-});
-
-const notificationNamespace = io.of('/notification');
-notificationNamespace.on('connection', (socket) => {
-  console.log('A user connected to /notification');
-  notificationSocket(socket); // Use the notification socket logic
-  socket.on('disconnect', () => {
-    console.log('A user disconnected from /notification');
-  });
-});
-
-io.on('connection', (socket) => {
-  console.log('A user connected');
-  socket.emit('message', 'Welcome to the Socket.io server!'); // Send a welcome message
-  socket.on('clientMessage', (msg) => {
-    console.log('Message from client:', msg);
-    socket.emit('message', `Server received: ${msg}`);
-  });
-  socket.on('disconnect', () => {
-    console.log('A user disconnected');
-  });
-});
-
-
 // Change app.listen to server.listen
 // Start the server
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });
 
-module.exports = { app, server, io };
+module.exports = { app, server };

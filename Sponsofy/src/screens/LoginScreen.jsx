@@ -36,7 +36,7 @@ const LoginScreen = ({ navigation, route }) => {
         console.log("response.data.token",response.data.token)
 
         if (response.data.user.role === "content_creator") {
-          navigation.navigate("SocialAccounts");
+          navigation.navigate("Home");
         } else if (response.data.user.role === "company") {
           navigation.navigate("Home");
         } else {

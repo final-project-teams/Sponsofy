@@ -1,230 +1,366 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
   SafeAreaView,
-  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Image,
 } from 'react-native';
-import { useTheme } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { socketService } from '../services/socketService';
-import { chatService } from '../services/api';
-import api from '../config/axios';
-interface Message {
-  id: string;
-  content: string;
-  UserId: string;
-  created_at: string;
-}
+import { Ionicons, Feather } from '@expo/vector-icons';
+import io from 'socket.io-client';
 
-const ChatScreen = ({ route }) => {
-  const { colors } = useTheme();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const roomId = route.params?.roomId || '1';
-  const currentUserId = '1'; // Replace with actual user ID from your auth system
-const getTest = async () => {
-  try {
+const ChatComponent = ({ serverUrl = 'http://192.168.119.201:3000', username = 'Username' }) => {
+  const [socket, setSocket] = useState(null);
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-    const response = await api.get("/");
-    console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",response.data)
-  } catch (error) {
-    console.error('Error loading messages:', error);  
-  }
-}
   useEffect(() => {
-    getTest();
-    // loadMessages();
-    // setupSocketConnection();
-
-    // return () => {
-    //   socketService.disconnect();
-    // };
-  }, []);
-
-  const loadMessages = async () => {
-    try {
-      setIsLoading(true);
-      const response = await chatService.getMessages(roomId);
-      setMessages(response.data);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const setupSocketConnection = () => {
-    // socketService.connect(/* your auth token */);
-    socketService.joinRoom(roomId);
-    socketService.onReceiveMessage((message) => {
-      setMessages(prev => [...prev, message]);
+    // Initialize socket
+    const newSocket = io(serverUrl);
+    
+    newSocket.on('connect', () => {
+      console.log('Connected to socket server with ID:', newSocket.id);
     });
-  };
+    
+    newSocket.on('message', (data) => {
+      setMessages(prevMessages => [
+        ...prevMessages, 
+        { 
+          id: Date.now().toString(),
+          text: data.text,
+          sent: data.userId !== newSocket.id,
+          isImage: data.isImage || false,
+          timestamp: new Date(data.timestamp)
+        }
+      ]);
+    });
+    
+    setSocket(newSocket);
+    
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [serverUrl]);
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+  const sendMessage = () => {
+    if (socket && message.trim()) {
+      const messageData = {
+        text: message,
+        userId: socket.id,
+        timestamp: new Date().toISOString(),
+        isImage: false
+      };
 
-    try {
-      socketService.sendMessage({
-        roomId,
-        message: newMessage,
-        userId: currentUserId
-      });
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
+      // Send to server
+      socket.emit('message', messageData);
+      
+      // Log the message sent
+      console.log('Message sent:', messageData);
+      
+      // Add to local state (as a sent message)
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {
+          id: Date.now().toString(),
+          text: message,
+          sent: true,
+          isImage: false,
+          timestamp: new Date()
+        }
+      ]);
+      
+      setMessage('');
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isSentByMe = item.UserId === currentUserId;
+  const sendImage = (imageUrl) => {
+    if (socket && imageUrl) {
+      const messageData = {
+        text: imageUrl,
+        userId: socket.id,
+        timestamp: new Date().toISOString(),
+        isImage: true
+      };
 
-    return (
-      <View
-        style={[
-          isSentByMe ? styles.messageSent : styles.messageReceived,
-          { backgroundColor: isSentByMe ? colors.primary : colors.card }
-        ]}
-      >
-        <Text style={[
-          styles.messageText,
-          { color: isSentByMe ? '#FFFFFF' : colors.text }
-        ]}>
-          {item.content}
-        </Text>
-      </View>
-    );
+      // Send to server
+      socket.emit('message', messageData);
+      
+      // Add to local state (as a sent message)
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {
+          id: Date.now().toString(),
+          text: imageUrl,
+          sent: true,
+          isImage: true,
+          timestamp: new Date()
+        }
+      ]);
+    }
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getToday = () => {
+    return 'Today ' + formatTime(new Date()).slice(0, 5);
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity>
-          <Icon name="arrow-back" size={24} color={colors.text} />
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={[styles.username, { color: colors.text }]}>Username</Text>
-        <View style={styles.headerIcons}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{username.charAt(0)}</Text>
+          </View>
+          <Text style={styles.username}>{username}</Text>
+        </View>
+        <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="call" size={20} color={colors.text} />
+            <Ionicons name="call" size={20} color="white" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="videocam" size={20} color={colors.text} />
+            <Feather name="video" size={20} color="white" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <FlatList
+      {/* Date indicator */}
+      <View style={styles.dateContainer}>
+        <Text style={styles.dateText}>{getToday()}</Text>
+      </View>
+
+      {/* Messages */}
+      <ScrollView 
         style={styles.messagesContainer}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={item => item.id}
-        inverted
-      />
+        ref={scrollViewRef}
+        onContentSizeChange={() => {
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollToEnd({ animated: true });
+          }
+        }}
+      >
+        {messages.map((msg) => (
+          <View 
+            key={msg.id} 
+            style={[
+              styles.messageBubble, 
+              msg.sent ? styles.sentBubble : styles.receivedBubble
+            ]}
+          >
+            {msg.isImage ? (
+              <Image
+                source={{ uri: msg.text }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={[
+                styles.messageText,
+                msg.sent ? styles.sentText : styles.receivedText
+              ]}>
+                {msg.text}
+              </Text>
+            )}
+          </View>
+        ))}
+      </ScrollView>
 
-      <View style={styles.inputContainer}>
-        <View style={styles.attachmentButtons}>
-          <TouchableOpacity>
-            <Icon name="image" size={24} color={colors.text} />
+      {/* Input area */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.inputContainer}
+      >
+        <View style={styles.attachmentContainer}>
+          <TouchableOpacity 
+            style={styles.attachmentButton}
+            onPress={() => {
+              // Here you would normally implement image picker
+              // For simplicity, we'll use a placeholder
+              sendImage('https://via.placeholder.com/300');
+            }}
+          >
+            <Feather name="image" size={20} color="#888" />
+            <Text style={styles.attachmentText}>Add a photo</Text>
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Icon name="videocam" size={24} color={colors.text} />
+          <TouchableOpacity style={styles.attachmentButton}>
+            <Feather name="video" size={20} color="#888" />
+            <Text style={styles.attachmentText}>Add a video</Text>
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Icon name="document" size={24} color={colors.text} />
+          <TouchableOpacity style={styles.attachmentButton}>
+            <Feather name="file" size={20} color="#888" />
+            <Text style={styles.attachmentText}>Add a file</Text>
           </TouchableOpacity>
         </View>
-        <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
+        
+        <View style={styles.messageInputContainer}>
+          <TouchableOpacity style={styles.emojiButton}>
+            <Ionicons name="happy-outline" size={24} color="#888" />
+          </TouchableOpacity>
           <TextInput
-            value={newMessage}
-            onChangeText={setNewMessage}
+            style={styles.input}
+            value={message}
+            onChangeText={setMessage}
             placeholder="Message..."
-            placeholderTextColor={colors.border}
-            style={[styles.input, { color: colors.text }]}
+            placeholderTextColor="#888"
           />
-          <TouchableOpacity onPress={handleSendMessage}>
-            <Icon name="send" size={24} color={colors.primary} />
+          <TouchableOpacity 
+            style={styles.sendButton}
+            onPress={sendMessage}
+          >
+            <Ionicons name="send" size={20} color="white" />
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-// ... existing styles remain the same ...
-
-
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    padding: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#333',
+  },
+  backButton: {
+    padding: 5,
+  },
+  userInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   username: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
+    color: 'white',
+    marginLeft: 10,
+    fontWeight: '500',
   },
-  headerIcons: {
+  headerButtons: {
     flexDirection: 'row',
   },
   iconButton: {
-    marginLeft: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  dateContainer: {
+    alignItems: 'center',
+    padding: 10,
+  },
+  dateText: {
+    color: '#888',
+    fontSize: 12,
   },
   messagesContainer: {
     flex: 1,
-    padding: 16,
+    padding: 10,
   },
-  messageReceived: {
+  messageBubble: {
     maxWidth: '80%',
+    borderRadius: 20,
     padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  receivedBubble: {
+    backgroundColor: '#333',
     alignSelf: 'flex-start',
+    borderBottomLeftRadius: 5,
   },
-  messageSent: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
+  sentBubble: {
+    backgroundColor: '#6933FF', // Purple color from the image
     alignSelf: 'flex-end',
+    borderBottomRightRadius: 5,
   },
   messageText: {
     fontSize: 16,
   },
-  messageSentText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+  receivedText: {
+    color: 'white',
+  },
+  sentText: {
+    color: 'white',
+  },
+  messageImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
   },
   inputContainer: {
-    padding: 16,
+    borderTopWidth: 0.5,
+    borderTopColor: '#333',
   },
-  attachmentButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
+  attachmentContainer: {
+    backgroundColor: '#111',
+    padding: 10,
   },
-  inputWrapper: {
+  attachmentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 24,
+    marginBottom: 5,
+  },
+  attachmentText: {
+    color: '#888',
+    marginLeft: 10,
+    fontSize: 14,
+  },
+  messageInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  emojiButton: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    marginHorizontal: 8,
-    fontSize: 16,
+    backgroundColor: '#222',
+    borderRadius: 20,
+    padding: 10,
+    color: 'white',
+  },
+  sendButton: {
+    marginLeft: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#6933FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
-export default ChatScreen;
+export default ChatComponent;

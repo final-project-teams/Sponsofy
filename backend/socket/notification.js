@@ -1,24 +1,22 @@
-// sockets/notification.js
-module.exports = function(socket) {
-    console.log('A user connected to notifications');
-    
-    // Send a notification event
-    socket.emit('notification', 'You have a new notification!');
-  
-    // Listen for custom notifications from client
-    socket.on('sendNotification', (data) => {
-      console.log('Notification received:', data);
-      // Broadcast the notification to other users
-      socket.broadcast.emit('notification', `Notification: ${data.message}`);
-    });
-  
-    // When the user disconnects from notifications
-    socket.on('disconnect', () => {
-      
-      console.log('A user disconnected from notifications');
+export const setupNotificationSocket = (io) => {
+  io.on("connection", (socket) => {
+    console.log("User connected to notification namespace");
 
+    socket.on("subscribe_notifications", (userId) => {
+      socket.join(userId);
+      console.log(`User ${userId} subscribed to notifications`);
     });
-    
 
-  };
-  
+    socket.on("send_notification", (data) => {
+      io.to(data.userId).emit("new_notification", {
+        message: data.message,
+        type: data.type,
+        timestamp: new Date(),
+      });
+    });
+
+    socket.on("disconnect", () => {
+      console.log("User disconnected from notification namespace");
+    });
+  });
+};

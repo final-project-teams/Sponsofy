@@ -53,6 +53,12 @@ Deal.belongsTo(ContentCreator);
 Company.hasMany(Contract);
 Contract.belongsTo(Company);
 
+// ContentCreator -> Contract (One-to-Many)
+ContentCreator.hasMany(Contract);
+Contract.belongsTo(ContentCreator);
+
+
+// Company -> Contract (One-to-Many)
 Contract.hasMany(Deal);
 Deal.belongsTo(Contract);
 
