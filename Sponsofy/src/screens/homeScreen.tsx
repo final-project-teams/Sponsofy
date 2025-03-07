@@ -110,7 +110,7 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
 
             {/* Action buttons */}
             <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ContractDetail', { contract: item })}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('DealDetails', { dealId: 1 })}>
                     <Ionicons name="information-circle-outline" size={20} color="#666" />
                     <Text style={styles.actionButtonText}>View Deal</Text>
                 </TouchableOpacity>
@@ -178,7 +178,7 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
         contentContainerStyle={styles.dealsList}
       />
 
-      <BottomNavBar navigation={navigation} />
+      <BottomNavBar />
     </SafeAreaView>
   );
 };

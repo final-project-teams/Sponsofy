@@ -6,24 +6,29 @@ const { sequelize } = require('../database/connection');
 const { Server } =require ("socket.io")
 const fs = require('fs');
 const cors = require('cors');
-const app = express();
 const http = require('http');
+const socketIo = require('socket.io');
+const app = express();
+const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
-const contract = require('../router/contractrouter');
+
+const io = socketIo(server);
+const {setupContract} = require('../socket/contractSetup');
+const { setupNotifications } = require('../socket/notificationSetup');
+
+const contractRoutes = require('../router/contract.router');
 const searchRoutes = require('../router/searchrouter');
-const ContentCreatorRouter = require('../router/ContentCreatorRouter');
+// const ContentCreatorRouter = require('../router/ContentCreatorRouter');
 const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
-const { setupChatSocket } =require ("../sockets/chatSocket.js");
-const { setupNotificationSocket } =require ("../sockets/notificationSocket.js");
-const { setupRequestSocket } =require ("../sockets/requestSocket.js");
+const termsRouter = require("../router/termsrouter")
+const dealRouter = require("../router/deal.router")
 
-const server = http.createServer(app);
+
+
+
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-const upload = require('../config/multer'); // Import Multer configuration
-
-// Database initialization function
 async function initializeDatabase() {
   try {
     await sequelize.sync({ alter: true }); // Sync database with models
@@ -35,10 +40,6 @@ async function initializeDatabase() {
   }
 }
 
-// Uncomment to initialize the database (use with caution in production)
-// initializeDatabase();
-
-// CORS configuration
 app.use(
   cors({
     origin: ['http://localhost:5173', 'http://192.168.1.10:5173'], // Allowed origins
@@ -50,49 +51,37 @@ app.use(
 );
 // Use the search routes
 app.use('/api/search', searchRoutes);
-app.use('/api/contract', contract);
-app.use('/api/contentcreator', ContentCreatorRouter);
+app.use('/api/contract', contractRoutes);
+// app.use('/api/contentcreator', ContentCreatorRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/search', searchRoutes);
-app.use('/api/contract', contract);
+// app.use('/api/contract', contract);
 app.use('/api/user', userRouter);
 
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+// Root route
+app.get('/', (req, res) => {
+  res.send('Hello World!');
 });
-// Setup different namespaces
-const chatIO = io.of("/chat");
-const notificationIO = io.of("/notification");
-const requestIO = io.of("/request");
 
-// Initialize socket handlers
-setupChatSocket(chatIO);
-setupNotificationSocket(notificationIO);
-setupRequestSocket(requestIO);
+app.use("/api/addDeal", dealRouter)
 
 
 
-// Body parser middleware
-app.use(express.urlencoded({ extended: true }));
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// sockettttttttttttttttt
+const contractIo = io.of("/contract");
+const chatIo = io.of("/chat");
 
-// Important: Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-require('dotenv').config();
+setupContract(contractIo);
+setupNotifications(io);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
+
+
 server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });

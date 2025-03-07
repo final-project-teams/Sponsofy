@@ -1,32 +1,44 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import io from 'socket.io-client';
 
 const NotificationsScreen = () => {
-  const notifications = [
-    {
-      id: 1,
-      title: 'An Influencer Accepted Your Deal!',
-      subtitle: 'Click here to view more details.',
-    },
-    {
-      id: 2,
-      title: 'An Influencer Has Completed All Milestones.',
-      subtitle: 'Click here to view milestones.',
-    },
-    {
-      id: 3,
-      title: 'An Influencer Has Almost Completed All Milestones.',
-      subtitle: 'Click here to view milestones.',
-    },
-  ];
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const connectSocket = async () => {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        console.error('Token not found');
+        return;
+      }
+
+      const socket = io("http://localhost:4000/notification", {
+        auth: {
+          token: token  // Send token for server-side verification
+        }
+      });
+
+      socket.on("new_notification", (data) => {
+        setNotifications(prev => [...prev, data]);
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    };
+
+    connectSocket();
+  }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Notifications</Text>
       <ScrollView>
-        {notifications.map((notification) => (
-          <TouchableOpacity key={notification.id} style={styles.notificationItem}>
+        {notifications.map((notification, index) => (
+          <TouchableOpacity key={index} style={styles.notificationItem}>
             <View style={styles.iconContainer}>
               <Ionicons name="notifications" size={24} color="white" />
             </View>

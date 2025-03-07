@@ -6,16 +6,18 @@ const {
   uploadProfilePicture,
   getUserById,
   updateContentCreatorProfile, // Import the new method
+  getCurrentUser,
 } = require("../controller/userController");
-const upload = require('../config/multer'); // Import Multer configuration
+const {upload} = require('../middleware/uploadMiddleware'); // Import Multer configuration
 
 const { GoogleAuth } = require("../controller/googleAuthController");
-
+const  authenticateJWT = require("../auth/refreshToken");
 // Existing routes
 router.post('/login', Login);
 router.post('/register', Register);
 router.post('/google-auth', GoogleAuth);
 router.post('/upload-profile-picture', upload.single('profilePicture'), uploadProfilePicture);
+router.get('/me',authenticateJWT, getCurrentUser);
 
 // New route to fetch user data by ID
 router.get('/users/:userId', getUserById);

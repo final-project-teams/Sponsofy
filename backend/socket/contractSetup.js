@@ -1,4 +1,4 @@
-export const setupNotificationSocket = (io) => {
+module.exports.setupContract= (io) => {
   io.on("connection", (socket) => {
     console.log("User connected to notification namespace");
 
