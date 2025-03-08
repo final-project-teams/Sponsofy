@@ -27,6 +27,10 @@ const dealRouter = require("../router/deal.router")
 
 
 
+
+
+
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 async function initializeDatabase() {
