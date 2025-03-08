@@ -138,8 +138,6 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
       {/* Reusable Header Component */}
       <Header 
         title="Sponsofy" 
-        onNotificationPress={() => console.log('Notifications pressed')} 
-        onMessagePress={() => console.log('Messages pressed')} 
       />
 
       {/* Add Person Icon for Profile Navigation */}

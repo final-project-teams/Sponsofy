@@ -3,6 +3,7 @@ const path = require('path');
 require('dotenv').config();
 const PORT = process.env.DB_PORT;
 const { sequelize } = require('../database/connection');
+const { Server } =require ("socket.io")
 const fs = require('fs');
 const cors = require('cors');
 const http = require('http');
@@ -13,7 +14,8 @@ const seedDatabase = require('../database/seeders/seed');
 
 const io = socketIo(server);
 const {setupContract} = require('../socket/contractSetup');
-const {chatSetup} = require('../socket/chat');
+const { setupNotifications } = require('../socket/notificationSetup');
+
 const contractRoutes = require('../router/contract.router');
 const searchRoutes = require('../router/searchrouter');
 // const ContentCreatorRouter = require('../router/ContentCreatorRouter');
@@ -51,8 +53,6 @@ app.use(
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
 );
-
-
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contractRoutes);
@@ -67,7 +67,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-app.use("/api/deal", dealRouter)
+app.use("/api/addDeal", dealRouter)
 
 
 
@@ -75,8 +75,10 @@ app.use("/api/deal", dealRouter)
 // sockettttttttttttttttt
 const contractIo = io.of("/contract");
 const chatIo = io.of("/chat");
-chatSetup(chatIo);
+
 setupContract(contractIo);
+setupNotifications(io);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -88,4 +90,4 @@ server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });
 
-module.exports = { app, server, io };
+module.exports = {io, app, server };
