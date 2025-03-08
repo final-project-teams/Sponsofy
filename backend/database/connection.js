@@ -4,6 +4,7 @@ const config = require('./config');
 const media = require('./models/media');
 const term = require('./models/term');
 const company = require('./models/company');
+const userRoom = require('./models/userRoom');
 
 const sequelize = new Sequelize(config.development.database, config.development.username, config.development.password, {
     host: config.development.host,
@@ -30,6 +31,7 @@ const Room = require('./models/room')(sequelize, DataTypes);
 const Message = require('./models/message')(sequelize, DataTypes);
 const Payment = require('./models/payment')(sequelize, DataTypes);
 const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
+const UserRoom = require('./models/userRoom')(sequelize, DataTypes);
 
 // Create associations here
 
@@ -132,17 +134,18 @@ Message.belongsTo(Room);
 User.hasMany(Message);
 Message.belongsTo(User);
 
+// Room associations
+Room.belongsToMany(User, {
+  through: UserRoom,
+  as: 'participants',
+  foreignKey: 'roomId'
+});
 
-// ContentCreator can participate in many rooms (many-to-many relationship with room)
-// ContentCreator.belongsToMany(Company, {as:"ContentCreatorRoom", through: Room });
-// Company.belongsToMany(ContentCreator, {as:"CompanyRoom", through: Room });
-
-
-// Company can participate in many rooms (many-to-many relationship with room)
-
-
-Criteria.hasMany(SubCriteria);
-SubCriteria.belongsTo(Criteria);
+User.belongsToMany(Room, {
+  through: UserRoom,
+  as: 'rooms',
+  foreignKey: 'userId'
+});
 
 // ContentCreator has many Accounts
 ContentCreator.hasMany(Account, {
@@ -164,7 +167,7 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ force:true }).then(() => {
+// sequelize.sync({ force: true }).then(() => {
 //   console.log('Database & tables have been synchronized!');
 // }).catch((error) => {
 //   console.error('Error syncing database:', error);
@@ -192,5 +195,6 @@ module.exports = {
     Notification,
     Signature,
     Room,
-    Message
+    Message,
+    UserRoom
 };
