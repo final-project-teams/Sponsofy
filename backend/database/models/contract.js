@@ -29,11 +29,6 @@ module.exports = (sequelize, DataTypes) => {
           allowNull: true,
       },
  
-  
-      accepted: {
-          type: DataTypes.BOOLEAN,
-          defaultValue: false,
-      },
   }, {
       tableName: 'contracts',
       timestamps: true,

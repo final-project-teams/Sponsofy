@@ -19,7 +19,7 @@ const BottomNavBar = () => {
           <Ionicons name="add" size={30} color="white" />
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ChatScreen')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ChatList')}>
         <Ionicons name="chatbubble-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileContent')}>
@@ -35,7 +35,7 @@ const styles = {
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'center',
+    alignItems: 'center' as 'center',
     backgroundColor: '#111',
     paddingVertical: 10,
     borderTopWidth: 0.5,

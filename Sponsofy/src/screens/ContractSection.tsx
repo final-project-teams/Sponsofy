@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Button, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { jwtDecode } from 'jwt-decode'; 
-import socket from '../services/socketService'; 
 import { getContractbyCompanyId, acceptContract } from '../services/api'; 
 
 // Define the JWT payload type
@@ -70,9 +69,9 @@ const ContractSection = ({ userRole, token }) => {
 
         if (companyId) fetchContract(); // Fetch contract only if companyId exists
 
-        socket.on('contract_updated', (updatedContract) => {
-            if (isMounted) setContract(updatedContract);
-        });
+            socket.on('contract_updated', (updatedContract) => {
+                if (isMounted) setContract(updatedContract);
+            });
 
         return () => {
             isMounted = false;

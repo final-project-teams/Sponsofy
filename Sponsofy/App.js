@@ -17,6 +17,9 @@ import SplashScreen from "./src/screens/SplashScreen"
 import WelcomeScreen from "./src/screens/WelcomeScreen"
 import UserTypeScreen from "./src/screens/UserTypeScreen"
 import SocialAccountsScreen from "./src/screens/SocialAccountsScreen"
+import ChatListScreen from './src/screens/ChatListScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+
 import AddDeal from "./src/screens/AddDeal"
 import { ThemeProvider } from './src/theme/ThemeContext';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
@@ -48,6 +51,8 @@ const App = () => {
           <Stack.Screen name="AddDeal" component={AddDeal} options={{ headerShown: false }} />
           {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
           <Stack.Screen name="DealDetails" component={DealDetailsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
         <FlashMessage position="top" />
           </NavigationContainer>

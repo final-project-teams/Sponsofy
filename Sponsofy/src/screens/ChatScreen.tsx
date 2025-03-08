@@ -11,71 +11,71 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
-import io from 'socket.io-client';
+import { useTheme } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { socketService } from '../services/chat/socketService';
+import { chatService } from '../services/api';
 
-const ChatComponent = ({ serverUrl = 'http://192.168.119.201:3000', username = 'Username' }) => {
-  const [socket, setSocket] = useState(null);
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]);
-  const scrollViewRef = useRef<ScrollView>(null);
+interface Message {
+  id: string;
+  content: string;
+  UserId: string;
+  created_at: string;
+}
+
+const ChatScreen = ({ route }) => {
+  const { colors } = useTheme();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const roomId =  '1';
+  const currentUserId = '1'; // Replace with actual user ID from your auth system
 
   useEffect(() => {
-    // Initialize socket
-    const newSocket = io(serverUrl);
-    
-    newSocket.on('connect', () => {
-      console.log('Connected to socket server with ID:', newSocket.id);
-    });
-    
-    newSocket.on('message', (data) => {
-      setMessages(prevMessages => [
-        ...prevMessages, 
-        { 
-          id: Date.now().toString(),
-          text: data.text,
-          sent: data.userId !== newSocket.id,
-          isImage: data.isImage || false,
-          timestamp: new Date(data.timestamp)
-        }
-      ]);
-    });
-    
-    setSocket(newSocket);
-    
+    loadMessages();
+    setupSocketConnection();
+
     return () => {
-      newSocket.disconnect();
+      socketService.disconnect();
     };
-  }, [serverUrl]);
+  }, [roomId]);
 
-  const sendMessage = () => {
-    if (socket && message.trim()) {
-      const messageData = {
-        text: message,
-        userId: socket.id,
-        timestamp: new Date().toISOString(),
-        isImage: false
-      };
+  const loadMessages = async () => {
+    try {
+      setIsLoading(true);
+      const response = await chatService.getMessages(roomId);
+      if (response && Array.isArray(response)) {
+        setMessages(response);
+      } else {
+        console.error('Invalid response format:', response);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      // Send to server
-      socket.emit('message', messageData);
-      
-      // Log the message sent
-      console.log('Message sent:', messageData);
-      
-      // Add to local state (as a sent message)
-      setMessages(prevMessages => [
-        ...prevMessages,
-        {
-          id: Date.now().toString(),
-          text: message,
-          sent: true,
-          isImage: false,
-          timestamp: new Date()
-        }
-      ]);
-      
-      setMessage('');
+  const setupSocketConnection = () => {
+    // socketService.connect(/* your auth token */);
+    socketService.joinRoom(roomId);
+    socketService.onReceiveMessage((message) => {
+      setMessages(prev => [...prev, message]);
+    });
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    try {
+      socketService.sendMessage({
+        roomId:"1",
+        message: newMessage,
+        userId: currentUserId
+      });
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   };
 
@@ -120,13 +120,8 @@ const ChatComponent = ({ serverUrl = 'http://192.168.119.201:3000', username = '
         <TouchableOpacity style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{username.charAt(0)}</Text>
-          </View>
-          <Text style={styles.username}>{username}</Text>
-        </View>
-        <View style={styles.headerButtons}>
+        <Text style={[styles.username, { color: colors.text }]}>User</Text>
+        <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="call" size={20} color="white" />
           </TouchableOpacity>
