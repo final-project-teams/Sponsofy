@@ -6,8 +6,10 @@ export interface ApiResponse<T> {
   
   export interface Message {
     id: string;
+    User: User;
     text: string;
-    senderId: string;
+    RoomId: string;
+    UserId: string;
     receiverId: string;
     timestamp: string;
     attachments?: Attachment[];

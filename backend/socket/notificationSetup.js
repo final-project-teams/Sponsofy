@@ -1,5 +1,6 @@
-module.export.setupContract= (io) => {
-  io.on("connection", (socket) => {
+module.exports.setupNotifications = (io) => {
+  const notificationIo = io.of("/notification");
+  notificationIo.on("connection", (socket) => {
     console.log("User connected to notification namespace");
 
     socket.on("subscribe_notifications", (userId) => {
@@ -8,9 +9,10 @@ module.export.setupContract= (io) => {
     });
 
     socket.on("send_notification", (data) => {
-      io.to(data.userId).emit("new_notification", {
+      notificationIo.to(data.userId).emit("new_notification", {
         message: data.message,
         type: data.type,
+        link: data.link,
         timestamp: new Date(),
       });
     });
