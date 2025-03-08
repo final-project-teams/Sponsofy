@@ -64,12 +64,6 @@ const updateCompany = async (req, res) => {
 };
 
 
-
-
-
-
-
-
 module.exports = {
   getAllCompanies,
   getCompanyById,
