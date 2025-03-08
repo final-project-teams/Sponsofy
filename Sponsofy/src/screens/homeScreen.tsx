@@ -16,7 +16,9 @@ import { contractService, searchService } from "../services/api";
 import ChatScreen from './ChatScreen';
 import BottomNavBar from '../components/BottomNavBar';
 import Header from '../components/Header';
+
 import { RootStackParamList, HomeScreenNavigationProp } from "../navigation/types"; // Adjust the path as necessary
+
 import { RouteProp } from '@react-navigation/native';
 
 const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteProp<RootStackParamList, 'Home'> }> = ({ navigation }) => {
