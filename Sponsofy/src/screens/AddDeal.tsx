@@ -281,7 +281,7 @@ const AddDeal = () => {
             };
 
             // Make the API call with the token in headers
-            const response = await api.post("/addDeal", dealData, {
+            const response = await api.post("/contract", dealData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'

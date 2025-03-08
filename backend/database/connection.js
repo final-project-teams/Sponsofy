@@ -1,6 +1,9 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 const config = require('./config');
+const media = require('./models/media');
+const term = require('./models/term');
+const company = require('./models/company');
 
 const sequelize = new Sequelize(config.development.database, config.development.username, config.development.password, {
     host: config.development.host,
@@ -72,6 +75,15 @@ Criteria.belongsToMany(Contract, {
 Company.hasMany(Media);
 Media.belongsTo(Company);
 
+Term.hasMany(Media);
+Media.belongsTo(Term);
+
+Term.hasMany(Post);
+Post.belongsTo(Term);
+
+Message.hasMany(Media);
+Media.belongsTo(Message);
+
 // ContentCreator -> Media (Many-to-One, Portfolio)
 ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
 Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
@@ -120,13 +132,14 @@ Message.belongsTo(Room);
 User.hasMany(Message);
 Message.belongsTo(User);
 
+
 // ContentCreator can participate in many rooms (many-to-many relationship with room)
-ContentCreator.belongsTo(Room);
-Room.belongsTo(ContentCreator);
+// ContentCreator.belongsToMany(Company, {as:"ContentCreatorRoom", through: Room });
+// Company.belongsToMany(ContentCreator, {as:"CompanyRoom", through: Room });
+
 
 // Company can participate in many rooms (many-to-many relationship with room)
-Company.belongsTo(Room);
-Room.belongsTo(Company);
+
 
 Criteria.hasMany(SubCriteria);
 SubCriteria.belongsTo(Criteria);
@@ -151,11 +164,11 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ force:true }).then(() => {
-//   console.log('Database & tables have been synchronized!');
-// }).catch((error) => {
-//   console.error('Error syncing database:', error);
-// });
+sequelize.sync({ force:true }).then(() => {
+  console.log('Database & tables have been synchronized!');
+}).catch((error) => {
+  console.error('Error syncing database:', error);
+});
 
 // Export models and sequelize instance
 

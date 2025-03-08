@@ -4,10 +4,13 @@ module.exports = {
   addContract: async (req, res) => {
     try {
       const decoded = req.user;
+      console.log("decodedaaa", decoded);
+      
       const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList } = req.body;
 
       const company = await Company.findOne({ where: { userId: decoded.userId } });
-
+      console.log("companyaaaa", company);
+      
       const contract = await Contract.create({
         title,
         description,
