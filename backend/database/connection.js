@@ -127,12 +127,22 @@ User.hasMany(Notification);
 Notification.belongsTo(User);
 
 // A room has many messages
-Room.hasMany(Message);
-Message.belongsTo(Room);
+Room.hasMany(Message, {
+  foreignKey: 'roomId',
+  as: 'messages'
+});
+Message.belongsTo(Room, {
+  foreignKey: 'roomId'
+});
 
-// A message belongs to a user (either content creator or company)
-User.hasMany(Message);
-Message.belongsTo(User);
+// A message belongs to a user
+User.hasMany(Message, {
+  foreignKey: 'userId',
+  as: 'messages'
+});
+Message.belongsTo(User, {
+  foreignKey: 'userId'
+});
 
 // Room associations
 Room.belongsToMany(User, {
