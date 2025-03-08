@@ -41,13 +41,12 @@ Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
 Media.hasMany(ContentCreator, { foreignKey: 'profilePictureId' });
 // ContentCreator -> DealReques  (Many-to-Many)
-ContentCreator.belongsToMany(Deal,{through:DealRequest});
-Deal.belongsToMany(ContentCreator,{through:DealRequest});
+ContentCreator.belongsToMany(Deal,{through:DealRequest,as:'DealRequests'});
+Deal.belongsToMany(ContentCreator,{through:DealRequest,as:'ContentCreators'});
 
 // ContentCreator -> Deal (One-to-Many)
-ContentCreator.hasMany(Deal);
-Deal.belongsTo(ContentCreator);
-
+ContentCreator.hasMany(Deal,{as:'ContentCreatorDeals',foreignKey:'contentCreatorId'});
+Deal.belongsTo(ContentCreator,{as:'ContentCreatorDeals',foreignKey:'contentCreatorId'});
 
 // Company -> Deal (One-to-Many)
 Company.hasMany(Contract);
@@ -75,14 +74,13 @@ Criteria.belongsToMany(Contract, {
   as: 'contracts', // Alias for the association
 });
 
-
 // Company -> Media (One-to-Many)
 Company.hasMany(Media);
 Media.belongsTo(Company);
 
 // ContentCreator -> Media (Many-to-One, Portfolio)
 ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
-Media.belongsTo(ContentCreator, { foreignKey: 'contentCreatorId' });
+Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
 Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });

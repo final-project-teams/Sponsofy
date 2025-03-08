@@ -1,4 +1,4 @@
-module.export.setupContract= (io) => {
+module.exports.setupContract= (io) => {
   io.on("connection", (socket) => {
     console.log("User connected to notification namespace");
 
@@ -20,4 +20,3 @@ module.export.setupContract= (io) => {
     });
   });
 };
-

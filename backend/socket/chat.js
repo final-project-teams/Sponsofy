@@ -1,4 +1,4 @@
-export const setupChatSocket = (io) => {
+module.exports.chatSetup = (io) => {
   io.on("connection", (socket) => {
     console.log("User connected to chat namespace");
 

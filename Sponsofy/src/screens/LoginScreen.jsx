@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation, route }) => {
   };
 
   const handleSocialLogin = () => {
-    navigation.navigate("SocialAccounts");
+    navigation.navigate("Home");
   };
 
   return (
