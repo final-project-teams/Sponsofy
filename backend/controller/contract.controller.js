@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria } = require("../database/connection");
+const { Contract, Company, Criteria, Term } = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -49,4 +49,42 @@ module.exports = {
       });
     }
   },
+
+  getContractsForCurrentCompany: async (req, res) => {
+    try {
+      const decoded = req.user;
+
+      // Find the company associated with the user
+      const company = await Company.findOne({ where: { userId: decoded.userId } });
+
+      if (!company) {
+        return res.status(404).json({
+          success: false,
+          message: 'Company not found'
+        });
+      }
+
+      // Retrieve all contracts associated with the company, including criteria and terms
+      const contracts = await Contract.findAll({
+        where: { CompanyId: company.id },
+        include: [
+          { model: Criteria, as: 'criteria' },
+      
+        ]
+      });
+
+      res.status(200).json({
+        success: true,
+        contracts
+      });
+
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching contracts',
+        error: error.message
+      });
+    }
+  }
 };
