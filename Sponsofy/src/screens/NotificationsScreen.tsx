@@ -9,7 +9,7 @@ const NotificationsScreen = () => {
 
   useEffect(() => {
     const connectSocket = async () => {
-      const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem('userToken');
       if (!token) {
         console.error('Token not found');
         return;

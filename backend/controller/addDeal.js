@@ -1,4 +1,4 @@
-const { Deal, Term, Contract, Company, ContentCreator } = require("../database/connection");
+const { Deal, Term, Contract, Company, ContentCreator ,pre_Term} = require("../database/connection");
 const jwt = require('jsonwebtoken');
 
 module.exports = {
@@ -61,38 +61,48 @@ module.exports = {
     try {
       const { dealId } = req.params;
 
-      const deal = await Deal.findOne({
+      const deal = await Contract.findOne({
         where: { id: dealId },
-        include: [
-          {
-            model: Contract,
+       
+            
             include: [
               {
                 model: Company,
-               
+                attributes: ['id','name', 'industry', 'codeFiscal','category'] // Ensure these are the correct field names
               }
-            ]
-          },
-          {
-            model: ContentCreator,
-            as: 'ContentCreatorDeals'
-          },
-          {
-            model: Term
+             
+            ],
+            attributes: ['id','title', 'description', 'start_date', 'end_date', 'status', 'payment_terms', 'rank']
           }
-        ]
-      });
+        );
+        
+          
+  
+          
+      
+
+    
+            if (deal.id) {
+              const terms = await pre_Term.findAll({
+                where: { ContractId: deal.id },
+                attributes: ['id','title', 'description', 'status']
+              });
+      
+              // Adding terms to the deal object
+              deal.dataValues.Terms = terms;
+            }
+          
 
       if (!deal) {
         return res.status(404).json({
           success: false,
-          message: 'Deal not found'
+          message: 'term not found'
         });
       }
-
+      
       res.status(200).json({
         success: true,
-        deal
+       deal
       });
 
     } catch (error) {

@@ -48,7 +48,7 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
-);
+); 
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contractRoutes);
