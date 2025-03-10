@@ -91,8 +91,8 @@ Message.hasMany(Media);
 Media.belongsTo(Message);
 
 // ContentCreator -> Media (Many-to-One, Portfolio)
-ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
-Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
+// ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+// Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
 Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
@@ -179,7 +179,7 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ force:true }).then(() => {
+// sequelize.sync({ alter:true }).then(() => {
 //   console.log('Database & tables have been synchronized!');
 // }).catch((error) => {
 //   console.error('Error syncing database:', error);

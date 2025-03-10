@@ -103,8 +103,63 @@ module.exports = {
         error: error.message
       });
     }
+  },
+  
+  getDealsByContentCreator: async (req, res) => {
+    try {
+      const decoded = req.user;
+      
+      // Find the content creator associated with the logged-in user
+      const contentCreator = await ContentCreator.findOne({ 
+        where: { userId: decoded.userId } 
+      });
+      
+      if (!contentCreator) {
+        return res.status(404).json({
+          success: false,
+          message: 'Content creator profile not found'
+        });
+      }
+      
+      // Find all deals associated with this content creator
+      const deals = await Deal.findAll({
+        where: { contentCreatorId: contentCreator.id },
+        include: [
+          {
+            model: Contract,
+            include: [
+              {
+                model: Company,
+              }
+            ]
+          },
+          {
+            model: Term
+          }
+        ],
+        order: [['createdAt', 'DESC']] // Most recent deals first
+      });
+
+      
+      
+      res.status(200).json({
+        success: true,
+        deals
+      });
+      
+    } catch (error) {
+      console.error("Error fetching deals:", error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching deals',
+        error: error.message
+      });
+    }
   }
-};
+}
+
+
+
 
 // Sample request body for creating a deal
 /*

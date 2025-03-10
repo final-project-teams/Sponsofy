@@ -13,7 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { contractService, searchService } from "../services/api";
-import ChatScreen from './ChatScreen';
 import BottomNavBar from '../components/BottomNavBar';
 import Header from '../components/Header';
 

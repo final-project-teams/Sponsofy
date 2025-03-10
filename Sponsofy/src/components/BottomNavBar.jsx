@@ -35,7 +35,7 @@ const styles = {
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'center' as 'center',
+    alignItems: 'center' ,
     backgroundColor: '#111',
     paddingVertical: 10,
     borderTopWidth: 0.5,

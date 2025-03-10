@@ -284,25 +284,82 @@ gettermsbycontractid : async (req, res) => {
     res.status(500).json({ message: 'Error fetching terms', error });
   }
 },
-updateTerm : async (req, res) => {
-  const { id, text } = req.body;
-  const term = terms.find((t) => t.id === id);
-  if (!term) {
-    return res.status(404).json({ message: 'Term not found' });
+updateTerm: async (req, res) => {
+  try {
+    const { contractId, termId } = req.params;
+    const { title, description } = req.body;
+    
+    console.log('Updating term with:', {
+      contractId,
+      termId,
+      updates: { title, description }
+    });
+
+    // First verify the term exists
+    const term = await Term.findOne({
+      where: { 
+        id: termId,
+        ContractId: contractId 
+      }
+    });
+
+    if (!term) {
+      console.log('Term not found:', { termId, contractId });
+      return res.status(404).json({
+        success: false,
+        message: 'Term not found'
+      });
+    }
+
+    // Perform the update
+    await term.update({
+      title,
+      description
+    });
+
+    // Fetch the fresh term to confirm update
+    const updatedTerm = await Term.findOne({
+      where: { 
+        id: termId,
+        ContractId: contractId 
+      }
+    });
+
+    console.log('Updated term:', updatedTerm.toJSON());
+
+    return res.json({
+      success: true,
+      message: 'Term updated successfully',
+      term: updatedTerm
+    });
+
+  } catch (error) {
+    console.error('Error in updateTerm:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update term',
+      error: error.message
+    });
   }
-  term.title = text;
-  await term.save();
-  res.json({ message: 'Term updated', term });
 },
-acceptTerm : async (req, res) => {
-  const { id } = req.params;
-  const term = terms.find((t) => t.id === id);
-  if (!term) {
-    return res.status(404).json({ message: 'Term not found' });
+acceptTerm: async (req, res) => {
+  try {
+    const { termId } = req.params;
+    const { userRole } = req.body;
+    
+    const term = await Term.findByPk(termId);
+    if (!term) {
+      return res.status(404).json({ message: 'Term not found' });
+    }
+
+    term[userRole === 'company' ? 'companyAccepted' : 'influencerAccepted'] = true;
+    await term.save();
+
+    res.json({ message: 'Term accepted', term });
+  } catch (error) {
+    console.error('Error accepting term:', error);
+    res.status(500).json({ message: 'Error accepting term', error });
   }
-  term.companyAccepted = true;
-  await term.save();
-  res.json({ message: 'Term accepted', term });
 },
 getContractByContentCreatorId: async (req, res) => {
   try {

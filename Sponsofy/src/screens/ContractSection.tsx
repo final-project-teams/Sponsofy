@@ -58,13 +58,6 @@ const SponsorshipTerms = () => {
     fetchUserAndContract();
   }, []);
 
-  // This effect will run when the contract is loaded, ensuring we're ready for step 3
-  useEffect(() => {
-    if (contract) {
-      fetchContractTerms();
-    }
-  }, [contract]);
-
   const fetchUserAndContract = async () => {
     try {
       setLoading(true);
@@ -74,22 +67,28 @@ const SponsorshipTerms = () => {
       }
 
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
-      setUserRole(decodedToken.role as 'company' | 'influencer');
+      console.log('User info:', decodedToken);
 
-      // Get contracts based on user role
       let contracts;
       if (decodedToken.role === 'company') {
         contracts = await contractService.getContractByCompanyId(decodedToken.userId);
-      } else if (decodedToken.role === 'influencer') {
+        setUserRole('company');
+      } else if (decodedToken.role === 'content_creator') {
         contracts = await contractService.getContractByContentCreatorId(decodedToken.userId);
-      }
-      
-      if (!contracts || contracts.length === 0) {
-        throw new Error('No contracts found');
+        setUserRole('influencer');
+      } else {
+        throw new Error(`Invalid role: ${decodedToken.role}`);
       }
 
-      // Set the first contract
-      setContract(contracts[0]);
+      if (contracts?.length > 0) {
+        setContract(contracts[0]);
+        // Fetch terms immediately after setting contract
+        const contractTerms = await contractService.gettermsbycontractid(contracts[0].id);
+        if (Array.isArray(contractTerms)) {
+          setTerms(contractTerms);
+        }
+      }
+
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -98,44 +97,15 @@ const SponsorshipTerms = () => {
     }
   };
 
-  const fetchContractTerms = async () => {
-    try {
-      if (!contract) {
-        console.log('No contract available');
-        return;
-      }
-      
-      console.log('Fetching terms for contract:', contract.id);
-      const contractTerms = await contractService.gettermsbycontractid(contract.id);
-      console.log('Received terms:', contractTerms);
-      
-      if (Array.isArray(contractTerms)) {
-        setTerms(contractTerms);
-      } else {
-        console.error('Terms received is not an array:', contractTerms);
-        setTerms([]);
-      }
-    } catch (err) {
-      console.error('Error fetching terms:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch terms');
-      setTerms([]);
-    }
-  };
-
   const handleAccept = async (termId: number) => {
     try {
       if (!contract || !userRole) return;
-
-      const update = {
-        [userRole === 'company' ? 'companyAccepted' : 'influencerAccepted']: true
-      };
 
       await contractService.acceptTerm(contract.id, termId, userRole);
       console.log("Term accepted:", termId);
       console.log("User role:", userRole);
 
-
-      fetchContractTerms();
+      ;
     } catch (err) {
       Alert.alert('Error', 'Failed to accept term');
     }
@@ -159,41 +129,43 @@ const SponsorshipTerms = () => {
 
   const handleUpdateTerm = async (termId: number) => {
     try {
-      if (!contract) return;
+      if (!contract) {
+        throw new Error('No contract found');
+      }
 
-      await contractService.updateTerm(contract.id, termId, {
+      const updates = {
         title: editedTitle,
         description: editedDescription
-      });
-      
+      };
 
- 
-      
-      // Reset edit state
-      setEditingTermId(null);
-      setEditedTitle('');
-      setEditedDescription('');
-      
-      // Immediately update the local state
-      setTerms(terms.map(term => {
-        if (term.id === termId) {
-          return {
-            ...term,
-            title: editedTitle,
-            description: editedDescription
-          };
-        }
-        return term;
-      }));
+      console.log('Attempting to update term:', { termId, updates });
 
-      // Then fetch fresh data
-      await fetchContractTerms();
+      const response = await contractService.updateTerm(contract.id, termId, updates);
+
+      if (response.success && response.term) {
+        // Update the local state with the server response
+        setTerms(prevTerms => prevTerms.map(term => 
+          term.id === termId ? response.term : term
+        ));
+
+        // Reset edit state
+        setEditingTermId(null);
+        setEditedTitle('');
+        setEditedDescription('');
+
+        console.log('Term updated successfully');
+      } else {
+        throw new Error('Failed to update term');
+      }
+
     } catch (error) {
       console.error('Error updating term:', error);
-      Alert.alert('Error', 'Failed to update term');
+      Alert.alert(
+        'Error',
+        'Failed to update term. Please try again.'
+      );
     }
   };
-  
   const renderAcceptButtons = (term: ContractTerm) => {
     if (isTermFullyAccepted(term)) {
       return (
@@ -328,17 +300,50 @@ const SponsorshipTerms = () => {
             )}
           </View>
         );
-      default:
+      case 4:
         return (
           <View style={styles.termsList}>
-            {/* Contract ID */}
+            <Text style={styles.sectionTitle}>Payment Terms</Text>
+            
+            {/* Payment Amount */}
             <View style={styles.termItem}>
-              <Text style={styles.termTitle}>Contract ID</Text>
+              <Text style={styles.termTitle}>Payment Amount</Text>
               <View style={styles.termContent}>
-                <Text style={styles.termDescription}>{contract?.id}</Text>
+                <Text style={styles.termDescription}>$1,000.00</Text>
               </View>
             </View>
 
+            {/* Payment Schedule */}
+            <View style={styles.termItem}>
+              <Text style={styles.termTitle}>Payment Schedule</Text>
+              <View style={styles.termContent}>
+                <Text style={styles.termDescription}>50% upfront, 50% upon completion</Text>
+              </View>
+            </View>
+
+            {/* Payment Method */}
+            <View style={styles.termItem}>
+              <Text style={styles.termTitle}>Payment Method</Text>
+              <View style={styles.termContent}>
+                <Text style={styles.termDescription}>Bank Transfer</Text>
+              </View>
+            </View>
+
+            {/* Additional Terms */}
+            <View style={styles.termItem}>
+              <Text style={styles.termTitle}>Additional Terms</Text>
+              <View style={styles.termContent}>
+                <Text style={styles.termDescription}>
+                  Payment will be processed within 7 business days of milestone completion.
+                  All fees and taxes are responsibility of the content creator.
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      default:
+        return (
+          <View style={styles.termsList}>
             {/* Title */}
             <View style={styles.termItem}>
               <Text style={styles.termTitle}>Title</Text>
@@ -360,7 +365,7 @@ const SponsorshipTerms = () => {
               <Text style={styles.termTitle}>Start Date</Text>
               <View style={styles.termContent}>
                 <Text style={styles.termDescription}>
-                  {new Date(contract?.start_date).toLocaleDateString()}
+                  {new Date(contract?.start_date || '').toLocaleDateString()}
                 </Text>
               </View>
             </View>
@@ -370,7 +375,7 @@ const SponsorshipTerms = () => {
               <Text style={styles.termTitle}>End Date</Text>
               <View style={styles.termContent}>
                 <Text style={styles.termDescription}>
-                  {new Date(contract?.end_date).toLocaleDateString()}
+                  {new Date(contract?.end_date || '').toLocaleDateString()}
                 </Text>
               </View>
             </View>
@@ -429,6 +434,8 @@ const SponsorshipTerms = () => {
     }
   };
 
+  const stepLabels = ['Contract', 'Review', 'Terms', 'Payment'];
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -445,20 +452,37 @@ const SponsorshipTerms = () => {
           <View style={styles.progressBar}>
             {steps.map((step, index) => (
               <React.Fragment key={step}>
-                <View 
-                  style={[
-                    styles.stepCircle, 
-                    step <= currentStep ? styles.activeStep : styles.inactiveStep
-                  ]}
-                >
-                  <Text style={styles.stepText}>{step}</Text>
+                <View style={{ alignItems: 'center' }}>
+                  <View 
+                    style={[
+                      styles.stepCircle,
+                      step < currentStep && styles.completedStep,
+                      step === currentStep && styles.activeStep,
+                    ]}
+                  >
+                    {step < currentStep ? (
+                      <MaterialIcons name="check" size={24} color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.stepText}>{step}</Text>
+                    )}
+                  </View>
+                  <Text 
+                    style={[
+                      styles.stepLabel,
+                      step === currentStep && styles.activeLabel,
+                      step < currentStep && styles.completedLabel,
+                    ]}
+                  >
+                    {stepLabels[index]}
+                  </Text>
                 </View>
                 
                 {index < steps.length - 1 && (
                   <View 
                     style={[
-                      styles.connector, 
-                      step < currentStep ? styles.activeConnector : styles.inactiveConnector
+                      styles.connector,
+                      step < currentStep && styles.completedConnector,
+                      step === currentStep && styles.activeConnector,
                     ]}
                   />
                 )}
@@ -499,20 +523,26 @@ const SponsorshipTerms = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#0A0A0A', // Darker background for better contrast
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
+    backgroundColor: '#111111',
     borderBottomWidth: 1,
-    borderBottomColor: '#1F2937',
+    borderBottomColor: '#222222',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    elevation: 5,
   },
   headerTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -524,46 +554,81 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 20,
-    backgroundColor: '#111827',
+    paddingVertical: 24,
+    backgroundColor: '#111111',
+    marginBottom: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   progressBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative',
+    paddingVertical: 8,
   },
   stepCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: '#2D2D2D',
+    borderWidth: 3,
+    borderColor: '#3D3D3D',
+    zIndex: 2,
   },
   activeStep: {
-    backgroundColor: '#9333EA', // purple-600 equivalent
+    backgroundColor: '#8B5CF6',
+    borderColor: '#A78BFA',
+    transform: [{ scale: 1.1 }],
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  inactiveStep: {
-    backgroundColor: '#374151', // gray-700 equivalent
+  completedStep: {
+    backgroundColor: '#059669',
+    borderColor: '#34D399',
   },
   stepText: {
-    color: 'white',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  stepLabel: {
+    position: 'absolute',
+    top: 52,
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '500',
+    width: 80,
+    textAlign: 'center',
+    marginLeft: -20,
+  },
+  activeLabel: {
+    color: '#A78BFA',
     fontWeight: '600',
   },
+  completedLabel: {
+    color: '#34D399',
+  },
   connector: {
+    height: 3,
     flex: 1,
-    height: 4,
-    marginHorizontal: 4,
+    marginHorizontal: -4,
+    backgroundColor: '#2D2D2D',
+    zIndex: 1,
   },
   activeConnector: {
-    backgroundColor: '#9333EA', // purple-600 equivalent
+    backgroundColor: '#8B5CF6',
   },
-  inactiveConnector: {
-    backgroundColor: '#374151', // gray-700 equivalent
+  completedConnector: {
+    backgroundColor: '#059669',
   },
   termsContainer: {
     paddingHorizontal: 24,
@@ -580,58 +645,70 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   termItem: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 16,
+    backgroundColor: '#171717',
+    borderRadius: 16,
+    marginBottom: 20,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#222222',
   },
   termTitle: {
-    color: 'white',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: '600',
+    marginBottom: 12,
+    letterSpacing: 0.5,
   },
   termContent: {
-    backgroundColor: '#1F2937', // gray-800 equivalent
+    backgroundColor: '#1F1F1F',
     padding: 16,
-    borderRadius: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
   },
   termDescription: {
-    color: 'white',
+    color: '#E5E5E5',
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.3,
   },
   editIcon: {
-    backgroundColor: '#374151',
-    padding: 8,
-    borderRadius: 20,
+    backgroundColor: '#2D2D2D',
+    padding: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   buttonContainer: {
     padding: 24,
     backgroundColor: '#000000', // Match container background
   },
   continueButton: {
-    backgroundColor: '#9333EA',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#8B5CF6',
+    padding: 18,
+    borderRadius: 14,
     alignItems: 'center',
     marginHorizontal: 24,
     marginBottom: 24,
-    shadowColor: '#9333EA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 10,
   },
   buttonText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 18,
+    letterSpacing: 0.5,
   },
   acceptButtonsContainer: {
     flexDirection: 'row',
@@ -641,13 +718,18 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     flex: 1,
-    backgroundColor: '#374151',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#2D2D2D',
+    padding: 14,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   acceptedButton: {
     backgroundColor: '#059669',
@@ -706,22 +788,27 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
   },
   sectionTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+    letterSpacing: 0.5,
   },
   acceptanceStatus: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: '#374151',
-    borderRadius: 4,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#1F1F1F',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
   },
   statusText: {
-    color: '#D1D5DB',
-    fontSize: 12,
+    color: '#E5E5E5',
+    fontSize: 14,
+    fontWeight: '500',
   },
   noTermsText: {
     color: 'white',

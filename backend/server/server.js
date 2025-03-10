@@ -25,9 +25,8 @@ const dealRouter = require("../router/deal.router");
 const { create } = require('domain');
 
 
-
-
-
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
+console.log(path.join(__dirname, 'uploads'))
 
 
 
@@ -46,7 +45,7 @@ async function initializeDatabase() {
 
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'http://192.168.1.10:5173'], // Allowed origins
+    origin: '*', // Allowed origins
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

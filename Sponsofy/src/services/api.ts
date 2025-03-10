@@ -111,8 +111,9 @@ getContractByCompanyId: async (userId: number ) => {
 
   gettermsbycontractid: async (contractId: number | string) => {
     try {
+      console.log('Making API request for contract ID:', contractId);
       const response = await api.get(`/contract/${contractId}/terms`);
-      console.log('Terms API response:', response.data);
+      console.log('Full API response:', response);
       return response.data;
     } catch (error) {
       console.error('Error in gettermsbycontractid:', error);
@@ -121,9 +122,19 @@ getContractByCompanyId: async (userId: number ) => {
   },
 updateTerm: async (contractId: number | string, termId: number | string, updates: { title: string, description: string }) => {
   try {
-    const response = await api.put(`/contract/${contractId}/terms/${termId}`, updates);
+    console.log('Sending update request:', { contractId, termId, updates });
+    
+    const response = await api.put(`/contract/${contractId}/terms/${termId}/update`, updates);
+    
+    console.log('Server response:', response.data);
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to update term');
+    }
+    
     return response.data;
   } catch (error) {
+    console.error('Error in updateTerm:', error);
     throw error;
   }
 },
@@ -137,9 +148,13 @@ acceptTerm: async (contractId: number | string, termId: number | string, userRol
 },
 getContractByContentCreatorId: async (userId: number) => {
   try {
+    console.log('Fetching contracts for content creator with ID:', userId);
+    // Update to match your backend route
     const response = await api.get(`/contract/creator/${userId}`);
+    console.log('Content creator contracts response:', response.data);
     return response.data;
   } catch (error) {
+    console.error('Error fetching content creator contracts:', error);
     throw error;
   }
 }
