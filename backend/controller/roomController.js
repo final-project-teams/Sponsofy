@@ -84,26 +84,22 @@ const roomController = {
           {
             model: User,
             as: 'participants',
-            attributes: ['id', 'username', 'first_name', 'last_name']
+            where: {
+              id: {
+                [Op.ne]: userId // Exclude current user
+              }
+            },
+            attributes: ['id', 'username']
           },
           {
             model: Message,
             as: 'messages',
-            include: [{
-              model: User,
-              as: 'sender',
-              attributes: ['id', 'username', 'first_name', 'last_name']
-            }],
+            limit: 1,
             order: [['created_at', 'DESC']],
-            limit: 1 // Get only the latest message for each room
+            attributes: ['content', 'created_at']
           }
         ],
-        where: {
-          '$participants.id$': userId
-        },
-        order: [
-          ['created_at', 'DESC'] // Sort rooms by creation date, newest first
-        ]
+        order: [['created_at', 'DESC']]
       });
 
       res.status(200).json(rooms);

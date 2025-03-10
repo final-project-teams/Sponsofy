@@ -26,6 +26,8 @@ import { ThemeProvider } from './src/theme/ThemeContext';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import { AuthProvider } from './src/context/AuthContext'
 import { SocketProvider } from './src/context/socketContext';
+import ChatRoomScreen from './src/screens/ChatListScreen';
+
 const lightTheme=lightColors
 const Stack = createStackNavigator();
 
@@ -53,7 +55,8 @@ const App = () => {
           {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
           <Stack.Screen name="DealDetails" component={DealDetailsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+              {/* <Stack.Screen name="ChatRoom" component={ChatRoomScreen} options={{ headerShown: false }} /> */}
         </Stack.Navigator>
         <FlashMessage position="top" />
           </NavigationContainer>

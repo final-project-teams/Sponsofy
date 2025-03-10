@@ -10,7 +10,7 @@ router.use(authenticateJWT);
 router.post('/', roomController.createRoom);
 
 // Get all rooms for the authenticated user
-router.get('/my-rooms', roomController.getUserRooms);
+router.get('/user', authenticateJWT, roomController.getUserRooms);
 
 // Get specific room by ID
 router.get('/:roomId', roomController.getRoomById);

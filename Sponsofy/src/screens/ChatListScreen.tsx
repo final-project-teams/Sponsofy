@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,81 +6,76 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAuth } from '../context/AuthContext';
+import api from '../config/axios';
 
 const ChatListScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const chats = [
-    { id: '1', username: 'hama', lastMessage: 'baatour' },
-    { id: '2', username: 'Username', lastMessage: 'last message' },
-    { id: '3', username: 'Username', lastMessage: 'last message' },
-    { id: '4', username: 'Username', lastMessage: 'last message' },
-    { id: '5', username: 'Username', lastMessage: 'last message' },
-    { id: '6', username: 'Username', lastMessage: 'last message' },
-  ];
+  useEffect(() => {
+    fetchChats();
+  }, []);
+
+  const fetchChats = async () => {
+    try {
+      const response = await api.get('/rooms/user');
+      setChats(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleChatPress = (roomId) => {
+    navigation.navigate('ChatScreen', { roomId });
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Sponsofy</Text>
-        <TouchableOpacity>
-          <Icon name="notifications-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.text }]}>Messages</Text>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Icon name="search" size={20} color={colors.text} style={styles.searchIcon} />
-        <Text style={[styles.searchPlaceholder, { color: colors.text }]}>Search...</Text>
-      </View>
-
-      <View style={styles.contractsSection}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Completed Contracts With</Text>
-        <View style={[styles.lockedContent, { borderColor: colors.border }]}>
-          <Icon name="lock-closed" size={24} color={colors.text} />
-          <Text style={[styles.lockText, { color: colors.text }]}>Unlock With Premium Membership</Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </View>
-
-      <View style={styles.messagesSection}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Messages</Text>
-        <ScrollView>
+      ) : (
+        <ScrollView style={styles.chatList}>
           {chats.map((chat) => (
             <TouchableOpacity
               key={chat.id}
-              style={styles.chatItem}
-              onPress={() => navigation.navigate('Chat', { roomId: chat.id })}
+              style={[styles.chatItem, { borderBottomColor: colors.border }]}
+              onPress={() => handleChatPress(chat.id)}
             >
-              <View style={styles.avatar} />
+              <View style={styles.avatarContainer}>
+                <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.avatarText}>
+                    {chat.participants[0]?.username?.charAt(0).toUpperCase() || '?'}
+                  </Text>
+                </View>
+              </View>
               <View style={styles.chatInfo}>
-                <Text style={[styles.username, { color: colors.text }]}>{chat.username}</Text>
-                <Text style={[styles.lastMessage, { color: colors.text }]}>{chat.lastMessage}</Text>
+                <Text style={[styles.username, { color: colors.text }]}>
+                  {chat.participants[0]?.username || 'Unknown User'}
+                </Text>
+                <Text style={[styles.lastMessage, { color: colors.text }]} numberOfLines={1}>
+                  {chat.messages[0]?.content || 'No messages yet'}
+                </Text>
               </View>
               <Icon name="chevron-forward" size={20} color={colors.text} />
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
-
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="home-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="search-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="add-circle-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.navItem, styles.activeNav]}>
-          <Icon name="chatbubble-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="person-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -140,21 +135,31 @@ const styles = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  avatarContainer: {
+    marginRight: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#333',
-    marginRight: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   chatInfo: {
     flex: 1,
   },
   username: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
   lastMessage: {
     fontSize: 14,
@@ -173,6 +178,14 @@ const styles = StyleSheet.create({
   activeNav: {
     backgroundColor: 'rgba(128, 0, 128, 0.1)',
     borderRadius: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatList: {
+    flex: 1,
   },
 });
 

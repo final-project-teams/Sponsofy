@@ -41,7 +41,7 @@ const ChatScreen = ({ route, navigation }) => {
   const loadMessages = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/messages/${roomId}`);
+      const response = await api.get(`/messages/room/${roomId}`);
       if (response.data) {
         setMessages(response.data);
       }
@@ -56,7 +56,7 @@ const ChatScreen = ({ route, navigation }) => {
     if (!newMessage.trim()) return;
 
     try {
-      const response = await api.post(`/messages/${roomId}`, {
+      const response = await api.post(`/messages/room/${roomId}`, {
         content: newMessage
       });
 
