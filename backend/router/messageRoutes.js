@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const messageController = require('../controller/messageController');
 const authenticateJWT = require('../auth/refreshToken');
+const upload = require('../middleware/uploadMiddleware');
 
 // All routes require authentication
 router.use(authenticateJWT);

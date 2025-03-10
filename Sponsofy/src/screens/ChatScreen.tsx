@@ -9,7 +9,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
-import { useTheme } from '@react-navigation/native';
+import { useTheme } from "../theme/ThemeContext";
 import Icon from 'react-native-vector-icons/Ionicons';
 import api from '../config/axios';
 import { useAuth } from '../context/AuthContext';
@@ -26,8 +26,19 @@ interface Message {
   created_at: string;
 }
 
+const formatMessageTime = (timestamp: string) => {
+  const now = new Date();
+  const messageDate = new Date(timestamp);
+  const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60));
+
+  if (diffMinutes < 1) return 'now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+  return messageDate.toLocaleDateString();
+};
+
 const ChatScreen = ({ route, navigation }) => {
-  const { colors } = useTheme();
+  const { currentTheme } = useTheme();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -80,27 +91,30 @@ const ChatScreen = ({ route, navigation }) => {
         ]}
       >
         {!isSentByMe && (
-          <Text style={styles.senderName}>
+          <Text style={[styles.senderName, { color: currentTheme.colors.textSecondary }]}>
             {item.sender.first_name} {item.sender.last_name}
           </Text>
         )}
         <View
           style={[
             styles.messageBubble,
-            { backgroundColor: isSentByMe ? colors.primary : colors.card }
+            {
+              backgroundColor: isSentByMe ? currentTheme.colors.primary : currentTheme.colors.surface,
+              alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
+            }
           ]}
         >
           <Text style={[
             styles.messageText,
-            { color: isSentByMe ? '#FFFFFF' : colors.text }
+            { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }
           ]}>
             {item.content}
           </Text>
-          <Text style={styles.messageTime}>
-            {new Date(item.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
+          <Text style={[
+            styles.messageTime,
+            { color: isSentByMe ? '#FFFFFF80' : currentTheme.colors.textSecondary }
+          ]}>
+            {formatMessageTime(item.created_at)}
           </Text>
         </View>
       </View>
@@ -108,24 +122,24 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color={colors.text} />
+          <Icon name="arrow-back" size={24} color={currentTheme.colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.username, { color: colors.text }]}>Chat Room</Text>
+        <Text style={[styles.username, { color: currentTheme.colors.text }]}>Chat Room</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="call" size={20} color={colors.text} />
+            <Icon name="call" size={20} color={currentTheme.colors.text} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="videocam" size={20} color={colors.text} />
+            <Icon name="videocam" size={20} color={currentTheme.colors.text} />
           </TouchableOpacity>
         </View>
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} style={styles.loader} />
       ) : (
           <FlatList
             style={styles.messagesContainer}
@@ -138,15 +152,15 @@ const ChatScreen = ({ route, navigation }) => {
 
       <View style={styles.inputContainer}>
         <TextInput
-          style={[styles.input, { color: colors.text, backgroundColor: colors.card }]}
+          style={[styles.input, { color: currentTheme.colors.text, backgroundColor: currentTheme.colors.surface }]}
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Type a message..."
-          placeholderTextColor={colors.text}
+          placeholderTextColor={currentTheme.colors.text}
           multiline
         />
         <TouchableOpacity
-          style={[styles.sendButton, { backgroundColor: colors.primary }]}
+          style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
           onPress={handleSendMessage}
         >
           <Icon name="send" size={20} color="#FFFFFF" />
@@ -200,6 +214,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     borderRadius: 16,
     padding: 12,
+    maxWidth: '100%',
   },
   messageText: {
     fontSize: 16,
