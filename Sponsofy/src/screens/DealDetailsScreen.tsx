@@ -26,16 +26,17 @@ const DealDetailsScreen = ({ route, navigation }) => {
 
   const handleAcceptDeal = async () => {
     try {
+      setLoading(false);
       console.log("Accepting deal for contract:", deal.id);
       
       // Show loading indicator or disable button here if needed
-      const response = await api.post('/addDeal/accept', {
+      const response = await api.post('/addDeal/request', {
         contractId: deal.id,
         price: deal.amount || 0 // Use the contract amount or default to 0
       });
       
       console.log("Accept deal response:", response.data);
-      
+      setLoading(false);
       if (response.data.success) {
         Alert.alert(
           "Success",
@@ -46,6 +47,7 @@ const DealDetailsScreen = ({ route, navigation }) => {
         Alert.alert("Error", response.data.message || "Failed to accept deal");
       }
     } catch (error) {
+      setLoading(false);
       console.error("Error accepting deal:", error);
       
       // More detailed error logging

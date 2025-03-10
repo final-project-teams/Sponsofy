@@ -20,7 +20,7 @@ import TermsScreen from "./src/screens/terms"
 import SocialAccountsScreen from "./src/screens/SocialAccountsScreen"
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
-
+import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 import AddDeal from "./src/screens/AddDeal"
 import { ThemeProvider } from './src/theme/ThemeContext';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
@@ -53,6 +53,7 @@ const App = () => {
           {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
           <Stack.Screen name="DealDetails" component={DealDetailsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="MyDeals" component={ContentCreatorDealsScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
         <FlashMessage position="top" />

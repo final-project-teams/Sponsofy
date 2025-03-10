@@ -8,7 +8,7 @@ const BottomNavBar = () => {
   const navigation = useNavigation();
   return (
     <View style={styles.bottomNav}>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('MyDeals')}>
         <Ionicons name="home-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ExploreScreen')}>
