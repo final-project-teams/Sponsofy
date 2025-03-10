@@ -80,14 +80,30 @@ const roomController = {
       const userId = req.user.userId;
 
       const rooms = await Room.findAll({
-        include: [{
-          model: User,
-          as: 'participants',
-          attributes: ['id', 'username', 'first_name', 'last_name']
-        }],
+        include: [
+          {
+            model: User,
+            as: 'participants',
+            attributes: ['id', 'username', 'first_name', 'last_name']
+          },
+          {
+            model: Message,
+            as: 'messages',
+            include: [{
+              model: User,
+              as: 'sender',
+              attributes: ['id', 'username', 'first_name', 'last_name']
+            }],
+            order: [['created_at', 'DESC']],
+            limit: 1 // Get only the latest message for each room
+          }
+        ],
         where: {
           '$participants.id$': userId
-        }
+        },
+        order: [
+          ['created_at', 'DESC'] // Sort rooms by creation date, newest first
+        ]
       });
 
       res.status(200).json(rooms);
@@ -112,8 +128,10 @@ const roomController = {
           },
           {
             model: Message,
+            as: 'messages',
             include: [{
               model: User,
+              as: 'sender',
               attributes: ['id', 'username', 'first_name', 'last_name']
             }],
             order: [['created_at', 'DESC']],

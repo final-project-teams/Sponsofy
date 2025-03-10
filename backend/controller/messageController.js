@@ -30,6 +30,7 @@ const messageController = {
       const messageWithUser = await Message.findByPk(message.id, {
         include: [{
           model: User,
+          as: 'sender',
           attributes: ['id', 'username', 'first_name', 'last_name']
         }]
       });
@@ -45,7 +46,6 @@ const messageController = {
     try {
       const { roomId } = req.params;
       const userId = req.user.userId;
-      const { page = 1, limit = 50 } = req.query;
 
       // Verify user is part of the room
       const room = await Room.findOne({
@@ -61,25 +61,17 @@ const messageController = {
         return res.status(403).json({ error: 'Not authorized to view messages in this room' });
       }
 
-      const offset = (page - 1) * limit;
-
-      const messages = await Message.findAndCountAll({
+      const messages = await Message.findAll({
         where: { roomId },
         include: [{
           model: User,
+          as: 'sender',
           attributes: ['id', 'username', 'first_name', 'last_name']
         }],
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
+        order: [['created_at', 'DESC']] // Most recent messages first
       });
 
-      res.status(200).json({
-        messages: messages.rows,
-        total: messages.count,
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(messages.count / limit)
-      });
+      res.status(200).json(messages);
     } catch (error) {
       console.error('Error fetching messages:', error);
       res.status(500).json({ error: 'Failed to fetch messages' });

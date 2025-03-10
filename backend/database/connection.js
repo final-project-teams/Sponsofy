@@ -132,16 +132,18 @@ Room.hasMany(Message, {
   as: 'messages'
 });
 Message.belongsTo(Room, {
-  foreignKey: 'roomId'
+  foreignKey: 'roomId',
+  as: 'room'
 });
 
 // A message belongs to a user
 User.hasMany(Message, {
   foreignKey: 'userId',
-  as: 'messages'
+  as: 'userMessages'
 });
 Message.belongsTo(User, {
-  foreignKey: 'userId'
+  foreignKey: 'userId',
+  as: 'sender'
 });
 
 // Room associations
