@@ -117,7 +117,7 @@ const LoginScreen = ({ navigation, route }) => {
       
       <View style={styles.signupContainer}>
         <Text style={styles.newToText}>new to Sponsofy? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Welcome')}>
           <Text style={styles.signUpText}>Sign Up</Text>
         </TouchableOpacity>
       </View>

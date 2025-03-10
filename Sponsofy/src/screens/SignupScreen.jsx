@@ -5,27 +5,33 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { showMessage } from 'react-native-flash-message';
-import api from '../config/axios'; // Import the axios instance
+import * as ImagePicker from 'expo-image-picker';
+import api from '../config/axios';
 import { getTheme } from "../theme/theme";
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignupScreen = ({ navigation, route }) => {
   const { role } = route.params; // Get role from navigation params
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState(''); // Added username for company
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(true); // Set dark mode to true by default
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [industry, setIndustry] = useState('');
   const [codeFiscal, setCodeFiscal] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const theme = getTheme(isDarkMode);
 
@@ -59,8 +65,25 @@ const SignupScreen = ({ navigation, route }) => {
     return true;
   };
 
-  // Handle signup for content creator
-  const handleContentCreatorSignup = async () => {
+  // Handle image picker
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  // Handle signup
+  const handleSignup = async () => {
+    if (isSubmitting) return;
+    
+    // Validate passwords
     if (!validatePasswords()) {
       showMessage({
         message: "Validation Error",
@@ -71,42 +94,21 @@ const SignupScreen = ({ navigation, route }) => {
       return;
     }
 
-    try {
-      const response = await api.post("/user/register", {
-        username: `${firstName} ${lastName}`, // Combine first and last name for username
-        email,
-        password,
-        role,
-        first_name: firstName,
-        last_name: lastName,
-      });
-
-      if (response.data) {
-        showMessage({
-          message: "Success",
-          description: "Registration successful!",
-          type: "success",
-          icon: "auto",
-        });
-        navigation.navigate("Login"); // Navigate to Login screen after successful registration
-      }
-    } catch (error) {
+    // Validate role-specific fields
+    if (role === 'content_creator' && (!firstName || !lastName)) {
       showMessage({
-        message: "Error",
-        description: error.response?.data?.message || "Registration failed",
+        message: "Validation Error",
+        description: "First name and last name are required",
         type: "danger",
         icon: "auto",
       });
-      console.error(error);
+      return;
     }
-  };
 
-  // Handle signup for company
-  const handleCompanySignup = async () => {
-    if (!validatePasswords()) {
+    if (role === 'company' && (!username || !industry || !codeFiscal)) {
       showMessage({
         message: "Validation Error",
-        description: passwordError,
+        description: "Username, industry, and code fiscal are required",
         type: "danger",
         icon: "auto",
       });
@@ -114,13 +116,40 @@ const SignupScreen = ({ navigation, route }) => {
     }
 
     try {
-      const response = await api.post("/user/register", {
-        username,
-        email,
-        password,
-        role,
-        industry,
-        codeFiscal,
+      setIsSubmitting(true);
+      
+      const formData = new FormData();
+      
+      // Common fields
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('role', role);
+      
+      // Role-specific fields
+      if (role === 'content_creator') {
+        formData.append('username', `${firstName} ${lastName}`);
+        formData.append('first_name', firstName);
+        formData.append('last_name', lastName);
+      } else {
+        formData.append('username', username);
+        formData.append('industry', industry);
+        formData.append('codeFiscal', codeFiscal);
+      }
+
+      // Add profile image if selected
+      if (profileImage) {
+        const file = {
+          uri: profileImage,
+          name: `profile-${Date.now()}.jpg`,
+          type: 'image/jpeg',
+        };
+        formData.append('media', file);
+      }
+
+      const response = await api.post("/user/register", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       if (response.data) {
@@ -130,25 +159,24 @@ const SignupScreen = ({ navigation, route }) => {
           type: "success",
           icon: "auto",
         });
-        navigation.navigate("Login"); // Navigate to Login screen after successful registration
+        
+        // Store token if returned
+        if (response.data.accessToken) {
+          await AsyncStorage.setItem('userToken', response.data.accessToken);
+        }
+        
+        navigation.navigate("Login");
       }
     } catch (error) {
+      console.error("Registration error:", error);
       showMessage({
         message: "Error",
         description: error.response?.data?.message || "Registration failed",
         type: "danger",
         icon: "auto",
       });
-      console.error(error);
-    }
-  };
-
-  // Handle signup based on role
-  const handleSignup = () => {
-    if (role === 'content_creator') {
-      handleContentCreatorSignup();
-    } else {
-      handleCompanySignup();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -168,6 +196,22 @@ const SignupScreen = ({ navigation, route }) => {
       
       <Text style={styles.title}>Get Started With</Text>
       <Text style={styles.title}>Sponsofy</Text>
+      
+      {/* Profile Image Picker */}
+      <View style={styles.imagePickerContainer}>
+        <TouchableOpacity onPress={pickImage}>
+          {profileImage ? (
+            <Image
+              source={{ uri: profileImage }}
+              style={styles.profileImage}
+            />
+          ) : (
+            <View style={styles.profileImagePlaceholder}>
+              <Ionicons name="camera" size={24} color="white" />
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
       
       <Text style={styles.signupText}>sign up with</Text>
       
@@ -325,9 +369,22 @@ const SignupScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
       
+      {/* Password Error Message */}
+      {passwordError ? (
+        <Text style={styles.errorText}>{passwordError}</Text>
+      ) : null}
+      
       {/* Continue Button */}
-      <TouchableOpacity style={styles.continueButton} onPress={handleSignup}>
-        <Text style={styles.continueButtonText}>Continue</Text>
+      <TouchableOpacity 
+        style={[styles.continueButton, isSubmitting && styles.disabledButton]} 
+        onPress={handleSignup}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <Text style={styles.continueButtonText}>Continue</Text>
+        )}
       </TouchableOpacity>
       
       {/* Login Link */}
@@ -356,6 +413,24 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  imagePickerContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   signupText: {
     color: '#666',
@@ -410,12 +485,22 @@ const styles = StyleSheet.create({
     color: 'white',
     paddingVertical: 12,
   },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 12,
+    marginTop: 5,
+    marginBottom: 10,
+  },
   continueButton: {
-    backgroundColor: '#8A2BE2', // Purple color
+    backgroundColor: '#8A2BE2',
     borderRadius: 5,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 20,
+  },
+  disabledButton: {
+    backgroundColor: '#6b21a8',
+    opacity: 0.7,
   },
   continueButtonText: {
     color: 'white',
