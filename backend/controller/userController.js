@@ -1,4 +1,4 @@
-const { User, ContentCreator, Company,Media } = require("../database/connection");
+ const { User, ContentCreator, Company,Media } = require("../database/connection");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
@@ -136,6 +136,8 @@ module.exports = {
         // Create the user first
         const user = await User.create({
           username,
+          first_name,
+          last_name,
           email: email.toLowerCase(),
           password_hash: hashPassword,
           role,
@@ -147,8 +149,8 @@ module.exports = {
         if (role === 'content_creator') {
           await ContentCreator.create({
             userId: user.id,
-            first_name: first_name || username,
-            last_name,
+            first_name: first_name,
+            last_name: last_name,
             verified: false,
             isPremium: false,
           }, { transaction: t });
@@ -211,6 +213,63 @@ module.exports = {
     }
   },
 
+
+
+  getCurrentUser: async (req, res) => {
+    try {
+      
+      const token = req.headers.authorization?.split(' ')[1];
+
+      if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Find user with associated data based on role
+      const user = await User.findOne({
+        where: { id: decoded.userId },
+        attributes: { exclude: ['password_hash'] },
+        include: [
+          {
+            model: decoded.role === 'content_creator' ? ContentCreator : Company,
+            as: decoded.role === 'content_creator' ? 'contentCreator' : 'company',
+            include: [{
+              model: Media,
+              as: decoded.role === 'content_creator' ? 'Portfolio' : undefined
+            }]
+          }
+        ]
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          verified: user.verified,
+          isPremium: user.isPremium,
+          profile: decoded.role === 'content_creator' ? user.contentCreator : user.company
+        }
+      });
+
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        return res.status(401).json({ message: 'Token expired' });
+      }
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+      console.error('Error fetching current user:', error);
+      res.status(500).json({ message: 'Error fetching user data' });
+    }
+  },
+
   uploadProfilePicture: async (req, res) => {
     try {
       const userId = req.body.userId; // Get userId from the request body
@@ -261,6 +320,9 @@ module.exports = {
       });
     }
   },
+
+
+  
 
   getUserById: async (req, res) => {
     try {
@@ -339,56 +401,5 @@ module.exports = {
     }
   },
 
-  getCurrentUser: async (req, res) => {
-    try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({ message: 'No token provided' });
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Find user with associated data based on role
-      const user = await User.findOne({
-        where: { id: decoded.userId },
-        attributes: { exclude: ['password_hash'] },
-        include: [
-          {
-            model: decoded.role === 'content_creator' ? ContentCreator : Company,
-            as: decoded.role === 'content_creator' ? 'contentCreator' : 'company',
-            include: [{
-              model: Media,
-              as: decoded.role === 'content_creator' ? 'Portfolio' : undefined
-            }]
-          }
-        ]
-      });
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      res.json({
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          verified: user.verified,
-          isPremium: user.isPremium,
-          profile: decoded.role === 'content_creator' ? user.contentCreator : user.company
-        }
-      });
-
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
-        return res.status(401).json({ message: 'Token expired' });
-      }
-      if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
-      console.error('Error fetching current user:', error);
-      res.status(500).json({ message: 'Error fetching user data' });
-    }
-  },
+ 
 };

@@ -10,12 +10,25 @@ const Term = sequelize.define('Term', {
   },
   description: {
     type: DataTypes.TEXT,
-    allowNull: true,  // Optional description of the term
+    allowNull: false,  // Optional description of the term
   },
+  companyAccepted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  influencerAccepted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  
   status: {
-    type: DataTypes.ENUM('active', 'negotiating', 'accepted'),
-    defaultValue: 'negotiating',  // Status of the term
+    type: DataTypes.ENUM('pending', 'accepted', 'rejected'),
+    defaultValue: 'pending',  // Status of the term
   },
+  ContractId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  }
 }, {
   tableName: 'terms',
   timestamps: true,  // Automatically add createdAt and updatedAt columns

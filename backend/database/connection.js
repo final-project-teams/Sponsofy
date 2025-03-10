@@ -114,9 +114,13 @@ Term.belongsTo(Deal);
 Term.hasMany(Negotiation);
 Negotiation.belongsTo(Term);
 
+Term.hasMany(Contract);
+Contract.belongsTo(Term);
+
 // Contract -> Criteria (Many-to-Many through contract_criteria)
 Contract.belongsTo(Criteria, { through: ContractCriteria });
 Criteria.belongsTo(Contract, { through: ContractCriteria });
+
 
 // Criteria -> SubCriteria (One-to-Many)
 Criteria.hasMany(SubCriteria);
@@ -161,6 +165,11 @@ Account.belongsTo(ContentCreator, {
   foreignKey: 'contentCreatorId',
   as: 'contentCreator',
 });
+
+// Add Term associations
+Contract.hasMany(Term);
+Term.belongsTo(Contract);
+
 sequelize.authenticate()
   .then(() => {
     console.log('Connection to the database has been established successfully.');

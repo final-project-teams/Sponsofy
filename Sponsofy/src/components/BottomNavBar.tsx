@@ -11,7 +11,7 @@ const BottomNavBar = () => {
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Home')}>
         <Ionicons name="home-outline" size={26} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('PremiumScreen')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ContractSection')}>
         <Ionicons name="compass-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('AddDeal')}>

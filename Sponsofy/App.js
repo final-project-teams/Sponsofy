@@ -19,6 +19,7 @@ import UserTypeScreen from "./src/screens/UserTypeScreen"
 import SocialAccountsScreen from "./src/screens/SocialAccountsScreen"
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import ContractSection from './src/screens/ContractSection';
 
 import AddDeal from "./src/screens/AddDeal"
 import { ThemeProvider } from './src/theme/ThemeContext';
@@ -46,13 +47,14 @@ const App = () => {
           <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
           <Stack.Screen name="PremiumScreen" component={PremiumScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ContractDetail" component={ContractDetail} options={{ headerShown: false }} />
-          <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
+          {/* <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} /> */}
           <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AddDeal" component={AddDeal} options={{ headerShown: false }} />
           {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
           <Stack.Screen name="DealDetails" component={DealDetailsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ContractSection" component={ContractSection} options={{ headerShown: false }} />
         </Stack.Navigator>
         <FlashMessage position="top" />
           </NavigationContainer>

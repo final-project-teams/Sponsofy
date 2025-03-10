@@ -47,34 +47,27 @@ export const userService = {
 
 export const contractService = {
   getContracts: async () => {
-    const response = await api.get('/contracts');
+    const response = await api.get('/contract');
     return response.data;
   },
 
     // Fetch contracts for a specific user
-    getContractbyCompanyId: async (companyId: string) => {  
-        try {
-            const response = await api.get(`/contracts/company/${companyId}`); // Adjust the endpoint as needed
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
+getContractByCompanyId: async (userId: number ) => {
+  try { 
+    const response = await api.get(`/contract/company/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+
+},  
 
     // Accept a contract
-    acceptContract: async (contractId: string, userId: string) => {
-        try {
-            const response = await api.post(`/contracts/${contractId}/accept`, { userId }); // Adjust the endpoint as needed
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
 
     // Create a new contract
     createContract: async (contractData) => {
         try {
-            const response = await api.post('/contracts', contractData);
+            const response = await api.post('/contract/post', contractData);
             return response.data;
         } catch (error) {
             throw error;
@@ -84,7 +77,7 @@ export const contractService = {
     // Update an existing contract
     updateContract: async (contractId, contractData) => {
         try {
-            const response = await api.put(`/contracts/${contractId}`, contractData);
+            const response = await api.put(`/contract/${contractId}`, contractData);
             return response.data;
         } catch (error) {
             throw error;
@@ -94,13 +87,64 @@ export const contractService = {
     // Delete a contract
     deleteContract: async (contractId) => {
         try {
-            const response = await api.delete(`/contracts/${contractId}`);
+            const response = await api.delete(`/contract/${contractId}`);
             return response.data;
         } catch (error) {
             throw error;
         }
     },
+
+  // Get contract terms
+  getContractTerms: async (contractId: number | string) => {
+    try {
+      const response = await api.get(`/contract/${contractId}/terms`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching contract terms:', error);
+      throw error;
+    }
+  },
+
+  
+
+  // Get contract by ID with terms
+
+  gettermsbycontractid: async (contractId: number | string) => {
+    try {
+      const response = await api.get(`/contract/${contractId}/terms`);
+      console.log('Terms API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error in gettermsbycontractid:', error);
+      throw error;
+    }
+  },
+updateTerm: async (contractId: number | string, termId: number | string, updates: { title: string, description: string }) => {
+  try {
+    const response = await api.put(`/contract/${contractId}/terms/${termId}`, updates);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+acceptTerm: async (contractId: number | string, termId: number | string, userRole: 'company' | 'influencer') => {
+  try {
+    const response = await api.put(`/contract/${contractId}/terms/${termId}/accept`, { userRole });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+getContractByContentCreatorId: async (userId: number) => {
+  try {
+    const response = await api.get(`/contract/creator/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
 };
+
 
 export const searchService = {
   searchCompanies: async (query: string) => {
