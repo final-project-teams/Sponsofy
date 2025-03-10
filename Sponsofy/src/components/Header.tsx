@@ -1,8 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
-const Header = ({ title, onNotificationPress, onMessagePress }) => {
+const Header = ({ title }) => {
+  const navigation = useNavigation();
+  const handleNotificationPress = () => {
+    navigation.navigate('Notifications');
+  };
+
   return (
     <View style={styles.header}>
       <TouchableOpacity>
@@ -10,10 +16,10 @@ const Header = ({ title, onNotificationPress, onMessagePress }) => {
       </TouchableOpacity>
       <Text style={styles.headerTitle}>{title}</Text>
       <View style={styles.headerIcons}>
-        <TouchableOpacity style={styles.headerIcon} onPress={onNotificationPress}>
+        <TouchableOpacity style={styles.headerIcon} onPress={handleNotificationPress}>
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerIcon} onPress={onMessagePress}>
+        <TouchableOpacity style={styles.headerIcon}>
           <Ionicons name="paper-plane" size={24} color="white" />
         </TouchableOpacity>
       </View>

@@ -1,11 +1,13 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {API_URL} from './source'
-if(!API_URL){
-  throw new Error("API_URL is not defined")
+import { API_URL } from './source';
+
+if (!API_URL) {
+  throw new Error("API_URL is not defined");
 }
+
 const api = axios.create({
-  baseURL:   API_URL,
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -14,18 +16,19 @@ const api = axios.create({
 
 const getAuthToken = async () => {
   try {
-    return await AsyncStorage.getItem('userToken');
+    const token = await AsyncStorage.getItem('userToken');
+    console.log('Token:', token);
+    return token;
   } catch (error) {
     console.error('Error getting auth token:', error);
     return null;
   }
 };
+
 // Request interceptor
 api.interceptors.request.use(
-  (config) => {
-    // Get token from storage
-
-    const token = getAuthToken() // Add your token logic here
+  async (config) => {
+    const token = await getAuthToken(); // Await the token retrieval
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

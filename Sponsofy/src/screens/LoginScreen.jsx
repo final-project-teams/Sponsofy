@@ -36,7 +36,7 @@ const LoginScreen = ({ navigation, route }) => {
         console.log("response.data.token",response.data.token)
 
         if (response.data.user.role === "content_creator") {
-          navigation.navigate("SocialAccounts");
+          navigation.navigate("Home");
         } else if (response.data.user.role === "company") {
           navigation.navigate("Home");
         } else {
@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation, route }) => {
   };
 
   const handleSocialLogin = () => {
-    navigation.navigate("SocialAccounts");
+    navigation.navigate("Home");
   };
 
   return (
@@ -117,7 +117,7 @@ const LoginScreen = ({ navigation, route }) => {
       
       <View style={styles.signupContainer}>
         <Text style={styles.newToText}>new to Sponsofy? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Welcome')}>
           <Text style={styles.signUpText}>Sign Up</Text>
         </TouchableOpacity>
       </View>

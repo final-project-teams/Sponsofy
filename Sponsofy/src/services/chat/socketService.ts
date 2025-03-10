@@ -1,18 +1,16 @@
+import { SOCKET_URL } from '../../config/source';
 import { Socket } from 'socket.io-client';
 import io from 'socket.io-client';
 
 class SocketService {
   private socket: typeof Socket | null = null;
 
-  connect(token: string) {
-    this.socket = io('http://localhost:3000', {
-      auth: {
-        token
-      }
-    });
+
+  connect() {
+    this.socket = io(`${SOCKET_URL}/chat`);
 
     this.socket.on('connect', () => {
-      console.log('Connected to socket server');
+      console.log('Connected to chat socket');
     });
 
     this.socket.on('connect_error', (error) => {
@@ -38,15 +36,15 @@ class SocketService {
     }
   }
 
-  emitTyping(data: { roomId: string; username: string }) {
-    if (this.socket) {
-      this.socket.emit('typing', data);
-    }
-  }
-
   onUserTyping(callback: (data: { username: string }) => void) {
     if (this.socket) {
       this.socket.on('user_typing', callback);
+    }
+  }
+
+  emitTyping(data: { roomId: string; username: string }) {
+    if (this.socket) {
+      this.socket.emit('typing', data);
     }
   }
 

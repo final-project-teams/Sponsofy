@@ -1,5 +1,5 @@
 const { Message, User, Room } = require('../database/connection');
-
+const { io } = require('../server/server'); 
 const messageController = {
   // Get all messages for a specific room
   getMessages: async (req, res) => {
@@ -26,7 +26,7 @@ const messageController = {
     try {
       const { roomId } = req.params;
       const { content } = req.body;
-      const userId = req.user.id; // From JWT token
+      const userId = 1; // From JWT token
 
       const message = await Message.create({
         content,
@@ -44,7 +44,8 @@ const messageController = {
           }
         ]
       });
-
+      // Emit the new message to the room via Socket.io
+      io.of('/chat').to(roomId).emit('newMessage', messageWithUser);
       res.status(201).json(messageWithUser);
     } catch (error) {
       res.status(500).json({ error: error.message });

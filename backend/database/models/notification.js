@@ -9,6 +9,11 @@ const Notification = sequelize.define('Notification', {
     type: DataTypes.STRING,
     allowNull: false,  // Type of notification (e.g., 'deal', 'contract', 'payment')
   },
+  link: {
+    type: DataTypes.STRING,
+    allowNull: false,  // Type of notification (e.g., 'deal', 'contract', 'payment')
+  },
+  
   read: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,  // Default to unread

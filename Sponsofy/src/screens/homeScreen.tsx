@@ -16,7 +16,9 @@ import { contractService, searchService } from "../services/api";
 import ChatScreen from './ChatScreen';
 import BottomNavBar from '../components/BottomNavBar';
 import Header from '../components/Header';
+
 import { RootStackParamList, HomeScreenNavigationProp } from "../navigation/types"; // Adjust the path as necessary
+
 import { RouteProp } from '@react-navigation/native';
 
 const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteProp<RootStackParamList, 'Home'> }> = ({ navigation }) => {
@@ -110,7 +112,7 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
 
             {/* Action buttons */}
             <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ContractDetail', { contract: item })}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('DealDetails', { dealId: 1 })}>
                     <Ionicons name="information-circle-outline" size={20} color="#666" />
                     <Text style={styles.actionButtonText}>View Deal</Text>
                 </TouchableOpacity>
@@ -136,8 +138,6 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
       {/* Reusable Header Component */}
       <Header 
         title="Sponsofy" 
-        onNotificationPress={() => console.log('Notifications pressed')} 
-        onMessagePress={() => console.log('Messages pressed')} 
       />
 
       {/* Add Person Icon for Profile Navigation */}
@@ -180,7 +180,7 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
         contentContainerStyle={styles.dealsList}
       />
 
-      <BottomNavBar navigation={navigation} />
+      <BottomNavBar />
     </SafeAreaView>
   );
 };

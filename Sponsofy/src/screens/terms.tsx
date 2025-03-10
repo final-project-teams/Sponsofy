@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { socketService } from '../services/socketService';
+import { socketService } from '../services/chat/socketService';
 
 const TermsScreen = () => {
   const [terms, setTerms] = useState([{ title: '', description: '', confirmations: 0 }]);
@@ -8,7 +8,7 @@ const TermsScreen = () => {
   const [submittedCount, setSubmittedCount] = useState(0);
 
   useEffect(() => {
-    socketService.connect('your_token_here');
+    socketService.connect();
 
     socketService.onNewTerm((term) => {
       setTerms((prevTerms) => [...prevTerms, term]);
