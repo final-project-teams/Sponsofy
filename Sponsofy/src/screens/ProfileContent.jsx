@@ -21,6 +21,8 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import api from "../config/axios";
 import { API_URL } from "../config/source";
 
+
+
 const ProfileContent = () => {
   const navigation = useNavigation();
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -42,6 +44,7 @@ const ProfileContent = () => {
   const [creatorInfoVisible, setCreatorInfoVisible] = useState(false);
 
   // Fetch user profile
+  // Fetch user profile
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
@@ -55,11 +58,12 @@ const ProfileContent = () => {
         });
 
         const profile = response.data.user.profile;
-        const pictureUrl = profile.ProfilePicture.file_name
-          ? `${API_URL}/uploads/images/${profile.file_name}`
+        const pictureUrl = profile.profile_picture
+          ? `${API_URL}/uploads/images/${profile.profile_picture}`
           : null;
 
         setProfilePictureUrl(pictureUrl);
+        ///: this is what I have changed "profile_picture"
         setUserProfile(response.data.user);
       }
     } catch (error) {
@@ -236,19 +240,14 @@ const ProfileContent = () => {
 
       try {
         setLoading(true);
-        const response = await api.put(
-          `/user/profile`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await api.put(`/user/profile`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         fetchUserProfile();
-       
 
         Alert.alert("Success", "Profile picture updated successfully!");
       } catch (error) {
@@ -287,6 +286,8 @@ const ProfileContent = () => {
     );
   }
 
+  console.loglog("API_URL ❤️❤️",API_URL)
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#121212" />
@@ -316,544 +317,338 @@ const ProfileContent = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView}>
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <TouchableOpacity onPress={pickImage}>
-            <View style={styles.avatarContainer}>
-              {profilePictureUrl ? (
-                <Image
-                  source={{ uri: profilePictureUrl }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Feather name="user" size={30} color="#666" />
-                </View>
-              )}
-              <View style={styles.onlineIndicator} />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.profileInfo}>
-            <Text style={styles.username}>
-              {userProfile.profile.first_name} {userProfile.profile.last_name}
-            </Text>
-            <Text style={styles.premiumBadge}>
-              {userProfile.isPremium ? "Premium Member" : "Regular Member"}
-            </Text>
-
-            {/* Edit Profile Button */}
-            <TouchableOpacity
-              style={styles.editProfileButton}
-              onPress={handleEditProfile}
-            >
-              <Text style={styles.editProfileText}>Edit Profile</Text>
-            </TouchableOpacity>
-            {/* Inside the profileInfo View, after the editProfileButton: */}
-            <TouchableOpacity
-              style={[styles.editProfileButton, styles.viewInfoButton]}
-              onPress={() => setCreatorInfoVisible(true)}
-            >
-              <Text style={styles.editProfileText}>View Info</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Bio */}
-        <Text style={styles.bio}>
-          {userProfile?.profile?.bio || "No bio available"}
-        </Text>
-
-        {/* Social Media Icons */}
-        <View style={styles.socialIcons}>
-          {["instagram", "facebook", "tiktok", "youtube"].map((platform) => {
-            const platformData =
-              userProfile.profile.ProfilePicture?.find(
-                (item) => item.platform === platform
-              ) || {};
-
-            return (
-              <TouchableOpacity
-                key={platform}
-                style={styles.socialIcon}
-                onPress={() => handleSocialMediaEdit(platform, platformData)}
-              >
-                <FontAwesome
-                  name={platform === "tiktok" ? "tiktok" : platform}
-                  size={24}
-                  color="white"
-                />
-                {platformData.followers && (
-                  <Text style={styles.socialStats}>
-                    {platformData.followers} followers
-                  </Text>
+      {/* Wrap ScrollView and FAB in a parent View */}
+      <View style={{ flex: 1, position: "relative" }}>
+        <ScrollView style={styles.scrollView}>
+          {/* Profile Section */}
+          <View style={styles.profileSection}>
+            <TouchableOpacity onPress={pickImage}>
+              <View style={styles.avatarContainer}>
+                {profilePictureUrl ? (
+                  <Image
+                    source={{ uri: profilePictureUrl }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Feather name="user" size={30} color="#666" />
+                  </View>
                 )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                <View style={styles.onlineIndicator} />
+              </View>
+            </TouchableOpacity>
 
-        {/* Edit Modal */}
-        <Modal
-          visible={editModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setEditModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                Edit {currentPlatform} Statistics
+            <View style={styles.profileInfo}>
+              <Text style={styles.username}>
+                {userProfile.profile.first_name} {userProfile.profile.last_name}
+              </Text>
+              <Text style={styles.premiumBadge}>
+                {userProfile.isPremium ? "Premium Member" : "Regular Member"}
               </Text>
 
-              <TextInput
-                style={styles.input}
-                placeholder="Audience"
-                value={socialMediaData.audience}
-                onChangeText={(text) =>
-                  setSocialMediaData((prev) => ({ ...prev, audience: text }))
-                }
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="Views"
-                value={socialMediaData.views}
-                onChangeText={(text) =>
-                  setSocialMediaData((prev) => ({ ...prev, views: text }))
-                }
-                keyboardType="numeric"
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="Likes"
-                value={socialMediaData.likes}
-                onChangeText={(text) =>
-                  setSocialMediaData((prev) => ({ ...prev, likes: text }))
-                }
-                keyboardType="numeric"
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="Followers"
-                value={socialMediaData.followers}
-                onChangeText={(text) =>
-                  setSocialMediaData((prev) => ({ ...prev, followers: text }))
-                }
-                keyboardType="numeric"
-              />
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  onPress={() => setEditModalVisible(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.saveButton]}
-                  onPress={handleSocialMediaUpdate}
-                >
-                  <Text style={styles.modalButtonText}>Save</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                style={styles.editProfileButton}
+                onPress={handleEditProfile}
+              >
+                <Text style={styles.editProfileText}>Edit Profile</Text>
+              </TouchableOpacity>
+              {/* Inside the profileInfo View, after the editProfileButton: */}
+              <TouchableOpacity
+                style={[styles.editProfileButton, styles.viewInfoButton]}
+                onPress={() => setCreatorInfoVisible(true)}
+              >
+                <Text style={styles.editProfileText}>View Info</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
 
-        {/* Deals Modal */}
-        <Modal
-          visible={dealsModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setDealsModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, styles.dealsModalContent]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>My Deals</Text>
-                <TouchableOpacity onPress={() => setDealsModalVisible(false)}>
-                  <Feather name="x" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
+          {/* Bio */}
+          <Text style={styles.bio}>
+            {userProfile?.profile?.bio || "No bio available"}
+          </Text>
 
-              {loadingDeals ? (
-                <ActivityIndicator size="large" color="#8A2BE2" />
-              ) : deals.length > 0 ? (
-                <FlatList
-                  data={deals}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.dealItem}
-                      onPress={() => handleViewDealDetails(item.id)}
-                    >
-                      <View style={styles.dealHeader}>
-                        <Text style={styles.dealTitle}>
-                          {item.Contract?.title || `Deal #${item.id}`}
-                        </Text>
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            item.status === "pending"
-                              ? styles.pendingBadge
-                              : item.status === "accepted"
-                              ? styles.acceptedBadge
-                              : item.status === "rejected"
-                              ? styles.rejectedBadge
-                              : styles.completedBadge,
-                          ]}
-                        >
-                          <Text style={styles.statusText}>{item.status}</Text>
-                        </View>
-                      </View>
+          {/* Social Media Icons */}
+          <View style={styles.socialIcons}>
+            {["instagram", "facebook", "tiktok", "youtube"].map((platform) => {
+              // Fetch social media data from the correct field
+              const platformData =
+                userProfile.profile.Media?.find(
+                  (item) => item.platform === platform
+                ) || {};
 
-                      <Text style={styles.dealPrice}>${item.price}</Text>
-
-                      {item.Contract?.Company && (
-                        <Text style={styles.dealCompany}>
-                          {item.Contract.Company.name}
-                        </Text>
-                      )}
-
-                      <Text style={styles.dealDate}>
-                        Created: {new Date(item.createdAt).toLocaleDateString()}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  contentContainerStyle={styles.dealsList}
-                />
-              ) : (
-                <View style={styles.noDealsContainer}>
-                  <FontAwesome5 name="handshake-slash" size={50} color="#666" />
-                  <Text style={styles.noDealsText}>No deals found</Text>
-                  <TouchableOpacity
-                    style={styles.createDealButton}
-                    onPress={() => {
-                      setDealsModalVisible(false);
-                      navigation.navigate("AddDeal");
-                    }}
-                  >
-                    <Text style={styles.createDealButtonText}>
-                      Create a Deal
+              return (
+                <TouchableOpacity
+                  key={platform}
+                  style={styles.socialIcon}
+                  onPress={() => handleSocialMediaEdit(platform, platformData)}
+                >
+                  <FontAwesome
+                    name={platform === "tiktok" ? "tiktok" : platform}
+                    size={24}
+                    color="white"
+                  />
+                  {platformData.followers && (
+                    <Text style={styles.socialStats}>
+                      {platformData.followers} followers
                     </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Edit Modal */}
+          <Modal
+            visible={editModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setEditModalVisible(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  Edit {currentPlatform} Statistics
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Audience"
+                  value={socialMediaData.audience}
+                  onChangeText={(text) =>
+                    setSocialMediaData((prev) => ({ ...prev, audience: text }))
+                  }
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Views"
+                  value={socialMediaData.views}
+                  onChangeText={(text) =>
+                    setSocialMediaData((prev) => ({ ...prev, views: text }))
+                  }
+                  keyboardType="numeric"
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Likes"
+                  value={socialMediaData.likes}
+                  onChangeText={(text) =>
+                    setSocialMediaData((prev) => ({ ...prev, likes: text }))
+                  }
+                  keyboardType="numeric"
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Followers"
+                  value={socialMediaData.followers}
+                  onChangeText={(text) =>
+                    setSocialMediaData((prev) => ({ ...prev, followers: text }))
+                  }
+                  keyboardType="numeric"
+                />
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setEditModalVisible(false)}
+                  >
+                    <Text style={styles.modalButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.saveButton]}
+                    onPress={handleSocialMediaUpdate}
+                  >
+                    <Text style={styles.modalButtonText}>Save</Text>
                   </TouchableOpacity>
                 </View>
-              )}
-            </View>
-          </View>
-        </Modal>
-
-        {/* Deal Details Modal */}
-        <Modal
-          visible={dealDetailsVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setDealDetailsVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, styles.dealDetailsModalContent]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Deal Details</Text>
-                <TouchableOpacity onPress={() => setDealDetailsVisible(false)}>
-                  <Feather name="x" size={24} color="white" />
-                </TouchableOpacity>
               </View>
+            </View>
+          </Modal>
 
-              {loadingDeals ? (
-                <ActivityIndicator size="large" color="#8A2BE2" />
-              ) : selectedDeal ? (
-                <ScrollView style={styles.dealDetailsScroll}>
-                  <View style={styles.dealDetailSection}>
-                    <Text style={styles.dealDetailLabel}>Status</Text>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        selectedDeal.status === "pending"
-                          ? styles.pendingBadge
-                          : selectedDeal.status === "accepted"
-                          ? styles.acceptedBadge
-                          : selectedDeal.status === "rejected"
-                          ? styles.rejectedBadge
-                          : styles.completedBadge,
-                      ]}
-                    >
-                      <Text style={styles.statusText}>
-                        {selectedDeal.status}
-                      </Text>
-                    </View>
-                  </View>
+          {/* Deals Modal */}
+          <Modal
+            visible={dealsModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setDealsModalVisible(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={[styles.modalContent, styles.dealsModalContent]}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>My Deals</Text>
+                  <TouchableOpacity onPress={() => setDealsModalVisible(false)}>
+                    <Feather name="x" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
 
-                  <View style={styles.dealDetailSection}>
-                    <Text style={styles.dealDetailLabel}>Price</Text>
-                    <Text style={styles.dealDetailValue}>
-                      ${selectedDeal.price}
-                    </Text>
-                  </View>
-
-                  {selectedDeal.Contract && (
-                    <View style={styles.dealDetailSection}>
-                      <Text style={styles.dealDetailLabel}>Contract</Text>
-                      <Text style={styles.dealDetailValue}>
-                        {selectedDeal.Contract.title || "Untitled Contract"}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedDeal.Contract?.Company && (
-                    <View style={styles.dealDetailSection}>
-                      <Text style={styles.dealDetailLabel}>Company</Text>
-                      <Text style={styles.dealDetailValue}>
-                        {selectedDeal.Contract.Company.name}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.dealDetailSection}>
-                    <Text style={styles.dealDetailLabel}>Deal Terms</Text>
-                    <Text style={styles.dealDetailValue}>
-                      {selectedDeal.deal_terms || "No terms specified"}
-                    </Text>
-                  </View>
-
-                  {selectedDeal.Term && selectedDeal.Term.length > 0 && (
-                    <View style={styles.dealDetailSection}>
-                      <Text style={styles.dealDetailLabel}>
-                        Negotiation Terms
-                      </Text>
-                      {selectedDeal.Term.map((term, index) => (
-                        <View key={index} style={styles.termItem}>
-                          <View style={styles.termHeader}>
-                            <Text style={styles.termTitle}>{term.title}</Text>
-                            <View
-                              style={[
-                                styles.statusBadge,
-                                term.status === "negotiating"
-                                  ? styles.pendingBadge
-                                  : term.status === "accepted"
-                                  ? styles.acceptedBadge
-                                  : term.status === "rejected"
-                                  ? styles.rejectedBadge
-                                  : styles.completedBadge,
-                              ]}
-                            >
-                              <Text style={styles.statusText}>
-                                {term.status}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={styles.termDescription}>
-                            {term.description || "No description"}
+                {loadingDeals ? (
+                  <ActivityIndicator size="large" color="#8A2BE2" />
+                ) : deals.length > 0 ? (
+                  <FlatList
+                    data={deals}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.dealItem}
+                        onPress={() => handleViewDealDetails(item.id)}
+                      >
+                        <View style={styles.dealHeader}>
+                          <Text style={styles.dealTitle}>
+                            {item.Contract?.title || `Deal #${item.id}`}
                           </Text>
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              item.status === "pending"
+                                ? styles.pendingBadge
+                                : item.status === "accepted"
+                                ? styles.acceptedBadge
+                                : item.status === "rejected"
+                                ? styles.rejectedBadge
+                                : styles.completedBadge,
+                            ]}
+                          >
+                            <Text style={styles.statusText}>{item.status}</Text>
+                          </View>
                         </View>
-                      ))}
-                    </View>
-                  )}
 
-                  <View style={styles.dealDetailSection}>
-                    <Text style={styles.dealDetailLabel}>Created</Text>
-                    <Text style={styles.dealDetailValue}>
-                      {new Date(selectedDeal.createdAt).toLocaleString()}
-                    </Text>
-                  </View>
+                        <Text style={styles.dealPrice}>${item.price}</Text>
 
-                  <View style={styles.dealDetailSection}>
-                    <Text style={styles.dealDetailLabel}>Updated</Text>
-                    <Text style={styles.dealDetailValue}>
-                      {new Date(selectedDeal.updatedAt).toLocaleString()}
-                    </Text>
-                  </View>
+                        {item.Contract?.Company && (
+                          <Text style={styles.dealCompany}>
+                            {item.Contract.Company.name}
+                          </Text>
+                        )}
 
-                  <View style={styles.dealActionsContainer}>
+                        <Text style={styles.dealDate}>
+                          Created:{" "}
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    contentContainerStyle={styles.dealsList}
+                  />
+                ) : (
+                  <View style={styles.noDealsContainer}>
+                    <FontAwesome5
+                      name="handshake-slash"
+                      size={50}
+                      color="#666"
+                    />
+                    <Text style={styles.noDealsText}>No deals found</Text>
                     <TouchableOpacity
-                      style={[styles.dealActionButton, styles.messageButton]}
+                      style={styles.createDealButton}
                       onPress={() => {
-                        setDealDetailsVisible(false);
-                        // Navigate to chat with the company
-                        if (selectedDeal.Contract?.Company) {
-                          navigation.navigate("Chat", {
-                            recipientId: selectedDeal.Contract.Company.id,
-                            recipientName: selectedDeal.Contract.Company.name,
-                            recipientType: "company",
-                          });
-                        }
+                        setDealsModalVisible(false);
+                        navigation.navigate("AddDeal");
                       }}
                     >
-                      <Feather name="message-circle" size={18} color="white" />
-                      <Text style={styles.dealActionButtonText}>Message</Text>
+                      <Text style={styles.createDealButtonText}>
+                        Create a Deal
+                      </Text>
                     </TouchableOpacity>
-
-                    {selectedDeal.status === "pending" && (
-                      <View style={styles.dealActionRow}>
-                        <TouchableOpacity
-                          style={[styles.dealActionButton, styles.cancelButton]}
-                          onPress={() => {
-                            // Handle cancel deal
-                            Alert.alert(
-                              "Cancel Deal",
-                              "Are you sure you want to cancel this deal?",
-                              [
-                                { text: "No", style: "cancel" },
-                                {
-                                  text: "Yes",
-                                  onPress: async () => {
-                                    // API call to cancel deal
-                                    setDealDetailsVisible(false);
-                                    setDealsModalVisible(false);
-                                  },
-                                },
-                              ]
-                            );
-                          }}
-                        >
-                          <Feather name="x" size={18} color="white" />
-                          <Text style={styles.dealActionButtonText}>
-                            Cancel Deal
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
                   </View>
-                </ScrollView>
-              ) : (
-                <View style={styles.noDealsContainer}>
-                  <Text style={styles.noDealsText}>
-                    Failed to load deal details
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </Modal>
-
-        {/* Content Creator Info Modal */}
-        <Modal
-          visible={creatorInfoVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setCreatorInfoVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, styles.creatorInfoModalContent]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Creator Information</Text>
-                <TouchableOpacity onPress={() => setCreatorInfoVisible(false)}>
-                  <Feather name="x" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.creatorInfoScroll}>
-                {userProfile && userProfile.profile && (
-                  <>
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>Name</Text>
-                      <Text style={styles.creatorInfoValue}>
-                        {userProfile.profile.first_name}{" "}
-                        {userProfile.profile.last_name}
-                      </Text>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>Category</Text>
-                      <Text style={styles.creatorInfoValue}>
-                        {userProfile.profile.category || "Not specified"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>Location</Text>
-                      <Text style={styles.creatorInfoValue}>
-                        {userProfile.profile.location || "Not specified"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>Pricing</Text>
-                      <Text style={styles.creatorInfoValue}>
-                        {userProfile.profile.pricing || "Not specified"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>Bio</Text>
-                      <Text style={styles.creatorInfoValue}>
-                        {userProfile.profile.bio || "No bio available"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>
-                        Portfolio Links
-                      </Text>
-                      <Text style={styles.creatorInfoValue}>
-                        {userProfile.profile.portfolio_links ||
-                          "No links available"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>
-                        Verification Status
-                      </Text>
-                      <View style={styles.verificationBadge}>
-                        <Text style={styles.verificationText}>
-                          {userProfile.profile.verified
-                            ? "Verified"
-                            : "Not Verified"}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.creatorInfoSection}>
-                      <Text style={styles.creatorInfoLabel}>Membership</Text>
-                      <View
-                        style={[
-                          styles.membershipBadge,
-                          userProfile.profile.isPremium
-                            ? styles.premiumBadge
-                            : styles.regularBadge,
-                        ]}
-                      >
-                        <Text style={styles.membershipText}>
-                          {userProfile.profile.isPremium
-                            ? "Premium"
-                            : "Regular"}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
                 )}
-              </ScrollView>
+              </View>
             </View>
-          </View>
-        </Modal>
+          </Modal>
 
-        {/* Portfolio Section */}
-        {userProfile.profile.ProfilePicture &&
-          userProfile.profile.ProfilePicture.length > 0 && (
-            <View style={styles.portfolioContainer}>
-              <Text style={styles.portfolioTitle}>Portfolio</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.portfolioScroll}
+          {/* Deal Details Modal */}
+          <Modal
+            visible={dealDetailsVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setDealDetailsVisible(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View
+                style={[styles.modalContent, styles.dealDetailsModalContent]}
               >
-                {userProfile.profile.ProfilePicture.map((item, index) => (
-                  <View key={index} style={styles.portfolioItem}>
-                    <Image
-                      source={{ uri: `${API_URL}/uploads/images/${item.file_name}` }}
-                      style={styles.portfolioImage}
-                      resizeMode="cover"
-                    />
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Deal Details</Text>
+                  <TouchableOpacity
+                    onPress={() => setDealDetailsVisible(false)}
+                  >
+                    <Feather name="x" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+
+                {loadingDeals ? (
+                  <ActivityIndicator size="large" color="#8A2BE2" />
+                ) : selectedDeal ? (
+                  <ScrollView style={styles.dealDetailsScroll}>
+                    {/* Deal details content */}
+                  </ScrollView>
+                ) : (
+                  <View style={styles.noDealsContainer}>
+                    <Text style={styles.noDealsText}>
+                      Failed to load deal details
+                    </Text>
                   </View>
-                ))}
-              </ScrollView>
+                )}
+              </View>
             </View>
-          )}
+          </Modal>
+
+          {/* Content Creator Info Modal */}
+          <Modal
+            visible={creatorInfoVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setCreatorInfoVisible(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View
+                style={[styles.modalContent, styles.creatorInfoModalContent]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Creator Information</Text>
+                  <TouchableOpacity
+                    onPress={() => setCreatorInfoVisible(false)}
+                  >
+                    <Feather name="x" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.creatorInfoScroll}>
+                  {/* Creator info content */}
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Portfolio Section */}
+          {userProfile.profile.Media &&
+            userProfile.profile.Media.length > 0 && (
+              <View style={styles.portfolioContainer}>
+                <Text style={styles.portfolioTitle}>Portfolio</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.portfolioScroll}
+                >
+                  {userProfile.profile.Media.map((item, index) => (
+                    <View key={index} style={styles.portfolioItem}>
+                      <Image
+                        source={{
+                          uri: `${API_URL}/uploads/images/${item.file_name}`,
+                        }}
+                        style={styles.portfolioImage}
+                        resizeMode="cover"
+                        onError={(error) =>
+                          console.error("Image failed to load:", error)
+                        }
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+        </ScrollView>
 
         {/* Floating Action Button */}
         <TouchableOpacity
@@ -862,7 +657,7 @@ const ProfileContent = () => {
         >
           <Entypo name="plus" size={24} color="white" />
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -1047,8 +842,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 20,
-    right: 20,
+    bottom: 10,
+    right: 10,
     width: 50,
     height: 50,
     borderRadius: 25,
