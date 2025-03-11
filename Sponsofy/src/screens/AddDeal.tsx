@@ -289,6 +289,7 @@ const AddDeal = () => {
             });
 
             if (response.data.success) {
+                
                 navigation.navigate("Home" as never);
             } else {
                 console.error('Error response:', response.data);
