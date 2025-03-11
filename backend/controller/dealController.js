@@ -73,6 +73,33 @@ const dealController = {
         }));
       }
       
+      // Get the created deal with all related data
+      const createdDeal = await Deal.findOne({
+        where: { id: deal.id },
+        include: [
+          {
+            model: Contract,
+            include: [
+              {
+                model: Company,
+                include: [{ model: User, as: 'user' }],
+                attributes: ['id', 'name', 'industry', 'codeFiscal', 'category']
+              }
+            ],
+            attributes: ['id', 'title', 'description', 'start_date', 'end_date', 'status', 'payment_terms', 'rank']
+          },
+          {
+            model: Term,
+            attributes: ['id', 'title', 'description', 'status']
+          },
+          {
+            model: ContentCreator,
+            as:"ContentCreatorDeals",
+            attributes: ['id', 'first_name', 'last_name', 'bio', 'pricing', 'portfolio_links', 'location', 'category', 'verified', 'isPremium', 'profile_picture']
+          }
+        ]
+      });
+      
       // Get company user ID for notification
       const companyUserId = contract.Company?.user?.id;
       
@@ -119,10 +146,7 @@ const dealController = {
       res.status(201).json({
         success: true,
         message: 'Deal request sent successfully',
-        deal: {
-          id: deal.id,
-          status: deal.status
-        }
+        deal: createdDeal
       });
       
     } catch (error) {

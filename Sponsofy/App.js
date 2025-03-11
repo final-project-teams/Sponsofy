@@ -1,39 +1,42 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { NavigationContainer } from "@react-navigation/native"
+import { createStackNavigator } from "@react-navigation/stack"
 // import ChatScreen from './src/screens/ChatScreen';
 // import VideoCallScreen from './src/screens/VideoCallScreen';
-import HomeScreen from './src/screens/homeScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import SignupScreen from './src/screens/SignupScreen';
-import ContractDetail from './src/screens/ContractDetail';
-import FlashMessage from 'react-native-flash-message'; // Import FlashMessage
-import ProfileContent from './src/screens/ProfileContent';
-import ChatScreen from './src/screens/ChatScreen';
-import VideoCallScreen from './src/screens/VideoCallScreen';
-import { darkColors, lightColors } from './src/theme/theme';
-import PremiumScreen from './src/screens/PremiumScreen';
+import HomeScreen from "./src/screens/homeScreen"
+import LoginScreen from "./src/screens/LoginScreen"
+import SignupScreen from "./src/screens/SignupScreen"
+import ContractDetail from "./src/screens/ContractDetail"
+import FlashMessage from "react-native-flash-message" // Import FlashMessage
+import ProfileContent from "./src/screens/ProfileContent"
+import EditProfileContent from "./src/screens/EditProfileContent" // Import the new EditProfile screen
+import ChatScreen from "./src/screens/ChatScreen"
+import VideoCallScreen from "./src/screens/VideoCallScreen"
+import { lightColors } from "./src/theme/theme"
+import PremiumScreen from "./src/screens/PremiumScreen"
 import SplashScreen from "./src/screens/SplashScreen"
 import WelcomeScreen from "./src/screens/WelcomeScreen"
 import UserTypeScreen from "./src/screens/UserTypeScreen"
-import TermsScreen from "./src/screens/terms"
 import SocialAccountsScreen from "./src/screens/SocialAccountsScreen"
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 import AddDeal from "./src/screens/AddDeal"
-import { ThemeProvider } from './src/theme/ThemeContext';
-import DealDetailsScreen from './src/screens/DealDetailsScreen';
-import { AuthProvider } from './src/context/AuthContext'
-import { SocketProvider } from './src/context/socketContext';
-const lightTheme=lightColors
-const Stack = createStackNavigator();
+
+import AddDealContentCreator from "./src/screens/AddDealContentCreator"
+import { ThemeProvider } from "./src/theme/ThemeContext"
+import DealDetailsScreen from "./src/screens/DealDetailsScreen"
+import { AuthProvider } from "./src/context/AuthContext"
+import { SocketProvider } from "./src/context/socketContext"
+
+const lightTheme = lightColors
+const Stack = createStackNavigator()
 
 const App = () => {
   return (
     <ThemeProvider>
+      <SocketProvider>
       <AuthProvider>
-        <SocketProvider>
+        
 
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Splash">
@@ -58,11 +61,12 @@ const App = () => {
         </Stack.Navigator>
         <FlashMessage position="top" />
           </NavigationContainer>
-          </SocketProvider>
-      </AuthProvider>
+          </AuthProvider>
+        </SocketProvider>
+      
     </ThemeProvider>
-  );
-  
-};
+  )
+}
 
-export default App;
+export default App
+

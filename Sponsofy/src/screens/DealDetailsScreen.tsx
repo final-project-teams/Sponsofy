@@ -2,18 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/axios';
-
+import { useSocket } from "../context/socketContext";
 const DealDetailsScreen = ({ route, navigation }) => {
+  const {dealSocket} = useSocket();
   const { dealId } = route.params;
   const [deal, setDeal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  
+  
   useEffect(() => {
     const fetchDeal = async () => {
       try {
         const response = await api.get(`/addDeal/${dealId}`);
         setDeal(response.data.deal);
+        console.log("deaaaaaaaalllllllllllo",response.data.deal);
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -25,49 +28,67 @@ const DealDetailsScreen = ({ route, navigation }) => {
   }, [dealId]);
 
   const handleAcceptDeal = async () => {
-    try {
-      setLoading(false);
-      console.log("Accepting deal for contract:", deal.id);
-      
-      // Show loading indicator or disable button here if needed
-      const response = await api.post('/addDeal/request', {
-        contractId: deal.id,
-        price: deal.amount || 0 // Use the contract amount or default to 0
-      });
-      
-      console.log("Accept deal response:", response.data);
-      setLoading(false);
-      if (response.data.success) {
-        Alert.alert(
-          "Success",
-          "Deal accepted successfully!",
-          [{ text: "OK", onPress: () => navigation.goBack() }]
-        );
-      } else {
-        Alert.alert("Error", response.data.message || "Failed to accept deal");
-      }
-    } catch (error) {
-      setLoading(false);
-      console.error("Error accepting deal:", error);
-      
-      // More detailed error logging
-      if (error.response) {
-        console.error("Error response data:", error.response.data);
-        console.error("Error response status:", error.response.status);
-        
-        // Show more specific error message
-        Alert.alert(
-          "Error",
-          error.response.data.message || 
-          `Server error (${error.response.status}): Please try again later`
-        );
-      } else {
-        Alert.alert(
-          "Error",
-          "Network error: Please check your connection and try again"
-        );
-      }
-    }
+    // Show confirmation dialog first
+    Alert.alert(
+      "Confirm Deal Acceptance",
+      "Are you sure you want to accept this deal?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Accept",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              console.log("Accepting deal for contract:", deal.id);
+              
+              // Show loading indicator or disable button here if needed
+              const response = await api.post('/addDeal/request', {
+                companyId: deal.Company.id,
+                termstermsList: deal.Terms,
+                contractId: deal.id,
+                price: deal.amount || 0 // Use the contract amount or default to 0
+              });
+              dealSocket.emit("send_deal_request", response.data.deal)
+              console.log("Accept deal response:", response.data);
+              setLoading(false);
+              if (response.data.success) {
+                Alert.alert(
+                  "Success",
+                  "Deal accepted successfully!",
+                  [{ text: "OK", onPress: () => navigation.goBack() }]
+                );
+              } else {
+                Alert.alert("Error", response.data.message || "Failed to accept deal");
+              }
+            } catch (error) {
+              setLoading(false);
+              console.error("Error accepting deal:", error);
+              
+              // More detailed error logging
+              if (error.response) {
+                console.error("Error response data:", error.response.data);
+                console.error("Error response status:", error.response.status);
+                
+                // Show more specific error message
+                Alert.alert(
+                  "Error",
+                  error.response.data.message || 
+                  `Server error (${error.response.status}): Please try again later`
+                );
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Network error: Please check your connection and try again"
+                );
+              }
+            }
+          }
+        }
+      ]
+    );
   };
 
   if (loading) {

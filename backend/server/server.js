@@ -26,6 +26,9 @@ const termsRouter = require("../router/termsrouter")
 const dealRouter = require("../router/deal.router")
 
 
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
+console.log(path.join(__dirname, 'uploads'))
+
 
 
 app.use(express.urlencoded({ extended: true }));
@@ -72,6 +75,7 @@ app.use("/api/addDeal", dealRouter)
 // sockettttttttttttttttt
 const contractIo = io.of("/contract");
 const chatIo = io.of("/chat");
+
 
 setupContract(contractIo);
 setupNotifications(io);

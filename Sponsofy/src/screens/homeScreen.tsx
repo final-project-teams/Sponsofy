@@ -8,7 +8,8 @@ import {
   Image,
   FlatList,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,10 +17,13 @@ import { contractService, searchService } from "../services/api";
 import ChatScreen from './ChatScreen';
 import BottomNavBar from '../components/BottomNavBar';
 import Header from '../components/Header';
+import { useSocket } from "../context/socketContext";
 import { RootStackParamList, HomeScreenNavigationProp } from "../navigation/types"; // Adjust the path as necessary
+
 import { RouteProp } from '@react-navigation/native';
 
 const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteProp<RootStackParamList, 'Home'> }> = ({ navigation }) => {
+  const {dealSocket} = useSocket();
   const [deals, setDeals] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const[dealid,setDealId]=useState('')
@@ -33,6 +37,9 @@ const HomeScreen: React.FC<{ navigation: HomeScreenNavigationProp; route: RouteP
 
   useEffect(() => {
     console.log("Deals state updated:", deals);
+    dealSocket.on("new_deal_request", (newDeal) => {
+      Alert.alert("new_deal_request", `A new deal has been posted: `, );
+     });
   }, [deals]);
 
   const handleSearch = async (query) => {
