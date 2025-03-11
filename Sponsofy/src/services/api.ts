@@ -50,9 +50,9 @@ export const contractService = {
     const response = await api.get('/contract');
     return response.data;
   },
-
-    // Fetch contracts for a specific user
-getContractByCompanyId: async (userId: number ) => {
+  
+  // Fetch contracts for a specific user
+  getContractByCompanyId: async (userId: number ) => {
   try { 
     const response = await api.get(`/contract/company/${userId}`);
     return response.data;
@@ -61,13 +61,25 @@ getContractByCompanyId: async (userId: number ) => {
   }
 
 },  
+getContractByContentCreatorId: async (userId: number) => {
+  try {
+    console.log('Fetching contracts for content creator with ID:', userId);
+    // Update to match your backend route
+    const response = await api.get(`/contract/creator/${userId}`);
+    console.log('Content creator contracts response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching content creator contracts:', error);
+    throw error;
+  }
+},
 
     // Accept a contract
 
     // Create a new contract
     createContract: async (contractData) => {
-        try {
-            const response = await api.post('/contract/post', contractData);
+      try {
+        const response = await api.post('/contract/post', contractData);
             return response.data;
         } catch (error) {
             throw error;
@@ -146,18 +158,6 @@ acceptTerm: async (contractId: number | string, termId: number | string, userRol
     throw error;
   }
 },
-getContractByContentCreatorId: async (userId: number) => {
-  try {
-    console.log('Fetching contracts for content creator with ID:', userId);
-    // Update to match your backend route
-    const response = await api.get(`/contract/creator/${userId}`);
-    console.log('Content creator contracts response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching content creator contracts:', error);
-    throw error;
-  }
-}
 };
 
 

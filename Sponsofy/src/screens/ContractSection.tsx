@@ -28,6 +28,7 @@ interface ContractTerm {
   description: string;
   companyAccepted: boolean;
   influencerAccepted: boolean;
+  importance: 'critical' | 'important' | 'standard';
 }
 
 interface Contract {
@@ -53,6 +54,7 @@ const SponsorshipTerms = () => {
   const [editingTermId, setEditingTermId] = useState<number | null>(null);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     fetchUserAndContract();
@@ -166,6 +168,20 @@ const SponsorshipTerms = () => {
       );
     }
   };
+
+  const getImportanceIcon = (importance: string) => {
+    switch (importance) {
+      case 'critical':
+        return { icon: '🔴', label: 'Critical' };
+      case 'critical':
+        return { icon: '🔴', label: 'Important' };
+      case 'critical':
+        return { icon: '🔴', label: 'Standard' };
+      default :
+        return { icon: '🔴', label: 'Standard' };
+    }
+  };
+
   const renderAcceptButtons = (term: ContractTerm) => {
     if (isTermFullyAccepted(term)) {
       return (
@@ -217,6 +233,27 @@ const SponsorshipTerms = () => {
     );
   };
   
+  const renderPreviewButton = () => {
+    if (currentStep === 3) {
+      return (
+        <TouchableOpacity
+          style={styles.previewButton}
+          onPress={() => setShowPreview(!showPreview)}
+        >
+          <MaterialIcons 
+            name={showPreview ? "visibility-off" : "visibility"} 
+            size={20} 
+            color="white" 
+          />
+          <Text style={styles.previewButtonText}>
+            {showPreview ? 'Hide Preview' : 'Show All Terms'}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    return null;
+  };
+
   const renderContent = () => {
     switch (currentStep) {
       case 3:
@@ -224,77 +261,110 @@ const SponsorshipTerms = () => {
           <View style={styles.termsList}>
             <Text style={styles.sectionTitle}>Contract Terms</Text>
             {terms.length > 0 ? (
-              terms.map((term) => (
-                <View key={term.id} style={styles.termItem}>
-                  {editingTermId === term.id ? (
-                    // Edit Mode
-                    <View style={styles.editContainer}>
-                      <TextInput
-                        style={styles.editInput}
-                        value={editedTitle}
-                        onChangeText={setEditedTitle}
-                        placeholder="Enter title"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                      <TextInput
-                        style={[styles.editInput, styles.editTextArea]}
-                        value={editedDescription}
-                        onChangeText={setEditedDescription}
-                        placeholder="Enter description"
-                        placeholderTextColor="#9CA3AF"
-                        multiline
-                        numberOfLines={3}
-                      />
-                      <View style={styles.editButtonsContainer}>
-                        <TouchableOpacity
-                          style={[styles.editButton, styles.saveButton]}
-                          onPress={() => handleUpdateTerm(term.id)}
-                        >
-                          <Text style={styles.editButtonText}>Save</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.editButton, styles.cancelButton]}
-                          onPress={() => setEditingTermId(null)}
-                        >
-                          <Text style={styles.editButtonText}>Cancel</Text>
-                        </TouchableOpacity>
+              <>
+                {showPreview ? (
+                  <View style={styles.previewContainer}>
+                    {terms.map((term, index) => (
+                      <View key={term.id} style={styles.previewItem}>
+                        <Text style={styles.previewIndex}>{index + 1}.</Text>
+                        <View style={styles.previewContent}>
+                          <View style={styles.previewHeader}>
+                            <Text style={styles.previewTitle}>{term.title}</Text>
+                            <View style={styles.importanceBadge}>
+                              <Text>{getImportanceIcon(term.importance).icon}</Text>
+                              <Text style={styles.importanceLabel}>
+                                {getImportanceIcon(term.importance).label}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.previewDescription}>{term.description}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  terms.map((term) => (
+                    <View key={term.id} style={styles.termItem}>
+                      {editingTermId === term.id ? (
+                        // Edit Mode
+                        <View style={styles.editContainer}>
+                          <TextInput
+                            style={styles.editInput}
+                            value={editedTitle}
+                            onChangeText={setEditedTitle}
+                            placeholder="Enter title"
+                            placeholderTextColor="#9CA3AF"
+                          />
+                          <TextInput
+                            style={[styles.editInput, styles.editTextArea]}
+                            value={editedDescription}
+                            onChangeText={setEditedDescription}
+                            placeholder="Enter description"
+                            placeholderTextColor="#9CA3AF"
+                            multiline
+                            numberOfLines={3}
+                          />
+                          <View style={styles.editButtonsContainer}>
+                            <TouchableOpacity
+                              style={[styles.editButton, styles.saveButton]}
+                              onPress={() => handleUpdateTerm(term.id)}
+                            >
+                              <Text style={styles.editButtonText}>Save</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.editButton, styles.cancelButton]}
+                              onPress={() => setEditingTermId(null)}
+                            >
+                              <Text style={styles.editButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        // View Mode
+                        <>
+                          <View style={styles.termHeader}>
+                            <View style={styles.termHeaderLeft}>
+                              <Text style={styles.termTitle}>{term.title}</Text>
+                              <View style={styles.importanceBadge}>
+                                <Text>{getImportanceIcon(term.importance).icon}</Text>
+                                <Text style={styles.importanceLabel}>
+                                  {getImportanceIcon(term.importance).label}
+                                </Text>
+                              </View>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.editIcon}
+                              onPress={() => {
+                                setEditingTermId(term.id);
+                                setEditedTitle(term.title);
+                                setEditedDescription(term.description);
+                              }}
+                            >
+                              <Text>⚙️</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <View style={styles.termContent}>
+                            <Text style={styles.termDescription}>{term.description}</Text>
+                          </View>
+                        </>
+                      )}
+                      
+                      {/* Display accept buttons for each term */}
+                      {renderAcceptButtons(term)}
+                      
+                      <View style={styles.acceptanceStatus}>
+                        <Text style={styles.statusText}>
+                          Company: {term.companyAccepted ? '✓ Accepted' : 'Pending'}
+                        </Text>
+                        <Text style={styles.statusText}>
+                          Influencer: {term.influencerAccepted ? '✓ Accepted' : 'Pending'}
+                        </Text>
                       </View>
                     </View>
-                  ) : (
-                    // View Mode
-                    <>
-                      <View style={styles.termHeader}>
-                        <Text style={styles.termTitle}>{term.title}</Text>
-                        <TouchableOpacity
-                          style={styles.editIcon}
-                          onPress={() => {
-                            setEditingTermId(term.id);
-                            setEditedTitle(term.title);
-                            setEditedDescription(term.description);
-                          }}
-                        >
-                          <Text>⚙️</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <View style={styles.termContent}>
-                        <Text style={styles.termDescription}>{term.description}</Text>
-                      </View>
-                    </>
-                  )}
-                  
-                  {/* Display accept buttons for each term */}
-                  {renderAcceptButtons(term)}
-                  
-                  <View style={styles.acceptanceStatus}>
-                    <Text style={styles.statusText}>
-                      Company: {term.companyAccepted ? '✓ Accepted' : 'Pending'}
-                    </Text>
-                    <Text style={styles.statusText}>
-                      Influencer: {term.influencerAccepted ? '✓ Accepted' : 'Pending'}
-                    </Text>
-                  </View>
-                </View>
-              ))
+                  ))
+                )}
+                {renderPreviewButton()}
+              </>
             ) : (
               <Text style={styles.noTermsText}>No terms found for this contract</Text>
             )}
@@ -858,6 +928,80 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: 'white',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2D2D2D',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    gap: 8,
+  },
+  previewButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  previewContainer: {
+    backgroundColor: '#171717',
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+  },
+  previewItem: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+  },
+  previewIndex: {
+    color: '#8B5CF6',
+    fontSize: 16,
+    fontWeight: '600',
+    width: 30,
+  },
+  previewContent: {
+    flex: 1,
+  },
+  previewTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  previewDescription: {
+    color: '#E5E5E5',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  termHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  importanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D2D2D',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  importanceLabel: {
+    color: '#E5E5E5',
     fontSize: 12,
     fontWeight: '500',
   },
