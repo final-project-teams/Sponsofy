@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria, Term } = require("../database/connection");
+const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account} = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -159,6 +159,69 @@ module.exports = {
       res.status(500).json({
         success: false,
         message: 'Error fetching contracts',
+        error: error.message
+      });
+    }
+  },
+
+  // Add this new method to get deals by contract ID
+  getDealsByContractId: async (req, res) => {
+    try {
+      const { contractId } = req.params;
+      
+      const deals = await Deal.findAll({
+        where: { ContractId: contractId },
+        include: [
+          {
+            model: Term,
+            include: [
+              {
+                model: Media
+              },
+              {
+                model: Post
+              }
+            ]
+          },
+          {
+            model: ContentCreator,
+            as: 'ContentCreatorDeals',
+            include: [
+              {
+                model: Media,
+                as: 'ProfilePicture'
+              },
+              {
+                model: Account,
+                as: 'accounts'
+              }
+            ]
+          },
+          {
+            model: Media,
+            as: 'AttachedMedia'
+          }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      if (!deals.length) {
+        return res.status(404).json({
+          success: false,
+          message: 'No deals found for this contract'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        deals
+      });
+
+    } catch (error) {
+      console.error("Error fetching deals by contract ID:", error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching deals',
         error: error.message
       });
     }

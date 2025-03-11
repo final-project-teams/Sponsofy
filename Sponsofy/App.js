@@ -39,8 +39,8 @@ const Stack = createStackNavigator();
 const App = () => {
   return (
     <ThemeProvider>
+      <SocketProvider>
       <AuthProvider>
-        <SocketProvider>
           <NavigationContainer>
             <Stack.Navigator initialRouteName="Splash">
               {/* Splash and Welcome Screens */}
@@ -107,10 +107,10 @@ const App = () => {
             {/* Flash Message for Notifications */}
             <FlashMessage position="top" />
           </NavigationContainer>
+          </AuthProvider>
         </SocketProvider>
-      </AuthProvider>
     </ThemeProvider>
-  );
+)  
 };
 
 export default App;

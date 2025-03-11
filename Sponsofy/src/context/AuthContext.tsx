@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../config/axios';
+import { useSocket } from "../context/socketContext"
 
 type AuthContextType = {
   user: any;
   token: string | null;
   loading: boolean;
-    fetchCurrentUser: () => Promise<void>;
+  fetchCurrentUser: () => Promise<void>;
   logout: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
 };
@@ -17,6 +18,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const { dealSocket } = useSocket();
 
   useEffect(() => {
     const loadStoredData = async () => {
@@ -34,8 +36,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     loadStoredData();
-    
   }, []);
+
+  // Effect to join deal room when user or dealSocket changes
+  useEffect(() => {
+    if (user && dealSocket) {
+      console.log("Joining deal room with user ID:", user.id);
+      dealSocket.emit("join_deal_room", user.id);
+    }
+  }, [user, dealSocket]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -48,6 +57,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       const response = await api.get('/user/me');
       setUser(response.data.user);
+      
+      // Join deal room when user is fetched
+      if (dealSocket && response.data.user) {
+        console.log("Joining deal room with user ID:", response.data.user.id);
+        dealSocket.emit("join_deal_room", response.data.user.id);
+      }
     } catch (error) {
       console.error('Error fetching current user:', error);
       if (error.response && error.response.status === 401) {
@@ -57,29 +72,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email, password) => {
-    try {
-      const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      
-      await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
-      
-      setToken(token);
-      setUser(user);
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Login failed' 
-      };
-    }
-  };
-
   const logout = async () => {
     try {
+      // Leave deal room before logging out
+      if (dealSocket && user) {
+        console.log("Leaving deal room for user ID:", user.id);
+        dealSocket.emit("leave_deal_room", user.id);
+      }
+      
       setToken(null);
       setUser(null);
       await AsyncStorage.removeItem('userToken');
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, fetchCurrentUser }}>
+    <AuthContext.Provider value={{ user, token, loading, logout, fetchCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

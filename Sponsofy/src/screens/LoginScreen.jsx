@@ -7,9 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../config/axios'; // Import the axios instance
 import { getTheme } from "../theme/theme";
 import { Ionicons } from '@expo/vector-icons';
-
+import{useAuth} from "../context/AuthContext"
 
 const LoginScreen = ({ navigation, route }) => {
+  const { fetchCurrentUser } = useAuth()
   const { userType } = route.params || {};
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,10 +34,8 @@ const LoginScreen = ({ navigation, route }) => {
         await AsyncStorage.setItem("userToken", response.data.token);
         await AsyncStorage.setItem("userRole", response.data.user.role);
         await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
-        // Store the user ID separately for easy access
-        await AsyncStorage.setItem("userId", String(response.data.user.id));
-        console.log("Login successful. User ID:", response.data.user.id);
-        console.log("User token:", response.data.token);
+        fetchCurrentUser()
+        console.log("response.data.token",response.data.token)
 
         if (response.data.user.role === "content_creator") {
           navigation.navigate("Home");
@@ -120,7 +119,7 @@ const LoginScreen = ({ navigation, route }) => {
       
       <View style={styles.signupContainer}>
         <Text style={styles.newToText}>new to Sponsofy? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Welcome')}>
           <Text style={styles.signUpText}>Sign Up</Text>
         </TouchableOpacity>
       </View>
