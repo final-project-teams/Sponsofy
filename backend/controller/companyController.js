@@ -1,6 +1,7 @@
 const { sequelize } = require('../database/connection');
 const { models } = sequelize;
 
+
 // Get all companies
 const getAllCompanies = async (req, res) => {
   try {
@@ -48,26 +49,53 @@ const updateCompany = async (req, res) => {
     const { id } = req.params;
     const companyData = req.body;
     
+    // Find the company in the database
     const company = await models.Company.findByPk(id);
     
     if (!company) {
       return res.status(404).json({ message: 'Company not found' });
     }
     
+    // Update the company in the database
     await company.update(companyData);
     
-    res.status(200).json(company);
+    // Return the updated company
+    res.status(200).json({ 
+      message: 'Company updated successfully',
+      success: true,
+      company
+    });
   } catch (error) {
     console.error('Error updating company:', error);
     res.status(500).json({ message: 'Failed to update company', error: error.message });
   }
 };
 
+// Get company by User ID
+const getCompanyByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('Fetching company for user ID:', userId);
+    
+    const company = await models.Company.findOne({
+      where: { UserId: userId }
+    });
+    
+    if (!company) {
+      return res.status(404).json({ message: 'No company found for this user' });
+    }
+    
+    res.status(200).json(company);
+  } catch (error) {
+    console.error('Error fetching company by user ID:', error);
+    res.status(500).json({ message: 'Failed to fetch company', error: error.message });
+  }
+};
 
 module.exports = {
   getAllCompanies,
   getCompanyById,
   createCompany,
   updateCompany,
- 
+  getCompanyByUserId
 }; 

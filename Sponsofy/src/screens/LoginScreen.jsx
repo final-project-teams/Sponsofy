@@ -33,7 +33,10 @@ const LoginScreen = ({ navigation, route }) => {
         await AsyncStorage.setItem("userToken", response.data.token);
         await AsyncStorage.setItem("userRole", response.data.user.role);
         await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
-        console.log("response.data.token",response.data.token)
+        // Store the user ID separately for easy access
+        await AsyncStorage.setItem("userId", String(response.data.user.id));
+        console.log("Login successful. User ID:", response.data.user.id);
+        console.log("User token:", response.data.token);
 
         if (response.data.user.role === "content_creator") {
           navigation.navigate("Home");

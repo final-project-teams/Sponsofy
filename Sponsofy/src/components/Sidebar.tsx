@@ -8,17 +8,26 @@ import {
   Image,
   Dimensions,
   Animated,
+  Easing,
   ActivityIndicator,
+  Switch,
+  Platform,
+  StatusBar,
+  Share,
+  Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { contractService } from '../services/api';
 
 // Define API base URL
 const API_BASE_URL = 'http://192.168.11.94:3304/api'; // Updated to match ContractsScreen
 
-const { width } = Dimensions.get('window');
-const SIDEBAR_WIDTH = width * 0.75;
+const { width, height } = Dimensions.get('window');
+const SIDEBAR_WIDTH = 280;
+const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
 interface SidebarProps {
   isVisible?: boolean;
@@ -57,156 +66,199 @@ interface Contract {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navigation, currentScreen }) => {
-  const { currentTheme } = useTheme();
-  
-  // State for expanded sections
+  const { currentTheme, isDarkMode, toggleTheme } = useTheme();
   const [expandedDeals, setExpandedDeals] = useState(false);
   const [contractsExpanded, setContractsExpanded] = useState(false);
-  // Add state for contracts
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loadingContracts, setLoadingContracts] = useState(false);
-  const [contractsError, setContractsError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showThemeToggle, setShowThemeToggle] = useState(false);
 
-  React.useEffect(() => {
-    Animated.timing(translateX, {
-      toValue: isVisible ? 0 : -SIDEBAR_WIDTH,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-    
-    // Fetch contracts when contracts section is expanded
-    if (contractsExpanded) {
+  const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isVisible) {
+      // Animate sidebar in
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      // Animate sidebar out
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: -SIDEBAR_WIDTH,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
+
+    // Load contracts when contracts section is expanded
+    if (isVisible && contractsExpanded) {
       fetchContracts();
     }
   }, [isVisible, contractsExpanded]);
 
-  const translateX = React.useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
-
   const navigateTo = (screen: string, params?: any) => {
-    // Close the sidebar first for better UX
     onClose();
-    
-    // Add a small delay for smoother transition
-    setTimeout(() => {
-      if (navigation) {
-        navigation.navigate(screen, params);
-      }
-    }, 300);
+    if (navigation) {
+      navigation.navigate(screen, params);
+    } else {
+      console.warn(`Navigation to ${screen} failed: navigation object is undefined`);
+      // You could add a fallback behavior here if needed
+    }
   };
 
   const toggleDealsExpanded = () => {
     setExpandedDeals(!expandedDeals);
-    // Close contracts if deals is being opened
-    if (!expandedDeals) {
-      setContractsExpanded(false);
-    }
   };
 
   const toggleContractsExpanded = () => {
     setContractsExpanded(!contractsExpanded);
-    // Close deals if contracts is being opened
-    if (!contractsExpanded) {
-      setExpandedDeals(false);
+    if (!contractsExpanded && contracts.length === 0) {
+      fetchContracts();
     }
   };
 
-  // Enhance the fetchContracts function to get real data
+  const toggleThemeOptions = () => {
+    setShowThemeToggle(!showThemeToggle);
+  };
+
   const fetchContracts = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      // If we have company data, use its ID to fetch related contracts
-      const companyId = companyData?.id;
+      // Get the authentication token
+      const token = await AsyncStorage.getItem('userToken');
       
-      if (companyId) {
-        // Try to fetch from API first
-        try {
-          const response = await fetch(`${API_BASE_URL}/contracts?company_id=${companyId}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            setContracts(data);
-            return;
-          }
-        } catch (error) {
-          console.log('Error fetching contracts:', error);
-          // Fall back to mock data if API fails
-        }
+      if (!token) {
+        console.warn('No authentication token found');
+        // Use mock data if no token is available
+        const mockContracts = generateMockContracts();
+        setContracts(mockContracts);
+        setIsLoading(false);
+        return;
       }
       
-      // Use mock data as fallback
-      const mockData = generateMockContracts();
-      setContracts(mockData);
-    } catch (error) {
-      console.error('Error in fetchContracts:', error);
+      // Fetch contracts from API
+      const response = await fetch(`${API_BASE_URL}/contract/current`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.contracts)) {
+        setContracts(data.contracts);
+      } else {
+        // Fallback to mock data if API response is not as expected
+        const mockContracts = generateMockContracts();
+        setContracts(mockContracts);
+      }
+    } catch (err) {
+      console.error('Error fetching contracts:', err);
+      setError('Failed to load contracts');
+      // Fallback to mock data on error
+      const mockContracts = generateMockContracts();
+      setContracts(mockContracts);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Generate mock contracts for demo
   const generateMockContracts = (): Contract[] => {
-    const mockContracts: Contract[] = [];
-    const statuses = ['active', 'completed', 'terminated'];
-    
-    // Create 5 mock contracts
-    for (let i = 1; i <= 5; i++) {
-      const contractStatus = statuses[Math.floor(Math.random() * statuses.length)] as 'active' | 'completed' | 'terminated';
-      
-      // Create start date (between 1-30 days in the past)
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30) - 1);
-      
-      // Create end date (3-12 months after start date)
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + Math.floor(Math.random() * 10) + 3);
-      
-      mockContracts.push({
-        id: i,
-        title: `Contract ${i} - ${['Social Media Campaign', 'Product Promotion', 'Brand Ambassador', 'Content Creation'][Math.floor(Math.random() * 4)]}`,
-        description: `This is a ${contractStatus} contract for content creation.`,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        status: contractStatus,
-        payment_terms: `Payment of $${Math.floor(Math.random() * 5000) + 1000}`,
-        rank: ['plat', 'gold', 'silver'][Math.floor(Math.random() * 3)] as 'plat' | 'gold' | 'silver',
-      });
-    }
-    
-    return mockContracts;
+    return [
+      {
+        id: 1,
+        title: 'Instagram Promotion',
+        description: 'Promote our new product on Instagram',
+        start_date: '2023-01-01',
+        end_date: '2023-02-01',
+        status: 'active',
+        payment_terms: 'Net 30',
+        rank: 'gold'
+      },
+      {
+        id: 2,
+        title: 'YouTube Review',
+        description: 'Create a review video for our service',
+        start_date: '2023-02-15',
+        end_date: '2023-03-15',
+        status: 'completed',
+        payment_terms: 'Net 15',
+        rank: 'plat'
+      },
+      {
+        id: 3,
+        title: 'TikTok Campaign',
+        description: 'Run a viral challenge campaign',
+        start_date: '2023-04-01',
+        end_date: '2023-05-01',
+        status: 'terminated',
+        payment_terms: 'Net 45',
+        rank: 'silver'
+      }
+    ];
   };
 
-  // Improve the contract press handler
   const handleContractPress = (contract: Contract) => {
-    // Navigate to contract detail screen with the contract data
-    navigateTo('ContractDetail', { contract });
+    onClose();
+    navigation.navigate('ContractDetail', { contract });
   };
 
-  // Enhance the render contract item to show more details and better styling
   const renderContractItem = (contract: Contract) => (
     <TouchableOpacity
       key={contract.id}
-      style={[
-        styles.contractItem,
-        { backgroundColor: currentTheme.colors.surface }
-      ]}
+      style={[styles.contractItem, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}
       onPress={() => handleContractPress(contract)}
     >
       <View style={styles.contractHeader}>
-        <Text style={[styles.contractTitle, { color: currentTheme.colors.text }]}>
-          {contract.title}
-        </Text>
-        <View style={[
-          styles.statusBadge, 
-          { backgroundColor: getStatusColor(contract.status) }
-        ]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={[
+              styles.rankBadge,
+              { backgroundColor: getRankColor(contract.rank || '') }
+            ]}
+          />
+          <Text style={[styles.contractTitle, { color: currentTheme.colors.text }]}>
+            {contract.title}
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(contract.status) }
+          ]}
+        >
           <Text style={styles.statusText}>
-            {contract.status.toUpperCase()}
+            {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
           </Text>
         </View>
       </View>
-      <Text 
+      <Text
         style={[styles.contractDescription, { color: currentTheme.colors.textSecondary }]}
         numberOfLines={2}
       >
@@ -216,38 +268,33 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
         <Text style={[styles.contractDate, { color: currentTheme.colors.textSecondary }]}>
           {new Date(contract.start_date).toLocaleDateString()} - {new Date(contract.end_date).toLocaleDateString()}
         </Text>
-        {contract.rank && (
-          <View style={[styles.rankBadge, { backgroundColor: getRankColor(contract.rank) }]}>
-            <Text style={styles.rankText}>{contract.rank.toUpperCase()}</Text>
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
 
-  // Add helper function to get rank color
   const getRankColor = (rank: string) => {
-    switch (rank) {
+    switch (rank.toLowerCase()) {
       case 'plat':
-        return '#A0B0C0';
+        return '#7B68EE';
       case 'gold':
         return '#FFD700';
       case 'silver':
         return '#C0C0C0';
       default:
-        return '#888888';
+        return '#C0C0C0';
     }
   };
 
-  // Add helper function to get status color
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'active':
         return '#4CAF50';
       case 'completed':
         return '#2196F3';
       case 'terminated':
         return '#F44336';
+      case 'pending':
+        return '#FF9800';
       default:
         return '#9E9E9E';
     }
@@ -258,14 +305,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     label: string,
     screen: string,
     params?: any,
-    badge?: number
+    badge?: number,
+    onCustomPress?: () => void
   ) => (
     <TouchableOpacity
-      style={styles.menuItem}
-      onPress={() => navigateTo(screen, params)}
+      style={[
+        styles.menuItem,
+        currentScreen === screen && styles.activeMenuItem
+      ]}
+      onPress={() => onCustomPress ? onCustomPress() : navigateTo(screen, params)}
+      activeOpacity={0.7}
     >
-      <Icon name={icon} size={24} color={currentTheme.colors.text} />
-      <Text style={[styles.menuItemText, { color: currentTheme.colors.text }]}>
+      <View style={styles.menuItemIconContainer}>
+        <Icon name={icon} size={22} color={currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text} />
+      </View>
+      <Text 
+        style={[
+          styles.menuItemText, 
+          { 
+            color: currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text,
+            fontWeight: currentScreen === screen ? '600' : 'normal'
+          }
+        ]}
+      >
         {label}
       </Text>
       {badge ? (
@@ -285,8 +347,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     <TouchableOpacity
       style={styles.subMenuItem}
       onPress={() => navigateTo(screen, params)}
+      activeOpacity={0.7}
     >
-      <Icon name={icon} size={20} color={currentTheme.colors.textSecondary} />
+      <View style={styles.menuItemIconContainer}>
+        <Icon name={icon} size={18} color={currentTheme.colors.textSecondary} />
+      </View>
       <Text style={[styles.subMenuItemText, { color: currentTheme.colors.textSecondary }]}>
         {label}
       </Text>
@@ -328,48 +393,187 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
             { status: "pending" }
           )}
           {renderSubMenuItem(
-            "check-circle-outline",
+            "check-all",
             "Completed Contracts",
             "Contracts",
             { status: "completed" }
           )}
           {renderSubMenuItem(
-            "close-circle-outline",
+            "close-circle",
             "Terminated Contracts",
             "Contracts",
             { status: "terminated" }
+          )}
+          
+          {/* Show recent contracts if available */}
+          {contracts.length > 0 && (
+            <View style={styles.contractsContainer}>
+              <Text style={[styles.contractsHeader, { color: currentTheme.colors.textSecondary }]}>
+                RECENT CONTRACTS
+              </Text>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={currentTheme.colors.primary} />
+                  <Text style={[styles.loadingText, { color: currentTheme.colors.textSecondary }]}>
+                    Loading...
+                  </Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorContainer}>
+                  <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>
+                    {error}
+                  </Text>
+                </View>
+              ) : contracts.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={[styles.loadingText, { color: currentTheme.colors.textSecondary }]}>
+                    No contracts found
+                  </Text>
+                </View>
+              ) : (
+                contracts.slice(0, 2).map(renderContractItem)
+              )}
+            </View>
           )}
         </View>
       )}
     </View>
   );
 
+  // Theme Toggle Option
+  const renderThemeToggle = () => (
+    <View style={styles.themeToggleWrapper}>
+      <Text style={[styles.themeToggleTitle, { color: currentTheme.colors.text }]}>
+        APPEARANCE
+      </Text>
+      <View style={styles.themeToggleContainer}>
+        <TouchableOpacity 
+          style={[
+            styles.themeOption, 
+            !isDarkMode && styles.activeThemeOption
+          ]}
+          onPress={() => {
+            if (isDarkMode) toggleTheme();
+          }}
+          activeOpacity={0.7}
+        >
+          <Icon name="white-balance-sunny" size={20} color={!isDarkMode ? "#8A2BE2" : "#AAAAAA"} />
+          <Text style={[
+            styles.themeOptionText, 
+            { 
+              color: !isDarkMode ? "#8A2BE2" : "#AAAAAA",
+              fontWeight: !isDarkMode ? '600' : 'normal'
+            }
+          ]}>
+            Light
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.themeOption, 
+            isDarkMode && styles.activeThemeOption
+          ]}
+          onPress={() => {
+            if (!isDarkMode) toggleTheme();
+          }}
+          activeOpacity={0.7}
+        >
+          <Icon name="moon-waning-crescent" size={20} color={isDarkMode ? "#8A2BE2" : "#AAAAAA"} />
+          <Text style={[
+            styles.themeOptionText, 
+            { 
+              color: isDarkMode ? "#8A2BE2" : "#AAAAAA",
+              fontWeight: isDarkMode ? '600' : 'normal'
+            }
+          ]}>
+            Dark
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Add a handleShareProfile function
+  const handleShareProfile = async () => {
+    if (!companyData) {
+      Alert.alert('Error', 'No company data available to share.');
+      return;
+    }
+    
+    try {
+      const shareOptions = {
+        title: `${companyData.name} Profile`,
+        message: `Check out ${companyData.name}'s profile on Sponsofy!\n\n${companyData.industry} • ${companyData.location}\n\n${companyData.description || 'No description available.'}`,
+        url: companyData.website || 'https://sponsofy.com/profile/' + companyData.id,
+      };
+      
+      const result = await Share.share(shareOptions);
+      
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // shared with activity type of result.activityType
+          console.log('Shared with activity type:', result.activityType);
+        } else {
+          // shared
+          console.log('Shared successfully');
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // dismissed
+        console.log('Share dismissed');
+      }
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+      Alert.alert('Error', 'Could not share profile. Please try again.');
+    }
+  };
+
   return (
     <>
       {isVisible && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <Animated.View
+          style={[
+            styles.overlay,
+            { opacity: overlayOpacity }
+          ]}
+        >
+          <TouchableOpacity
+            style={{ width: '100%', height: '100%' }}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+        </Animated.View>
       )}
       <Animated.View
         style={[
           styles.container,
           {
-            backgroundColor: currentTheme.colors.background,
-            borderRightColor: currentTheme.colors.border,
+            backgroundColor: isDarkMode ? '#000000' : '#FFFFFF',
+            borderRightColor: isDarkMode ? '#333333' : '#E0E0E0',
+            borderRightWidth: 1,
             transform: [{ translateX }],
+            shadowColor: '#000',
+            shadowOffset: { width: 2, height: 0 },
+            shadowOpacity: isDarkMode ? 0.3 : 0.1,
+            shadowRadius: 10,
+            elevation: 10,
+            height: height,
           },
         ]}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Icon name="close" size={24} color={currentTheme.colors.text} />
-          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: currentTheme.colors.text }]}>Sponsofy</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Icon name="close" size={24} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.profileSection}>
+        <View style={[styles.profileSection, { 
+          borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+          borderBottomWidth: 1,
+        }]}>
           <View
             style={[
               styles.avatarContainer,
@@ -386,6 +590,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
           <Text style={[styles.companyDetails, { color: currentTheme.colors.textSecondary }]}>
             {companyData?.industry || 'Industry'} • {companyData?.location || 'Location'}
           </Text>
+          
+          <View style={styles.profileActions}>
+            <TouchableOpacity 
+              style={[styles.profileActionButton, { backgroundColor: currentTheme.colors.primary }]}
+              onPress={() => navigateTo('EditProfile', { company: companyData })}
+            >
+              <Icon name="pencil" size={16} color="#FFFFFF" />
+              <Text style={styles.profileActionText}>Edit</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.profileActionButton, { 
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderColor: currentTheme.colors.primary
+              }]}
+              onPress={handleShareProfile}
+            >
+              <Icon name="share-variant" size={16} color={currentTheme.colors.primary} />
+              <Text style={[styles.profileActionText, { color: currentTheme.colors.primary }]}>Share</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView style={styles.menuContainer}>
@@ -398,7 +624,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
             {renderMenuItem('pencil', 'Edit Profile', 'EditProfile', { company: companyData })}
             {renderMenuItem('bell', 'Notifications', 'Notifications', {}, 3)}
           </View>
-
+          
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
               BUSINESS
@@ -416,7 +642,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
               <Icon 
                 name={expandedDeals ? "chevron-up" : "chevron-down"} 
                 size={20} 
-                color={currentTheme.colors.text} 
+                color={currentTheme.colors.textSecondary} 
+                style={styles.expandIcon}
               />
             </TouchableOpacity>
             
@@ -426,18 +653,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
             {renderMenuItem('chart-line', 'Analytics', 'Analytics')}
             {renderMenuItem('account-group', 'Content Creators', 'ContentCreators')}
           </View>
-
+          
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
               OTHER
             </Text>
             {renderMenuItem('chat', 'Messages', 'ChatScreen')}
+            {renderMenuItem('theme-light-dark', 'Theme', '', {}, 0, toggleTheme)}
             {renderMenuItem('crown', 'Premium', 'PremiumScreen')}
             {renderMenuItem('cog', 'Settings', 'Settings')}
             {renderMenuItem('help-circle', 'Help & Support', 'Support')}
             {renderMenuItem('logout', 'Logout', 'Login')}
           </View>
         </ScrollView>
+        
+        {/* Theme Toggle */}
+        {renderThemeToggle()}
+        
+        {/* Premium Button at Bottom */}
+        <TouchableOpacity 
+          style={styles.premiumButton}
+          onPress={() => navigateTo('PremiumScreen')}
+          activeOpacity={0.8}
+        >
+          <Icon name="crown" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+          <Text style={styles.premiumButtonText}>Join Sponsofy Premium</Text>
+        </TouchableOpacity>
       </Animated.View>
     </>
   );
@@ -459,15 +700,23 @@ const styles = StyleSheet.create({
     left: 0,
     width: SIDEBAR_WIDTH,
     height: '100%',
-    borderRightWidth: 1,
     zIndex: 1001,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 10,
     paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 43, 226, 0.1)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   closeButton: {
     padding: 8,
@@ -475,8 +724,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 16,
   },
   avatarContainer: {
     width: 80,
@@ -498,6 +746,26 @@ const styles = StyleSheet.create({
   },
   companyDetails: {
     fontSize: 14,
+    marginBottom: 16,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  profileActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginHorizontal: 6,
+  },
+  profileActionText: {
+    color: '#FFFFFF',
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '500',
   },
   menuContainer: {
     flex: 1,
@@ -510,31 +778,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 16,
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
+    marginHorizontal: 8,
+    borderRadius: 8,
+  },
+  activeMenuItem: {
+    backgroundColor: 'rgba(138, 43, 226, 0.1)',
+  },
+  menuItemIconContainer: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuItemText: {
-    marginLeft: 16,
-    fontSize: 16,
+    marginLeft: 12,
+    fontSize: 15,
     flex: 1,
   },
   subMenuContainer: {
     paddingLeft: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
   },
   subMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
+    marginHorizontal: 8,
+    borderRadius: 8,
   },
   subMenuItemText: {
-    marginLeft: 16,
+    marginLeft: 12,
     fontSize: 14,
   },
   badge: {
@@ -555,13 +837,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
   errorContainer: {
     padding: 16,
     backgroundColor: 'rgba(244, 67, 54, 0.1)',
   },
+  errorText: {
+    color: '#FF5252',
+  },
   emptyContainer: {
     padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
   },
   contractsContainer: {
     marginTop: 8,
@@ -615,24 +904,82 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   rankBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 8,
   },
   rankText: {
     color: 'white',
     fontSize: 10,
     fontWeight: 'bold',
   },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-  },
   expandIcon: {
     marginLeft: 8,
   },
   subMenu: {
     padding: 16,
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
+  },
+  // Theme toggle styles
+  themeToggleWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(138, 43, 226, 0.1)',
+  },
+  themeToggleTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  themeToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 8,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  activeThemeOption: {
+    backgroundColor: 'rgba(138, 43, 226, 0.15)',
+  },
+  themeOptionText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Premium button
+  premiumButton: {
+    flexDirection: 'row',
+    backgroundColor: '#8A2BE2',
+    margin: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  premiumButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

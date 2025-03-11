@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Company } from '../../services/api/companyApi';
 
-interface CompanyCardProps {
-  company: Company;
-  onPress: (company: Company) => void;
-}
-
-const CompanyCard: React.FC<CompanyCardProps> = ({ company, onPress }) => {
+const CompanyCard = ({ company, onPress }) => {
   const { currentTheme } = useTheme();
+  
+  // Handle missing data
+  const name = company?.name || 'Unnamed Company';
+  const industry = company?.industry || 'Unknown Industry';
+  const location = company?.location || 'Unknown Location';
+  const description = company?.description || '';
+  const verified = company?.verified || false;
 
   return (
     <TouchableOpacity
@@ -24,64 +25,19 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, onPress }) => {
       onPress={() => onPress(company)}
     >
       <View style={styles.header}>
-        <Text
-          style={[
-            styles.name,
-            {
-              color: currentTheme.colors.text,
-              fontFamily: currentTheme.fonts.bold,
-              fontSize: currentTheme.fontSizes.large,
-            },
-          ]}
-        >
-          {company.name}
-        </Text>
-        {company.verified && (
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: currentTheme.colors.primary },
-            ]}
-          >
-            <Text
-              style={[
-                styles.badgeText,
-                {
-                  color: currentTheme.colors.white,
-                  fontFamily: currentTheme.fonts.medium,
-                },
-              ]}
-            >
-              Verified
-            </Text>
+        <Text style={[styles.name, { color: currentTheme.colors.text }]}>{name}</Text>
+        {verified && (
+          <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]}>
+            <Text style={[styles.badgeText, { color: currentTheme.colors.white }]}>Verified</Text>
           </View>
         )}
       </View>
-
-      <Text
-        style={[
-          styles.details,
-          {
-            color: currentTheme.colors.textSecondary,
-            fontFamily: currentTheme.fonts.regular,
-          },
-        ]}
-      >
-        {company.industry} • {company.location}
+      <Text style={[styles.details, { color: currentTheme.colors.textSecondary }]}>
+        {industry} • {location}
       </Text>
-
-      {company.description && (
-        <Text
-          style={[
-            styles.description,
-            {
-              color: currentTheme.colors.text,
-              fontFamily: currentTheme.fonts.regular,
-            },
-          ]}
-          numberOfLines={2}
-        >
-          {company.description}
+      {description && (
+        <Text style={[styles.description, { color: currentTheme.colors.text }]} numberOfLines={2}>
+          {description}
         </Text>
       )}
     </TouchableOpacity>
@@ -103,6 +59,8 @@ const styles = StyleSheet.create({
   },
   name: {
     flex: 1,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   badge: {
     paddingHorizontal: 8,
@@ -122,4 +80,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CompanyCard; 
+export default CompanyCard;
