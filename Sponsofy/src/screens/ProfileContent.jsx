@@ -286,7 +286,7 @@ const ProfileContent = () => {
     );
   }
 
-  console.loglog("API_URL ❤️❤️",API_URL)
+
 
   return (
     <SafeAreaView style={styles.container}>
