@@ -73,6 +73,29 @@ app.get('/', (req, res) => {
 app.use("/api/addDeal", dealRouter)
 
 
+// Add this to your server.js file
+// const express = require('express');
+// const path = require('path');
+// const cors = require('cors');
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Create a dedicated route for serving static files
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Add a test endpoint to check if images are accessible
+app.get('/test-image', (req, res) => {
+  res.send(`
+    <html>
+      <body>
+        <h1>Image Test</h1>
+        <p>If you can see an image below, your static file server is working:</p>
+        <img src="/uploads/images/file-1741623016694-545084615.jpg" alt="Test Image" style="max-width: 300px;" />
+      </body>
+    </html>
+  `);
+});
 
 
 // sockettttttttttttttttt
