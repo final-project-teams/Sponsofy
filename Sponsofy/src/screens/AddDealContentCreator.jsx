@@ -21,6 +21,7 @@ import { useNavigation } from "@react-navigation/native"
 import api from "../config/axios"
 
 const AddDealContentCreator = () => {
+  
   const navigation = useNavigation()
   const [loading, setLoading] = useState(false)
   const [dealData, setDealData] = useState({
@@ -68,7 +69,7 @@ const AddDealContentCreator = () => {
           },
         },
       )
-
+      
       Alert.alert("Success", "Deal created successfully!", [
         {
           text: "OK",

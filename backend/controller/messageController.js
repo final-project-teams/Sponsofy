@@ -210,7 +210,7 @@ const messageController = {
           replacements: [
             mediaType,
             file.path,
-            file.originalname,
+            file.filename,
             file.size,
             file.mimetype,
             `Chat media in room ${roomId}`,
@@ -239,7 +239,7 @@ const messageController = {
           id: mediaRecord,
           media_type: mediaType,
           file_url: createMediaUrl(file.path),
-          file_name: file.originalname,
+          file_name: file.filename,
           file_size: file.size,
           file_format: file.mimetype
         }

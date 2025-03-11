@@ -18,6 +18,7 @@ import api from '../config/axios';
 import { useAuth } from '../context/AuthContext';
 import * as ImagePicker from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { API_URL } from '../config/source';
 
 interface Message {
   id: string;
@@ -235,7 +236,7 @@ const ChatScreen = ({ route, navigation }) => {
           {hasMedia && item.Media.media_type === 'image' && (
             <View style={styles.mediaImageContainer}>
               <Image
-                source={{ uri: item.Media.file_url }}
+                source={{ uri: `${API_URL}/uploads/images/${item.Media.file_name}` }}
                 style={styles.mediaImage}
                 resizeMode="cover"
               />
@@ -245,7 +246,7 @@ const ChatScreen = ({ route, navigation }) => {
           {hasMedia && item.Media.media_type === 'video' && (
             <View style={styles.videoContainer}>
               <Video
-                source={{ uri: item.Media.file_url }}
+                source={{ uri: `${API_URL}/uploads/videos/${item.Media.file_name}` }}
                 style={styles.mediaVideo}
                 useNativeControls
                 resizeMode="contain"
