@@ -83,12 +83,12 @@ Media.belongsTo(Term);
 Term.hasMany(Post);
 Post.belongsTo(Term);
 
-Message.hasMany(Media);
-Media.belongsTo(Message);
+Message.hasMany(Media, { foreignKey: 'MessageId' });
+Media.belongsTo(Message, { foreignKey: 'MessageId' });
 
 // ContentCreator -> Media (Many-to-One, Portfolio)
-ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
-Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
+// ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+// Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
 Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
@@ -170,6 +170,11 @@ Account.belongsTo(ContentCreator, {
   foreignKey: 'contentCreatorId',
   as: 'contentCreator',
 });
+
+// Make sure this association exists and is properly defined
+// Message.hasOne(Media, { foreignKey: 'messageId' });
+// Media.belongsTo(Message, { foreignKey: 'messageId' });
+
 sequelize.authenticate()
   .then(() => {
     console.log('Connection to the database has been established successfully.');

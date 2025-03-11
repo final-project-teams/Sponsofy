@@ -8,11 +8,16 @@ import {
   SafeAreaView,
   FlatList,
   ActivityIndicator,
+  Image,
+  Platform,
 } from 'react-native';
+import { Video } from 'expo-av';
 import { useTheme } from "../theme/ThemeContext";
 import Icon from 'react-native-vector-icons/Ionicons';
 import api from '../config/axios';
 import { useAuth } from '../context/AuthContext';
+import * as ImagePicker from 'react-native-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 interface Message {
   id: string;
@@ -24,6 +29,14 @@ interface Message {
     last_name: string;
   };
   created_at: string;
+  Media?: {
+    id: string;
+    media_type: 'image' | 'video' | 'audio' | 'document';
+    file_url: string;
+    file_name: string;
+    file_size: number;
+    file_format: string;
+  };
 }
 
 const formatMessageTime = (timestamp: string) => {
@@ -44,6 +57,7 @@ const ChatScreen = ({ route, navigation }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { roomId } = route.params;
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     loadMessages();
@@ -54,7 +68,11 @@ const ChatScreen = ({ route, navigation }) => {
       setIsLoading(true);
       const response = await api.get(`/messages/room/${roomId}`);
       if (response.data) {
-        setMessages(response.data);
+        console.log("Messages from server:", JSON.stringify(response.data, null, 2));
+
+        // Apply the fix to messages
+        const fixedMessages = fixMessagesWithMedia(response.data);
+        setMessages(fixedMessages);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -80,8 +98,109 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
+  const handlePickImage = async () => {
+    ImagePicker.launchImageLibrary({
+      mediaType: 'mixed', // Allow both photos and videos
+      quality: 0.8,
+    }, async (response) => {
+      if (response.didCancel) {
+        return;
+      }
+
+      if (response.errorCode) {
+        console.error('ImagePicker Error: ', response.errorMessage);
+        return;
+      }
+
+      if (response.assets && response.assets.length > 0) {
+        const asset = response.assets[0];
+        await uploadMedia(asset);
+      }
+    });
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // All file types
+        // You can specify specific types like 'application/pdf' for PDFs only
+      });
+
+      if (result.canceled === false) {
+        // User selected a file
+        console.log(result.assets[0]);
+        // Upload the file
+        await uploadMedia(result.assets[0]);
+      }
+    } catch (err) {
+      console.error('Document Picker Error:', err);
+    }
+  };
+
+  const uploadMedia = async (file) => {
+    try {
+      setIsUploading(true);
+      console.log("Uploading file:", file);
+
+      const formData = new FormData();
+      formData.append('file', {
+        name: file.name || file.fileName,
+        type: file.mimeType || file.type,
+        uri: file.uri
+      });
+
+      if (newMessage.trim()) {
+        formData.append('content', newMessage);
+      }
+
+      const response = await api.post(
+        `/messages/room/${roomId}/media`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      console.log("Upload response:", response.data);
+
+      if (response.data) {
+        // Make sure the response has the Media property
+        const messageWithMedia = response.data.Media
+          ? response.data
+          : {
+            ...response.data,
+            Media: {
+              id: 'placeholder',
+              media_type: 'document',
+              file_url: null,
+              file_name: file.name || file.fileName,
+              file_size: file.size,
+              file_format: file.mimeType || file.type
+            }
+          };
+
+        setMessages(prev => [messageWithMedia, ...prev]);
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Error uploading media:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isSentByMe = item.sender.id === user?.id;
+
+    // Check if Media exists and has a file_url
+    const hasMedia = item.Media && item.Media.file_url;
+
+    console.log("Rendering message:", item.id, "Has media:", hasMedia);
+
+    // Add this debug log to see the full message object
+    console.log("Full message object:", JSON.stringify(item));
 
     return (
       <View
@@ -98,20 +217,72 @@ const ChatScreen = ({ route, navigation }) => {
         <View
           style={[
             styles.messageBubble,
-            {
+            { 
               backgroundColor: isSentByMe ? currentTheme.colors.primary : currentTheme.colors.surface,
               alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
             }
           ]}
         >
+          {/* Show a placeholder for debugging */}
+          {item.content === 'Sent a file' && !hasMedia && (
+            <View style={styles.mediaPlaceholder}>
+              <Text style={{ color: 'white' }}>Media not loaded properly</Text>
+              <Text style={{ color: 'white', fontSize: 10 }}>Check console for details</Text>
+            </View>
+          )}
+
+          {/* Render media based on type */}
+          {hasMedia && item.Media.media_type === 'image' && (
+            <View style={styles.mediaImageContainer}>
+              <Image
+                source={{ uri: item.Media.file_url }}
+                style={styles.mediaImage}
+                resizeMode="cover"
+              />
+            </View>
+          )}
+
+          {hasMedia && item.Media.media_type === 'video' && (
+            <View style={styles.videoContainer}>
+              <Video
+                source={{ uri: item.Media.file_url }}
+                style={styles.mediaVideo}
+                useNativeControls
+                resizeMode="contain"
+              />
+            </View>
+          )}
+
+          {hasMedia && item.Media.media_type === 'audio' && (
+            <View style={styles.audioContainer}>
+              <Icon name="musical-note" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
+              <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
+                {item.Media.file_name}
+              </Text>
+            </View>
+          )}
+
+          {hasMedia && item.Media.media_type === 'document' && (
+            <View style={styles.documentContainer}>
+              <Icon name="document-text" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
+              <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
+                {item.Media.file_name}
+              </Text>
+            </View>
+          )}
+
+          {/* Only show content if it's not the default "Sent a file" message or if there's no media */}
+          {(!hasMedia || (item.content && item.content !== 'Sent a file')) && (
+            <Text style={[
+              styles.messageText,
+              { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }
+            ]}>
+              {item.content}
+            </Text>
+          )}
+
           <Text style={[
-            styles.messageText,
-            { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }
-          ]}>
-            {item.content}
-          </Text>
-          <Text style={[
-            styles.messageTime,
+            styles.messageTime, 
             { color: isSentByMe ? '#FFFFFF80' : currentTheme.colors.textSecondary }
           ]}>
             {formatMessageTime(item.created_at)}
@@ -119,6 +290,29 @@ const ChatScreen = ({ route, navigation }) => {
         </View>
       </View>
     );
+  };
+
+  // Add this function to manually fix messages with missing media
+  const fixMessagesWithMedia = (messages) => {
+    return messages.map(message => {
+      // If the message content is "Sent a file" but has no Media property,
+      // we'll create a placeholder Media object
+      if (message.content === 'Sent a file' && !message.Media) {
+        console.log(`Adding placeholder Media for message ${message.id}`);
+        return {
+          ...message,
+          Media: {
+            id: 'placeholder',
+            media_type: 'document',
+            file_url: null,
+            file_name: 'Unknown file',
+            file_size: 0,
+            file_format: 'unknown'
+          }
+        };
+      }
+      return message;
+    });
   };
 
   return (
@@ -151,19 +345,34 @@ const ChatScreen = ({ route, navigation }) => {
       )}
 
       <View style={styles.inputContainer}>
+        <View style={styles.mediaButtons}>
+          <TouchableOpacity onPress={handlePickImage} style={styles.mediaButton}>
+            <Icon name="image" size={24} color={currentTheme.colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handlePickDocument} style={styles.mediaButton}>
+            <Icon name="document" size={24} color={currentTheme.colors.text} />
+          </TouchableOpacity>
+        </View>
+
         <TextInput
           style={[styles.input, { color: currentTheme.colors.text, backgroundColor: currentTheme.colors.surface }]}
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Type a message..."
-          placeholderTextColor={currentTheme.colors.text}
+          placeholderTextColor={currentTheme.colors.textSecondary}
           multiline
         />
+
         <TouchableOpacity
           style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
           onPress={handleSendMessage}
+          disabled={isUploading || (!newMessage.trim() && !isUploading)}
         >
-          <Icon name="send" size={20} color="#FFFFFF" />
+          {isUploading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+              <Icon name="send" size={20} color="#FFFFFF" />
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -247,6 +456,63 @@ const styles = StyleSheet.create({
   },
   loader: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mediaButtons: {
+    flexDirection: 'row',
+    marginRight: 8,
+  },
+  mediaButton: {
+    marginHorizontal: 4,
+  },
+  mediaImageContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  mediaImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  videoContainer: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#000',
+  },
+  mediaVideo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  audioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  documentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mediaFileName: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  mediaPlaceholder: {
+    width: 200,
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#555',
     justifyContent: 'center',
     alignItems: 'center',
   },

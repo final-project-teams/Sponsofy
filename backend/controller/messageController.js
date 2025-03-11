@@ -1,4 +1,28 @@
-const { Message, User, Room, Media } = require('../database/connection');
+const { Message, User, Room, Media, sequelize } = require('../database/connection');
+const { upload } = require('../middleware/uploadMiddleware');
+const path = require('path');
+const fs = require('fs');
+
+// Helper function to create proper URLs for media files
+const createMediaUrl = (filePath) => {
+  if (!filePath) return null;
+  
+  console.log("Original file path:", filePath); // Debug log
+  
+  // Extract just the filename
+  const fileName = path.basename(filePath);
+  
+  // Get the folder name (images, videos, etc.)
+  const folderMatch = filePath.match(/uploads\/(images|videos|audio|misc)/);
+  const folder = folderMatch ? folderMatch[1] : 'images';
+  
+  // Construct a URL that points to your static file server
+  // Use the IP address from your app.json
+  const url = `http://192.168.2.189:3304/uploads/${folder}/${fileName}`;
+  
+  console.log("Formatted URL:", url); // Debug log
+  return url;
+};
 
 const messageController = {
   createMessage: async (req, res) => {
@@ -61,19 +85,50 @@ const messageController = {
         return res.status(403).json({ error: 'Not authorized to view messages in this room' });
       }
 
+      // Get all messages for the room
       const messages = await Message.findAll({
         where: { roomId },
-        include: [{
-          model: User,
-          as: 'sender',
-          attributes: ['id', 'username', 'first_name', 'last_name']
-        }],
-        order: [['created_at', 'DESC']] // Most recent messages first
+        include: [
+          {
+            model: User,
+            as: 'sender',
+            attributes: ['id', 'username', 'first_name', 'last_name']
+          }
+        ],
+        order: [['created_at', 'DESC']]
       });
 
-      res.status(200).json(messages);
+      // Get all media for these messages
+      const messageIds = messages.map(m => m.id);
+      const mediaRecords = await Media.findAll({
+        where: { MessageId: messageIds }
+      });
+
+      // Create a map of media by message ID
+      const mediaByMessageId = {};
+      mediaRecords.forEach(media => {
+        mediaByMessageId[media.MessageId] = {
+          id: media.id,
+          media_type: media.media_type,
+          file_url: createMediaUrl(media.file_url),
+          file_name: media.file_name,
+          file_size: media.file_size,
+          file_format: media.file_format
+        };
+      });
+
+      // Attach media to messages
+      const messagesWithMedia = messages.map(message => {
+        const plainMessage = message.get({ plain: true });
+        if (mediaByMessageId[message.id]) {
+          plainMessage.Media = mediaByMessageId[message.id];
+        }
+        return plainMessage;
+      });
+
+      res.status(200).json(messagesWithMedia);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('Error fetching messages with media:', error);
       res.status(500).json({ error: 'Failed to fetch messages' });
     }
   },
@@ -106,7 +161,13 @@ const messageController = {
       const { roomId } = req.params;
       const { content } = req.body;
       const userId = req.user.userId;
-      const files = req.files;
+      const file = req.file; // Single file upload
+
+      console.log("File received:", file); // Debug log
+
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
 
       // Verify user is part of the room
       const room = await Room.findOne({
@@ -124,48 +185,74 @@ const messageController = {
 
       // Create the message
       const message = await Message.create({
-        content,
+        content: content || 'Sent a file', // Default text if no content provided
         roomId,
         userId
       });
 
-      // Create media entries for each uploaded file
-      if (files && files.length > 0) {
-        const mediaPromises = files.map(file => {
-          return Media.create({
-            media_type: file.mimetype.startsWith('image/') ? 'image' :
-                       file.mimetype.startsWith('video/') ? 'video' :
-                       file.mimetype.startsWith('audio/') ? 'audio' : 'document',
-            file_url: file.path,
-            file_name: file.originalname,
-            file_size: file.size,
-            file_format: file.mimetype,
-            messageId: message.id
-          });
-        });
+      console.log("Created message with ID:", message.id); // Debug log
 
-        await Promise.all(mediaPromises);
+      // Determine media type from mimetype
+      let mediaType = 'document';
+      if (file.mimetype.startsWith('image/')) {
+        mediaType = 'image';
+      } else if (file.mimetype.startsWith('video/')) {
+        mediaType = 'video';
+      } else if (file.mimetype.startsWith('audio/')) {
+        mediaType = 'audio';
       }
 
-      // Fetch the complete message with media and sender info
-      const messageWithDetails = await Message.findOne({
-        where: { id: message.id },
-        include: [
-          {
-            model: User,
-            as: 'sender',
-            attributes: ['id', 'username', 'first_name', 'last_name']
-          },
-          {
-            model: Media
-          }
-        ]
-      });
+      // Use a direct SQL query to create the media record
+      const [mediaRecord] = await sequelize.query(
+        `INSERT INTO media (media_type, file_url, file_name, file_size, file_format, description, MessageId, createdAt, updatedAt) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        {
+          replacements: [
+            mediaType,
+            file.path,
+            file.originalname,
+            file.size,
+            file.mimetype,
+            `Chat media in room ${roomId}`,
+            message.id
+          ],
+          type: sequelize.QueryTypes.INSERT
+        }
+      );
 
-      res.status(201).json(messageWithDetails);
+      console.log("Created media record with ID:", mediaRecord); // Debug log
+
+      // Create a custom response with the media information
+      const response = {
+        id: message.id,
+        content: message.content,
+        roomId: message.roomId,
+        userId: message.userId,
+        created_at: message.created_at,
+        sender: {
+          id: userId,
+          username: req.user.username || 'User',
+          first_name: req.user.first_name || 'User',
+          last_name: req.user.last_name || ''
+        },
+        Media: {
+          id: mediaRecord,
+          media_type: mediaType,
+          file_url: createMediaUrl(file.path),
+          file_name: file.originalname,
+          file_size: file.size,
+          file_format: file.mimetype
+        }
+      };
+
+      res.status(201).json(response);
     } catch (error) {
       console.error('Error creating message with media:', error);
-      res.status(500).json({ error: 'Failed to create message with media' });
+      res.status(500).json({ 
+        error: 'Failed to create message with media', 
+        details: error.message,
+        stack: error.stack
+      });
     }
   }
 };
