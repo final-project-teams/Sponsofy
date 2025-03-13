@@ -90,7 +90,7 @@ const ChatScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { roomId } = route.params;
+  const { roomId, recipientUser } = route.params;
   const [isUploading, setIsUploading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -611,7 +611,9 @@ const ChatScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color={currentTheme.colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.username, { color: currentTheme.colors.text }]}>Chat Room</Text>
+        <Text style={[styles.username, { color: currentTheme.colors.text }]}>
+          {recipientUser?.username || 'Chat'}
+        </Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <Icon name="call" size={20} color={currentTheme.colors.text} />
@@ -635,35 +637,32 @@ const ChatScreen = ({ route, navigation }) => {
       )}
       <TypingIndicator />
       <View style={styles.inputContainer}>
-        <View style={styles.mediaButtons}>
-          <TouchableOpacity onPress={handlePickImage} style={styles.mediaButton}>
-            <Icon name="image" size={24} color={currentTheme.colors.text} />
-          </TouchableOpacity>
+        <View style={[styles.inputWrapper, { backgroundColor: currentTheme.colors.surface }]}>
           <TouchableOpacity onPress={handlePickDocument} style={styles.mediaButton}>
-            <Icon name="document" size={24} color={currentTheme.colors.text} />
+            <Icon name="document" size={20} color={currentTheme.colors.text} />
+          </TouchableOpacity>
+
+          <TextInput
+            style={[styles.input, { color: currentTheme.colors.text }]}
+            value={newMessage}
+            onChangeText={handleTyping}
+            placeholder="Type a message..."
+            placeholderTextColor={currentTheme.colors.textSecondary}
+            multiline
+          />
+
+          <TouchableOpacity
+            style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
+            onPress={handleSendMessage}
+            disabled={isUploading || (!newMessage.trim() && !isUploading)}
+          >
+            {isUploading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Icon name="send" size={15} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </View>
-
-        <TextInput
-          style={[styles.input, { color: currentTheme.colors.text, backgroundColor: currentTheme.colors.surface }]}
-          value={newMessage}
-          onChangeText={handleTyping}
-          placeholder="Type a message..."
-          placeholderTextColor={currentTheme.colors.textSecondary}
-          multiline
-        />
-
-        <TouchableOpacity
-          style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
-          onPress={handleSendMessage}
-          disabled={isUploading || (!newMessage.trim() && !isUploading)}
-        >
-          {isUploading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-              <Icon name="send" size={20} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -725,22 +724,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   inputContainer: {
-    flexDirection: 'row',
     padding: 16,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#181818',
+    borderWidth: 1,
+    borderColor: '#262626',
   },
   input: {
     flex: 1,
-    borderRadius: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    marginRight: 8,
-    maxHeight: 100,
+    fontSize: 16,
+    backgroundColor: 'transparent',
+
+  },
+  mediaButton: {
+    paddingRight: 6,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 28,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -748,13 +758,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  mediaButtons: {
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  mediaButton: {
-    marginHorizontal: 4,
   },
   mediaImageContainer: {
     width: 200,
