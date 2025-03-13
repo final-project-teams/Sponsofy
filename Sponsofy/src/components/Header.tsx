@@ -9,6 +9,10 @@ const Header = ({ title }) => {
     navigation.navigate('Notifications');
   };
 
+  const handleChatPress = () => {
+    navigation.navigate('ChatList');
+  };
+
   return (
     <View style={styles.header}>
       <TouchableOpacity>
@@ -20,7 +24,7 @@ const Header = ({ title }) => {
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerIcon}>
-          <Ionicons name="paper-plane" size={24} color="white" />
+          <Ionicons name="paper-plane" size={24} color="white" onPress={handleChatPress} />
         </TouchableOpacity>
       </View>
     </View>
