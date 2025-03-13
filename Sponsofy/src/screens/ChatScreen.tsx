@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Image,
   Platform,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from "../theme/ThemeContext";
@@ -54,6 +56,12 @@ interface UploadFile {
   size?: number;
 }
 
+interface TypingUser {
+  userId: string;
+  username: string;
+  socketId: string;
+}
+
 const formatMessageTime = (timestamp: string) => {
   try {
     const now = new Date();
@@ -84,6 +92,13 @@ const ChatScreen = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { roomId } = route.params;
   const [isUploading, setIsUploading] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingDots = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
 
   useEffect(() => {
     loadMessages();
@@ -131,6 +146,19 @@ const ChatScreen = ({ route, navigation }) => {
       });
     });
 
+    chatSocket.on('user_typing', (user: TypingUser) => {
+      setTypingUsers(prev => {
+        if (!prev.some(u => u.userId === user.userId)) {
+          return [...prev, user];
+        }
+        return prev;
+      });
+    });
+
+    chatSocket.on('user_stopped_typing', (user: { userId: string }) => {
+      setTypingUsers(prev => prev.filter(u => u.userId !== user.userId));
+    });
+
     // Cleanup socket listeners when component unmounts
     return () => {
       if (chatSocket) {
@@ -140,9 +168,41 @@ const ChatScreen = ({ route, navigation }) => {
           roomId,
           userId: user.id
         });
+        chatSocket.off('user_typing');
+        chatSocket.off('user_stopped_typing');
       }
     };
   }, [roomId, chatSocket, user]);
+
+  useEffect(() => {
+    const animateDots = () => {
+      const animations = typingDots.map((dot, index) => {
+        return Animated.sequence([
+          Animated.delay(index * 200),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.ease,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.ease,
+            useNativeDriver: true,
+          }),
+        ]);
+      });
+
+      Animated.loop(
+        Animated.parallel(animations)
+      ).start();
+    };
+
+    if (typingUsers.length > 0) {
+      animateDots();
+    }
+  }, [typingUsers]);
 
   const loadMessages = async () => {
     try {
@@ -165,24 +225,23 @@ const ChatScreen = ({ route, navigation }) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
+    const tempMessage = {
+      id: `temp_${Date.now()}`,
+      content: newMessage,
+      sender: {
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name || '',
+        last_name: user.last_name || ''
+      },
+      created_at: new Date().toISOString()
+    };
+
     try {
       if (!chatSocket || !isConnected) {
         console.error('Socket not connected');
         return;
       }
-
-      // Create a temporary message
-      const tempMessage = {
-        id: `temp_${Date.now()}`,
-        content: newMessage,
-        sender: {
-          id: user.id,
-          username: user.username,
-          first_name: user.first_name || '',
-          last_name: user.last_name || ''
-        },
-        created_at: new Date().toISOString()
-      };
 
       // Add temporary message immediately
       setMessages(prevMessages => [tempMessage, ...prevMessages]);
@@ -213,6 +272,13 @@ const ChatScreen = ({ route, navigation }) => {
             last_name: user.last_name || ''
           }
         });
+
+        // Clear typing indicator when message is sent
+        if (isTyping) {
+          setIsTyping(false);
+          chatSocket.emit('typing_end', { roomId });
+        }
+
         setNewMessage('');
       }
     } catch (error) {
@@ -489,6 +555,56 @@ const ChatScreen = ({ route, navigation }) => {
     });
   };
 
+  const handleTyping = (text: string) => {
+    setNewMessage(text);
+
+    if (!isTyping && text.length > 0) {
+      setIsTyping(true);
+      chatSocket?.emit('typing_start', { roomId });
+    } else if (isTyping && text.length === 0) {
+      setIsTyping(false);
+      chatSocket?.emit('typing_end', { roomId });
+    }
+  };
+
+  const TypingIndicator = () => {
+    if (typingUsers.length === 0) return null;
+
+    const typingText = typingUsers.length === 1
+      ? `${typingUsers[0].username} is typing...`
+      : typingUsers.length === 2
+        ? `${typingUsers[0].username} and ${typingUsers[1].username} are typing...`
+        : 'Several people are typing...';
+
+    return (
+      <View style={styles.typingContainer}>
+        <Text style={[styles.typingText, { color: currentTheme.colors.textSecondary }]}>
+          {typingText}
+        </Text>
+        <View style={styles.dotsContainer}>
+          {typingDots.map((dot, index) => (
+            <Animated.View
+              key={index}
+              style={[
+                styles.typingDot,
+                {
+                  backgroundColor: currentTheme.colors.textSecondary,
+                  opacity: dot,
+                  transform: [{
+                    translateY: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -8],
+                    }),
+                  }],
+                },
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
@@ -517,7 +633,7 @@ const ChatScreen = ({ route, navigation }) => {
             inverted
           />
       )}
-
+      <TypingIndicator />
       <View style={styles.inputContainer}>
         <View style={styles.mediaButtons}>
           <TouchableOpacity onPress={handlePickImage} style={styles.mediaButton}>
@@ -531,7 +647,7 @@ const ChatScreen = ({ route, navigation }) => {
         <TextInput
           style={[styles.input, { color: currentTheme.colors.text, backgroundColor: currentTheme.colors.surface }]}
           value={newMessage}
-          onChangeText={setNewMessage}
+          onChangeText={handleTyping}
           placeholder="Type a message..."
           placeholderTextColor={currentTheme.colors.textSecondary}
           multiline
@@ -689,6 +805,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#555',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  typingText: {
+    fontSize: 12,
+    marginRight: 8,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 2,
   },
 });
 
