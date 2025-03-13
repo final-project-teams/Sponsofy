@@ -107,7 +107,7 @@ const setupChat = (io) => {
     });
 
     // Handle message with media
-    socket.on('new_message_with_media', (messageData) => {
+    socket.on('new_message_with_media', async (messageData) => {
       const { roomId } = messageData;
       
       // Get sender info from socket or messageData
@@ -124,8 +124,11 @@ const setupChat = (io) => {
         socketId: socket.id
       };
 
-      // Broadcast to everyone in the room including sender
+      // Immediately broadcast to all users in the room
       chatIo.to(roomId).emit('receive_message', enrichedMessage);
+
+      // Also emit a specific event for media messages
+      chatIo.to(roomId).emit('receive_media_message', enrichedMessage);
     });
 
     // Handle typing indicators

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  Alert,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from "../theme/ThemeContext";
@@ -40,6 +41,7 @@ interface Message {
     file_size: number;
     file_format: string;
   };
+  roomId?: string;
 }
 
 // Add type for file upload
@@ -104,25 +106,28 @@ const ChatScreen = ({ route, navigation }) => {
     });
 
     // Listen for new messages
-    chatSocket.on('receive_message', (newMessage) => {
-      console.log('Received new message:', newMessage);
-      setMessages(prev => {
-        // Ensure created_at is a valid date string
-        const messageWithValidDate = {
-          ...newMessage,
-          created_at: newMessage.created_at || new Date().toISOString()
-        };
+    chatSocket.on('receive_message', (message) => {
+      console.log('Received message:', message);
+      setMessages(prevMessages => {
+        // Check if message already exists to avoid duplicates
+        if (prevMessages.some(m => m.id === message.id)) {
+          return prevMessages;
+        }
+        // Add new message to the beginning since FlatList is inverted
+        return [message, ...prevMessages];
+      });
+    });
 
-        // Avoid duplicate messages
-        const messageExists = prev.some(msg =>
-          msg.id === messageWithValidDate.id ||
-          (msg.content === messageWithValidDate.content &&
-            msg.sender.id === messageWithValidDate.sender.id &&
-            Math.abs(new Date(msg.created_at).getTime() - new Date(messageWithValidDate.created_at).getTime()) < 1000)
-        );
-
-        if (messageExists) return prev;
-        return [messageWithValidDate, ...prev];
+    // Listen specifically for media messages
+    chatSocket.on('receive_media_message', (message) => {
+      console.log('Received media message:', message);
+      setMessages(prevMessages => {
+        // Check if message already exists to avoid duplicates
+        if (prevMessages.some(m => m.id === message.id)) {
+          return prevMessages;
+        }
+        // Add new message to the beginning since FlatList is inverted
+        return [message, ...prevMessages];
       });
     });
 
@@ -130,6 +135,7 @@ const ChatScreen = ({ route, navigation }) => {
     return () => {
       if (chatSocket) {
         chatSocket.off('receive_message');
+        chatSocket.off('receive_media_message');
         chatSocket.emit('leave_room', {
           roomId,
           userId: user.id
@@ -165,12 +171,35 @@ const ChatScreen = ({ route, navigation }) => {
         return;
       }
 
+      // Create a temporary message
+      const tempMessage = {
+        id: `temp_${Date.now()}`,
+        content: newMessage,
+        sender: {
+          id: user.id,
+          username: user.username,
+          first_name: user.first_name || '',
+          last_name: user.last_name || ''
+        },
+        created_at: new Date().toISOString()
+      };
+
+      // Add temporary message immediately
+      setMessages(prevMessages => [tempMessage, ...prevMessages]);
+
       // First, save to database
       const response = await api.post(`/messages/room/${roomId}`, {
         content: newMessage
       });
 
       if (response.data) {
+        // Replace temporary message with server response
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === tempMessage.id ? response.data : msg
+          )
+        );
+
         // Then, emit through socket for real-time update
         chatSocket.emit('new_message', {
           ...response.data,
@@ -188,42 +217,52 @@ const ChatScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      // Remove temporary message if sending failed
+      setMessages(prevMessages =>
+        prevMessages.filter(msg => msg.id !== tempMessage.id)
+      );
     }
   };
 
   const handlePickImage = async () => {
-    ImagePicker.launchImageLibrary({
-      mediaType: 'mixed', // Allow both photos and videos
-      quality: 0.8,
-    }, async (response) => {
-      if (response.didCancel) {
-        return;
-      }
+    try {
+      const result = await ImagePicker.launchImageLibrary({
+        mediaType: 'mixed',
+        quality: 0.8,
+      });
 
-      if (response.errorCode) {
-        console.error('ImagePicker Error: ', response.errorMessage);
-        return;
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        // Convert ImagePicker asset to UploadFile type
+        const uploadFile: UploadFile = {
+          uri: asset.uri || '',
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || 'image.jpg',
+          size: asset.fileSize
+        };
+        await uploadMedia(uploadFile);
       }
-
-      if (response.assets && response.assets.length > 0) {
-        const asset = response.assets[0];
-        await uploadMedia(asset);
-      }
-    });
+    } catch (error) {
+      console.error('ImagePicker Error:', error);
+    }
   };
 
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // All file types
-        // You can specify specific types like 'application/pdf' for PDFs only
+        type: '*/*',
       });
 
-      if (result.canceled === false) {
-        // User selected a file
-        console.log(result.assets[0]);
-        // Upload the file
-        await uploadMedia(result.assets[0]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        // Convert DocumentPicker asset to UploadFile type
+        const uploadFile: UploadFile = {
+          uri: asset.uri,
+          type: asset.mimeType || 'application/octet-stream',
+          name: asset.name,
+          size: asset.size
+        };
+        await uploadMedia(uploadFile);
       }
     } catch (err) {
       console.error('Document Picker Error:', err);
@@ -236,15 +275,42 @@ const ChatScreen = ({ route, navigation }) => {
       return;
     }
 
+    const tempMessageId = `temp_${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempMessageId,
+      content: newMessage || 'Sent a file',
+      sender: {
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name || '',
+        last_name: user.last_name || ''
+      },
+      created_at: new Date().toISOString(),
+      Media: {
+        id: 'temp',
+        media_type: (file.type?.includes('image') ? 'image' :
+          file.type?.includes('video') ? 'video' :
+            file.type?.includes('audio') ? 'audio' : 'document') as 'image' | 'video' | 'audio' | 'document',
+        file_url: file.uri,
+        file_name: file.name || 'Unknown file',
+        file_size: file.size || 0,
+        file_format: file.type || 'unknown'
+      }
+    };
+
     try {
       setIsUploading(true);
       console.log("Uploading file:", file);
 
+      // Add the temporary message to the beginning of the messages list
+      setMessages(prevMessages => [tempMessage, ...prevMessages]);
+
+      // Create FormData for upload
       const formData = new FormData();
       const fileBlob = {
         uri: file.uri,
-        type: file.type || file.mimeType || 'application/octet-stream',
-        name: file.name || file.fileName || 'file'
+        type: file.type || 'application/octet-stream',
+        name: file.name || 'file'
       };
       formData.append('file', fileBlob as any);
 
@@ -252,6 +318,7 @@ const ChatScreen = ({ route, navigation }) => {
         formData.append('content', newMessage);
       }
 
+      // Upload the file
       const response = await api.post(
         `/messages/room/${roomId}/media`,
         formData,
@@ -265,37 +332,34 @@ const ChatScreen = ({ route, navigation }) => {
       console.log("Upload response:", response.data);
 
       if (response.data) {
-        const messageWithMedia = response.data.Media
-          ? response.data
-          : {
-            ...response.data,
-            Media: {
-              id: 'placeholder',
-              media_type: 'document',
-              file_url: null,
-              file_name: file.name || file.fileName,
-              file_size: file.size,
-              file_format: file.mimeType || file.type
-            }
-          };
+        // Replace the temporary message with the server response
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === tempMessageId ? response.data : msg
+          )
+        );
 
-        // Add sender information to the message
-        const enrichedMessage = {
-          ...messageWithMedia,
+        // Emit socket event for real-time update
+        chatSocket.emit('new_message_with_media', {
+          ...response.data,
+          roomId,
           sender: {
             id: user.id,
             username: user.username,
             first_name: user.first_name || '',
             last_name: user.last_name || ''
           }
-        };
+        });
 
-        // Emit socket event for real-time update
-        chatSocket.emit('new_message_with_media', enrichedMessage);
         setNewMessage('');
       }
     } catch (error) {
       console.error('Error uploading media:', error);
+      // Remove the temporary message if upload fails
+      setMessages(prevMessages =>
+        prevMessages.filter(msg => msg.id !== tempMessageId)
+      );
+      Alert.alert('Error', 'Failed to upload media');
     } finally {
       setIsUploading(false);
     }

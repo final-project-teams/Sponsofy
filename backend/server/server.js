@@ -25,8 +25,6 @@ const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
 const termsRouter = require("../router/termsrouter")
 const dealRouter = require("../router/deal.router")
-const companyRouter = require("../router/company.router")
-
 const roomRoutes = require('../router/roomRoutes');
 const messageRoutes = require('../router/messageRoutes');
 
@@ -65,8 +63,6 @@ app.use('/api/payment', paymentRouter);
 app.use('/api/search', searchRoutes);
 // app.use('/api/contract', contract);
 app.use('/api/user', userRouter);
-app.use('/api/companies', companyRouter);
-
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
 
