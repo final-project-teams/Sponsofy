@@ -14,6 +14,7 @@ import { contractService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSocket } from '../context/socketContext'; // Import the useSocket hook
 
 interface CustomJwtPayload {
   userId: number;
@@ -26,9 +27,13 @@ interface ContractTerm {
   id: number;
   title: string;
   description: string;
-  companyAccepted: boolean;
-  influencerAccepted: boolean;
+  status: string;
   importance: 'critical' | 'important' | 'standard';
+  negotiation?: {
+    status: 'pending' | 'completed';
+    confirmation_company: boolean;
+    confirmation_Influencer: boolean;
+  };
 }
 
 interface Contract {
@@ -56,9 +61,25 @@ const SponsorshipTerms = () => {
   const [editedDescription, setEditedDescription] = useState('');
   const [showPreview, setShowPreview] = useState(false);
 
+  // Use the contractSocket from the useSocket hook
+  const { contractSocket } = useSocket();
+
   useEffect(() => {
     fetchUserAndContract();
-  }, []);
+
+    // Only set up socket listeners if contractSocket exists
+    if (contractSocket) {
+      // Listen for socket events
+      contractSocket.on('termUpdated', handleTermUpdated);
+      contractSocket.on('termAccepted', handleTermAccepted);
+
+      // Cleanup on unmount
+      return () => {
+        contractSocket.off('termUpdated', handleTermUpdated);
+        contractSocket.off('termAccepted', handleTermAccepted);
+      };
+    }
+  }, [contractSocket]); // Add contractSocket as a dependency
 
   const fetchUserAndContract = async () => {
     try {
@@ -67,10 +88,10 @@ const SponsorshipTerms = () => {
       if (!token) {
         throw new Error('Authentication token not found');
       }
-
+  
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
       console.log('User info:', decodedToken);
-
+  
       let contracts;
       if (decodedToken.role === 'company') {
         contracts = await contractService.getContractByCompanyId(decodedToken.userId);
@@ -81,16 +102,31 @@ const SponsorshipTerms = () => {
       } else {
         throw new Error(`Invalid role: ${decodedToken.role}`);
       }
-
+  
       if (contracts?.length > 0) {
         setContract(contracts[0]);
         // Fetch terms immediately after setting contract
         const contractTerms = await contractService.gettermsbycontractid(contracts[0].id);
         if (Array.isArray(contractTerms)) {
-          setTerms(contractTerms);
+          // Load acceptance status from AsyncStorage
+          const updatedTerms = await Promise.all(contractTerms.map(async (term) => {
+            const isAccepted = await AsyncStorage.getItem(`term_${term.id}_accepted`);
+            if (isAccepted === 'true') {
+              return {
+                ...term,
+                negotiation: {
+                  ...term.negotiation,
+                  confirmation_company: userRole === 'company' ? true : term.negotiation?.confirmation_company,
+                  confirmation_Influencer: userRole === 'influencer' ? true : term.negotiation?.confirmation_Influencer,
+                }
+              };
+            }
+            return term;
+          }));
+          setTerms(updatedTerms);
         }
       }
-
+  
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -101,24 +137,62 @@ const SponsorshipTerms = () => {
 
   const handleAccept = async (termId: number) => {
     try {
-      if (!contract || !userRole) return;
+      if (!contract || !userRole || !contractSocket) return;
+  
+      const response = await contractService.acceptTerm(contract.id, termId, userRole);
+      console.log("Accept response:", response);
+  
+      if (response.success) {
+        // Update local state immediately
+        setTerms(prevTerms => prevTerms.map(term => 
+          term.id === termId 
+            ? {
+                ...term,
+                status: response.negotiation.status,
+                negotiation: response.negotiation
+              }
+            : term
+        ));
+  
+        // Save acceptance status to AsyncStorage
+        await AsyncStorage.setItem(`term_${termId}_accepted`, 'true');
 
-      await contractService.acceptTerm(contract.id, termId, userRole);
-      console.log("Term accepted:", termId);
-      console.log("User role:", userRole);
-
-      ;
+        // Emit socket event using contractSocket
+        contractSocket.emit('termAccepted', { termId, userRole });
+      }
+  
     } catch (err) {
+      console.error('Accept error:', err);
       Alert.alert('Error', 'Failed to accept term');
     }
   };
 
+  const handleTermUpdated = (updatedTerm: ContractTerm) => {
+    setTerms(prevTerms => prevTerms.map(term => 
+      term.id === updatedTerm.id ? updatedTerm : term
+    ));
+  };
+
+  const handleTermAccepted = ({ termId, userRole }: { termId: number, userRole: string }) => {
+    setTerms(prevTerms => prevTerms.map(term => 
+      term.id === termId 
+        ? {
+            ...term,
+            negotiation: {
+              ...term.negotiation,
+              [userRole === 'company' ? 'confirmation_company' : 'confirmation_Influencer']: true
+            }
+          }
+        : term
+    ));
+  };
+
   const isTermAccepted = (term: ContractTerm, party: string) => {
-    return party === 'company' ? term.companyAccepted : term.influencerAccepted;
+    return party === 'company' ? term.negotiation?.confirmation_company : term.negotiation?.confirmation_Influencer;
   };
 
   const isTermFullyAccepted = (term: ContractTerm) => {
-    return term.companyAccepted && term.influencerAccepted;
+    return term.negotiation?.confirmation_company && term.negotiation?.confirmation_Influencer;
   };
 
   const steps = [1, 2, 3, 4];
@@ -131,8 +205,8 @@ const SponsorshipTerms = () => {
 
   const handleUpdateTerm = async (termId: number) => {
     try {
-      if (!contract) {
-        throw new Error('No contract found');
+      if (!contract || !contractSocket) {
+        throw new Error('No contract found or socket not connected');
       }
 
       const updates = {
@@ -156,6 +230,9 @@ const SponsorshipTerms = () => {
         setEditedDescription('');
 
         console.log('Term updated successfully');
+
+        // Emit socket event using contractSocket
+        contractSocket.emit('termUpdated', response.term);
       } else {
         throw new Error('Failed to update term');
       }
@@ -173,9 +250,9 @@ const SponsorshipTerms = () => {
     switch (importance) {
       case 'critical':
         return { icon: '🔴', label: 'Critical' };
-      case 'critical':
+      case 'important':
         return { icon: '🔴', label: 'Important' };
-      case 'critical':
+      case 'standard':
         return { icon: '🔴', label: 'Standard' };
       default :
         return { icon: '🔴', label: 'Standard' };
@@ -183,56 +260,50 @@ const SponsorshipTerms = () => {
   };
 
   const renderAcceptButtons = (term: ContractTerm) => {
-    if (isTermFullyAccepted(term)) {
-      return (
-        <View style={styles.acceptedContainer}>
-          <MaterialIcons name="check-circle" size={20} color="white" />
-          <Text style={styles.acceptedText}>Both parties accepted</Text>
-        </View>
-      );
-    }
-
+    const negotiation = term.negotiation;
+  
     return (
       <View style={styles.acceptButtonsContainer}>
-        <TouchableOpacity
-          style={[
-            styles.acceptButton,
-            isTermAccepted(term, 'company') && styles.acceptedButton
-          ]}
-          onPress={() => handleAccept(term.id)}
-          disabled={isTermAccepted(term, 'company') || userRole !== 'company'}
-        >
-          {isTermAccepted(term, 'company') ? (
-            <MaterialIcons name="check" size={20} color="white" />
-          ) : (
-            <MaterialIcons name="business" size={20} color="white" />
-          )}
+        <View style={[
+          styles.acceptButton,
+          negotiation?.confirmation_company && styles.acceptedButton
+        ]}>
+          <MaterialIcons 
+            name={negotiation?.confirmation_company ? "check" : "business"} 
+            size={20} 
+            color={negotiation?.confirmation_company ? "#10B981" : "white"} 
+          />
           <Text style={styles.acceptButtonText}>
-            {isTermAccepted(term, 'company') ? '✓ Company' : 'Company Accept'}
+            Company: {negotiation?.confirmation_company ? '✓ Accepted' : 'Pending'}
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.acceptButton,
-            isTermAccepted(term, 'influencer') && styles.acceptedButton
-          ]}
-          onPress={() => handleAccept(term.id)}
-          disabled={isTermAccepted(term, 'influencer') || userRole !== 'influencer'}
-        >
-          {isTermAccepted(term, 'influencer') ? (
-            <MaterialIcons name="check" size={20} color="white" />
-          ) : (
-            <MaterialIcons name="person" size={20} color="white" />
-          )}
+        </View>
+  
+        <View style={[
+          styles.acceptButton,
+          negotiation?.confirmation_Influencer && styles.acceptedButton
+        ]}>
+          <MaterialIcons 
+            name={negotiation?.confirmation_Influencer ? "check" : "person"} 
+            size={20} 
+            color={negotiation?.confirmation_Influencer ? "#10B981" : "white"} 
+          />
           <Text style={styles.acceptButtonText}>
-            {isTermAccepted(term, 'influencer') ? '✓ Influencer' : 'Influencer Accept'}
+            Influencer: {negotiation?.confirmation_Influencer ? '✓ Accepted' : 'Pending'}
           </Text>
-        </TouchableOpacity>
+        </View>
+  
+        {userRole && !negotiation?.[userRole === 'company' ? 'confirmation_company' : 'confirmation_Influencer'] && (
+          <TouchableOpacity
+            style={styles.acceptActionButton}
+            onPress={() => handleAccept(term.id)}
+          >
+            <Text style={styles.acceptButtonText}>Accept Term</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
-  
+
   const renderPreviewButton = () => {
     if (currentStep === 3) {
       return (
@@ -255,162 +326,162 @@ const SponsorshipTerms = () => {
   };
 
   const renderContent = () => {
+    // Check if all terms are accepted at the start of renderContent
+    const allTermsAccepted = areAllTermsAccepted();
+
     switch (currentStep) {
-      case 3:
-        return (
-          <View style={styles.termsList}>
-            <Text style={styles.sectionTitle}>Contract Terms</Text>
-            {terms.length > 0 ? (
-              <>
-                {showPreview ? (
-                  <View style={styles.previewContainer}>
-                    {terms.map((term, index) => (
-                      <View key={term.id} style={styles.previewItem}>
-                        <Text style={styles.previewIndex}>{index + 1}.</Text>
-                        <View style={styles.previewContent}>
-                          <View style={styles.previewHeader}>
-                            <Text style={styles.previewTitle}>{term.title}</Text>
-                            <View style={styles.importanceBadge}>
-                              <Text>{getImportanceIcon(term.importance).icon}</Text>
-                              <Text style={styles.importanceLabel}>
-                                {getImportanceIcon(term.importance).label}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={styles.previewDescription}>{term.description}</Text>
+     case 3:
+  return (
+    <View style={styles.termsList}>
+      <Text style={styles.sectionTitle}>Contract Terms</Text>
+      {allTermsAccepted ? (
+        <View style={styles.lockedContainer}>
+          <MaterialIcons name="lock" size={48} color="#10B981" />
+          <Text style={styles.lockedText}>All Terms Accepted</Text>
+          <Text style={styles.lockedSubText}>
+            You can now proceed to complete the contract
+          </Text>
+        </View>
+      ) : (
+        terms.length > 0 ? (
+          <>
+            {showPreview ? (
+              <View style={styles.previewContainer}>
+                {terms.map((term, index) => (
+                  <View key={term.id} style={styles.previewItem}>
+                    <Text style={styles.previewIndex}>{index + 1}.</Text>
+                    <View style={styles.previewContent}>
+                      <View style={styles.previewHeader}>
+                        <Text style={styles.previewTitle}>{term.title}</Text>
+                        <View style={styles.importanceBadge}>
+                          <Text>{getImportanceIcon(term.importance).icon}</Text>
+                          <Text style={styles.importanceLabel}>
+                            {getImportanceIcon(term.importance).label}
+                          </Text>
                         </View>
                       </View>
-                    ))}
+                      <Text style={styles.previewDescription}>{term.description}</Text>
+                    </View>
                   </View>
-                ) : (
-                  terms.map((term) => (
-                    <View key={term.id} style={styles.termItem}>
-                      {editingTermId === term.id ? (
-                        // Edit Mode
-                        <View style={styles.editContainer}>
-                          <TextInput
-                            style={styles.editInput}
-                            value={editedTitle}
-                            onChangeText={setEditedTitle}
-                            placeholder="Enter title"
-                            placeholderTextColor="#9CA3AF"
-                          />
-                          <TextInput
-                            style={[styles.editInput, styles.editTextArea]}
-                            value={editedDescription}
-                            onChangeText={setEditedDescription}
-                            placeholder="Enter description"
-                            placeholderTextColor="#9CA3AF"
-                            multiline
-                            numberOfLines={3}
-                          />
-                          <View style={styles.editButtonsContainer}>
-                            <TouchableOpacity
-                              style={[styles.editButton, styles.saveButton]}
-                              onPress={() => handleUpdateTerm(term.id)}
-                            >
-                              <Text style={styles.editButtonText}>Save</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.editButton, styles.cancelButton]}
-                              onPress={() => setEditingTermId(null)}
-                            >
-                              <Text style={styles.editButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      ) : (
-                        // View Mode
-                        <>
-                          <View style={styles.termHeader}>
-                            <View style={styles.termHeaderLeft}>
-                              <Text style={styles.termTitle}>{term.title}</Text>
-                              <View style={styles.importanceBadge}>
-                                <Text>{getImportanceIcon(term.importance).icon}</Text>
-                                <Text style={styles.importanceLabel}>
-                                  {getImportanceIcon(term.importance).label}
-                                </Text>
-                              </View>
-                            </View>
-                            <TouchableOpacity
-                              style={styles.editIcon}
-                              onPress={() => {
-                                setEditingTermId(term.id);
-                                setEditedTitle(term.title);
-                                setEditedDescription(term.description);
-                              }}
-                            >
-                              <Text>⚙️</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <View style={styles.termContent}>
-                            <Text style={styles.termDescription}>{term.description}</Text>
-                          </View>
-                        </>
-                      )}
-                      
-                      {/* Display accept buttons for each term */}
-                      {renderAcceptButtons(term)}
-                      
-                      <View style={styles.acceptanceStatus}>
-                        <Text style={styles.statusText}>
-                          Company: {term.companyAccepted ? '✓ Accepted' : 'Pending'}
-                        </Text>
-                        <Text style={styles.statusText}>
-                          Influencer: {term.influencerAccepted ? '✓ Accepted' : 'Pending'}
-                        </Text>
+                ))}
+              </View>
+            ) : (
+              terms.map((term) => (
+                <View key={term.id} style={styles.termItem}>
+                  {editingTermId === term.id ? (
+                    // Edit Mode
+                    <View style={styles.editContainer}>
+                      <TextInput
+                        style={styles.editInput}
+                        value={editedTitle}
+                        onChangeText={setEditedTitle}
+                        placeholder="Enter title"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                      <TextInput
+                        style={[styles.editInput, styles.editTextArea]}
+                        value={editedDescription}
+                        onChangeText={setEditedDescription}
+                        placeholder="Enter description"
+                        placeholderTextColor="#9CA3AF"
+                        multiline
+                        numberOfLines={3}
+                      />
+                      <View style={styles.editButtonsContainer}>
+                        <TouchableOpacity
+                          style={[styles.editButton, styles.saveButton]}
+                          onPress={() => handleUpdateTerm(term.id)}
+                        >
+                          <Text style={styles.editButtonText}>Save</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.editButton, styles.cancelButton]}
+                          onPress={() => setEditingTermId(null)}
+                        >
+                          <Text style={styles.editButtonText}>Cancel</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
-                  ))
-                )}
-                {renderPreviewButton()}
-              </>
-            ) : (
-              <Text style={styles.noTermsText}>No terms found for this contract</Text>
+                  ) : (
+                    // View Mode
+                    <>
+                      <View style={styles.termHeader}>
+                        <View style={styles.termHeaderLeft}>
+                          <Text style={styles.termTitle}>{term.title}</Text>
+                          <View style={styles.importanceBadge}>
+                            <Text>{getImportanceIcon(term.importance).icon}</Text>
+                            <Text style={styles.importanceLabel}>
+                              {getImportanceIcon(term.importance).label}
+                            </Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.editIcon}
+                          onPress={() => {
+                            setEditingTermId(term.id);
+                            setEditedTitle(term.title);
+                            setEditedDescription(term.description);
+                          }}
+                        >
+                          <Text>⚙️</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.termContent}>
+                        <Text style={styles.termDescription}>{term.description}</Text>
+                      </View>
+                    </>
+                  )}
+                </View>
+              ))
             )}
-          </View>
-        );
-      case 4:
-        return (
-          <View style={styles.termsList}>
-            <Text style={styles.sectionTitle}>Payment Terms</Text>
-            
-            {/* Payment Amount */}
-            <View style={styles.termItem}>
-              <Text style={styles.termTitle}>Payment Amount</Text>
-              <View style={styles.termContent}>
-                <Text style={styles.termDescription}>$1,000.00</Text>
+            {renderPreviewButton()}
+          </>
+        ) : (
+          <Text style={styles.noTermsText}>No terms found for this contract</Text>
+        )
+      )}
+    </View>
+  );
+   case 4:
+  return (
+    <View style={styles.termsList}>
+      <Text style={styles.sectionTitle}>Payment Terms</Text>
+      {allTermsAccepted ? (
+        <View style={styles.lockedContainer}>
+          <MaterialIcons name="lock" size={48} color="#10B981" />
+          <Text style={styles.lockedText}>Payment Terms Locked</Text>
+          <Text style={styles.lockedSubText}>
+            All terms have been accepted by both parties
+          </Text>
+        </View>
+      ) : (
+        terms.length > 0 ? (
+          terms.map((term) => (
+            <View key={term.id} style={styles.termItem}>
+              <View style={styles.termHeader}>
+                <View style={styles.termHeaderLeft}>
+                  <Text style={styles.termTitle}>{term.title}</Text>
+                  <View style={styles.importanceBadge}>
+                    <Text>{getImportanceIcon(term.importance).icon}</Text>
+                    <Text style={styles.importanceLabel}>
+                      {getImportanceIcon(term.importance).label}
+                    </Text>
+                  </View>
+                </View>
               </View>
-            </View>
-
-            {/* Payment Schedule */}
-            <View style={styles.termItem}>
-              <Text style={styles.termTitle}>Payment Schedule</Text>
               <View style={styles.termContent}>
-                <Text style={styles.termDescription}>50% upfront, 50% upon completion</Text>
+                <Text style={styles.termDescription}>{term.description}</Text>
               </View>
+              {/* Display accept buttons for each term */}
+              {renderAcceptButtons(term)}
             </View>
-
-            {/* Payment Method */}
-            <View style={styles.termItem}>
-              <Text style={styles.termTitle}>Payment Method</Text>
-              <View style={styles.termContent}>
-                <Text style={styles.termDescription}>Bank Transfer</Text>
-              </View>
-            </View>
-
-            {/* Additional Terms */}
-            <View style={styles.termItem}>
-              <Text style={styles.termTitle}>Additional Terms</Text>
-              <View style={styles.termContent}>
-                <Text style={styles.termDescription}>
-                  Payment will be processed within 7 business days of milestone completion.
-                  All fees and taxes are responsibility of the content creator.
-                </Text>
-              </View>
-            </View>
-          </View>
-        );
+          ))
+        ) : (
+          <Text style={styles.noTermsText}>No terms found for this contract</Text>
+        )
+      )}
+    </View>
+  );
       default:
         return (
           <View style={styles.termsList}>
@@ -506,6 +577,28 @@ const SponsorshipTerms = () => {
 
   const stepLabels = ['Contract', 'Review', 'Terms', 'Payment'];
 
+  const areAllTermsAccepted = () => {
+    return terms.every(term => 
+      term.negotiation?.confirmation_company && 
+      term.negotiation?.confirmation_Influencer
+    );
+  };
+
+  const handleContractCompletion = async () => {
+    try {
+      if (!contract) return;
+      
+      const response = await contractService.updateContractStatus(contract.id, 'completed');
+      if (response.success) {
+        setContract({ ...contract, status: 'completed' });
+        Alert.alert('Success', 'Contract has been completed');
+      }
+    } catch (error) {
+      console.error('Error completing contract:', error);
+      Alert.alert('Error', 'Failed to complete contract');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -513,7 +606,17 @@ const SponsorshipTerms = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Contract Details</Text>
-        <View style={styles.headerIcons} />
+        <View style={styles.headerIcons}>
+          {areAllTermsAccepted() && (
+            <TouchableOpacity 
+              style={styles.completeButton}
+              onPress={handleContractCompletion}
+            >
+              <MaterialIcons name="check-circle" size={24} color="#10B981" />
+              <Text style={styles.completeButtonText}>Complete Contract</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -568,7 +671,14 @@ const SponsorshipTerms = () => {
           ) : error ? (
             <Text style={{ color: 'red' }}>{error}</Text>
           ) : contract ? (
-            renderContent()
+            contract?.status === 'completed' ? (
+              <View style={styles.completedBanner}>
+                <MaterialIcons name="lock" size={24} color="#10B981" />
+                <Text style={styles.completedText}>Contract Completed</Text>
+              </View>
+            ) : (
+              renderContent()
+            )
           ) : (
             <Text style={{ color: 'white' }}>No contract found</Text>
           )}
@@ -1004,6 +1114,69 @@ const styles = StyleSheet.create({
     color: '#E5E5E5',
     fontSize: 12,
     fontWeight: '500',
+  },
+  acceptActionButton: {
+    backgroundColor: '#8B5CF6',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#064E3B',
+    padding: 8,
+    borderRadius: 8,
+    gap: 8,
+  },
+  completeButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  completedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#064E3B',
+    padding: 16,
+    gap: 8,
+    marginBottom: 16,
+  },
+  completedText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  lockedContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1F2937',
+    padding: 32,
+    borderRadius: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  lockedText: {
+    color: '#10B981',
+    fontSize: 24,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  lockedSubText: {
+    color: '#9CA3AF',
+    fontSize: 16,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
 

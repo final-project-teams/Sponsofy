@@ -30,9 +30,11 @@ const Room = require('./models/room')(sequelize, DataTypes);
 const Message = require('./models/message')(sequelize, DataTypes);
 const Payment = require('./models/payment')(sequelize, DataTypes);
 const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
+const pre_Term = require('./models/pre_terms')(sequelize, DataTypes);
 
 // Create associations here
-
+Contract.hasMany(pre_Term);
+pre_Term.belongsTo(Contract);
 // User -> ContentCreator (One-to-One)
 User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
 ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -56,11 +58,9 @@ Company.hasMany(Contract);
 Contract.belongsTo(Company);
 
 // ContentCreator -> Contract (One-to-Many)
-ContentCreator.hasMany(Contract);
+ContentCreator.hasOne(Contract);
 Contract.belongsTo(ContentCreator);
 
-
-// Company -> Contract (One-to-Many)
 Contract.hasMany(Deal);
 Deal.belongsTo(Contract);
 
@@ -207,5 +207,6 @@ module.exports = {
     Notification,
     Signature,
     Room,
-    Message
+    Message,
+    pre_Term
 };

@@ -2,8 +2,10 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import io, { Socket } from 'socket.io-client';
 import { SOCKET_URL } from '../config/source';
 interface SocketContextType {
-    chatSocket: Socket | null;
-    notificationSocket: Socket | null;
+    chatSocket: typeof Socket | null;
+    notificationSocket: typeof Socket | null;
+    dealSocket: typeof Socket | null;
+    contractSocket: typeof Socket | null;
 
 }
 
@@ -12,30 +14,39 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 interface SocketProviderProps {
     children: ReactNode;
 }
-
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
-    const [chatSocket, setChatSocket] = useState<Socket | null>(null);
-    const [notificationSocket, setNotificationSocket] = useState<Socket | null>(null);
-    const [requestSocket, setRequestSocket] = useState<Socket | null>(null);
+    const [chatSocket, setChatSocket] = useState<typeof Socket | null>(null);
+    const [notificationSocket, setNotificationSocket] = useState<typeof Socket | null>(null);
+    const [requestSocket, setRequestSocket] = useState<typeof Socket | null>(null);
+    const [dealSocket, setDealSocket] = useState<typeof Socket | null>(null);
+    const [contractSocket, setContractSocket] = useState<typeof Socket | null>(null);
 
     useEffect(() => {
         const chatIO = io(`${SOCKET_URL}/chat`);
         const notificationIO = io(`${SOCKET_URL}/contract`);
-
+        const dealIo=io(`${SOCKET_URL}/deal`);
+        const contractIo=io(`${SOCKET_URL}/contract`);
+        
+        console.log('chatIOaaaaaaaaaaaaaaaaaaaaaa', `${SOCKET_URL}/deal`);
+        console.log('contractIooooooooooo',`${SOCKET_URL}/contract`);
+       
+        
 
         setChatSocket(chatIO);
         setNotificationSocket(notificationIO);
-
+        setDealSocket(dealIo)
+        setContractSocket(contractIo)
 
         return () => {
             chatIO.disconnect();
             notificationIO.disconnect();
-
+            dealIo.disconnect();
+            contractIo.disconnect();      
         };
     }, []);
 
     return (
-        <SocketContext.Provider value={{ chatSocket, notificationSocket }}>
+        <SocketContext.Provider value={{ chatSocket, notificationSocket,dealSocket,contractSocket }}>
             {children}
         </SocketContext.Provider>
     );

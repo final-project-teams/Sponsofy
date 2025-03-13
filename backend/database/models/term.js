@@ -12,15 +12,7 @@ const Term = sequelize.define('Term', {
     type: DataTypes.TEXT,
     allowNull: false,  // Optional description of the term
   },
-  companyAccepted: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-  },
-  influencerAccepted: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-  },
-  
+ 
   status: {
     type: DataTypes.ENUM('pending', 'accepted', 'rejected'),
     defaultValue: 'pending',  // Status of the term

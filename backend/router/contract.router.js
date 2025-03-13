@@ -11,7 +11,8 @@ const {
   gettermsbycontractid,
   updateTerm,
   acceptTerm,
-  getContractByContentCreatorId
+  getContractByContentCreatorId,
+  updateContractStatus
 } = require("../controller/contract.controller");
 const authenticateJWT = require("../auth/refreshToken");
 const {isCompany, isContentCreator} = require("../middleware/roleMiddleware");
@@ -31,4 +32,5 @@ router.post("/:contractId/terms", authenticateJWT, addTermsToContract);
 router.get("/:contractId/terms", gettermsbycontractid);
 router.put("/:contractId/terms/:termId/update", authenticateJWT, updateTerm);
 router.put("/:contractId/terms/:termId/accept", authenticateJWT, acceptTerm);
+router.put("/:contractId/update-status", authenticateJWT, updateContractStatus);
 module.exports = router;

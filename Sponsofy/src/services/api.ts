@@ -95,6 +95,15 @@ getContractByContentCreatorId: async (userId: number) => {
             throw error;
         }
     },
+    updateContractStatus: async (contractId, status) => {
+        try {
+            const response = await api.put(`/contract/${contractId}/update-status`, { status });
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+    
 
     // Delete a contract
     deleteContract: async (contractId) => {
