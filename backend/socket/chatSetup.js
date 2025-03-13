@@ -168,6 +168,22 @@ const setupChat = (io) => {
 
     // Handle message deletion
     socket.on('delete_message', ({ roomId, messageId }) => {
+      console.log('Received delete_message event:', { roomId, messageId });
+      
+      // Verify the sender is in the room
+      const user = activeUsers.get(socket.id);
+      if (!user) {
+        console.error('User not found for socket:', socket.id);
+        return;
+      }
+
+      if (!roomUsers.has(roomId) || !roomUsers.get(roomId).has(user.userId)) {
+        console.error('User not in room:', { userId: user.userId, roomId });
+        return;
+      }
+
+      // Broadcast deletion to all users in the room
+      console.log('Broadcasting message_deleted event to room:', roomId);
       chatIo.to(roomId).emit('message_deleted', { messageId });
     });
 

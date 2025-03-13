@@ -99,6 +99,7 @@ const ChatScreen = ({ route, navigation }) => {
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
   ];
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
   useEffect(() => {
     loadMessages();
@@ -431,103 +432,157 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isSentByMe = item.sender.id === user?.id;
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      console.log('Attempting to delete message:', messageId);
 
-    // Check if Media exists and has a file_url
-    const hasMedia = item.Media && item.Media.file_url;
+      // First delete from database
+      const response = await api.delete(`/messages/${messageId}`);
+      console.log('Delete API response:', response.data);
 
-    console.log("Rendering message:", item.id, "Has media:", hasMedia);
+      // Then emit delete event to socket
+      console.log('Emitting delete_message event:', { roomId, messageId });
+      chatSocket?.emit('delete_message', { roomId, messageId });
 
-    // Add this debug log to see the full message object
-    console.log("Full message object:", JSON.stringify(item));
+      // Remove message from local state
+      setMessages(prevMessages => {
+        const newMessages = prevMessages.filter(msg => msg.id !== messageId);
+        console.log('Updated messages count:', newMessages.length);
+        return newMessages;
+      });
+
+      // Clear selected message
+      setSelectedMessage(null);
+    } catch (error) {
+      console.error('Error deleting message:', error.response?.data || error.message);
+      Alert.alert('Error', 'Failed to delete message');
+    }
+  };
+
+  // Add socket listener for deleted messages
+  useEffect(() => {
+    if (!chatSocket) return;
+
+    chatSocket.on('message_deleted', ({ messageId }) => {
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+    });
+
+    return () => {
+      chatSocket.off('message_deleted');
+    };
+  }, [chatSocket]);
+
+  const MessageActionsMenu = ({ message }: { message: Message }) => {
+    const isSentByMe = message.sender.id === user?.id;
+    if (!isSentByMe) return null;
 
     return (
-      <View
+      <TouchableOpacity
         style={[
-          styles.messageContainer,
-          isSentByMe ? styles.messageSent : styles.messageReceived,
+          styles.messageActionsMenu,
+          { backgroundColor: currentTheme.colors.surface }
         ]}
+        onPress={() => handleDeleteMessage(message.id)}
+        activeOpacity={0.7}
       >
-        {!isSentByMe && (
-          <Text style={[styles.senderName, { color: currentTheme.colors.textSecondary }]}>
-            {item.sender.first_name} {item.sender.last_name}
-          </Text>
-        )}
-        <View
-          style={[
+        <View style={styles.messageAction}>
+          <Icon name="trash-outline" size={20} color="#FF4444" />
+          <Text style={[styles.messageActionText, { color: '#FF4444' }]}>Delete</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isSentByMe = item.sender.id === user?.id;
+    const hasMedia = item.Media && item.Media.file_url;
+
+    return (
+      <View style={styles.messageWrapper}>
+        {selectedMessage?.id === item.id && <MessageActionsMenu message={item} />}
+        <TouchableOpacity
+          onLongPress={() => setSelectedMessage(item)}
+          activeOpacity={0.7}
+          style={[styles.messageContainer, isSentByMe ? styles.messageSent : styles.messageReceived]}
+        >
+          {!isSentByMe && (
+            <Text style={[styles.senderName, { color: currentTheme.colors.textSecondary }]}>
+              {item.sender.first_name} {item.sender.last_name}
+            </Text>
+          )}
+          <View style={[
             styles.messageBubble,
             { 
               backgroundColor: isSentByMe ? currentTheme.colors.primary : currentTheme.colors.surface,
               alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
             }
-          ]}
-        >
-          {/* Show a placeholder for debugging */}
-          {item.content === 'Sent a file' && !hasMedia && (
-            <View style={styles.mediaPlaceholder}>
-              <Text style={{ color: 'white' }}>Media not loaded properly</Text>
-              <Text style={{ color: 'white', fontSize: 10 }}>Check console for details</Text>
-            </View>
-          )}
-
-          {/* Render media based on type */}
-          {hasMedia && item.Media.media_type === 'image' && (
-            <View style={styles.mediaImageContainer}>
-              <Image
-                source={{ uri: `${API_URL}/uploads/images/${item.Media.file_name}` }}
-                style={styles.mediaImage}
-                resizeMode="cover"
-              />
-            </View>
-          )}
-
-          {hasMedia && item.Media.media_type === 'video' && (
-            <View style={styles.videoContainer}>
-              <Video
-                source={{ uri: `${API_URL}/uploads/videos/${item.Media.file_name}` }}
-                style={styles.mediaVideo}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-              />
-            </View>
-          )}
-
-          {hasMedia && item.Media.media_type === 'audio' && (
-            <View style={styles.audioContainer}>
-              <Icon name="musical-note" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
-              <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
-                {item.Media.file_name}
-              </Text>
-            </View>
-          )}
-
-          {hasMedia && item.Media.media_type === 'document' && (
-            <View style={styles.documentContainer}>
-              <Icon name="document-text" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
-              <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
-                {item.Media.file_name}
-              </Text>
-            </View>
-          )}
-
-          {/* Only show content if it's not the default "Sent a file" message or if there's no media */}
-          {(!hasMedia || (item.content && item.content !== 'Sent a file')) && (
-            <Text style={[
-              styles.messageText,
-              { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }
-            ]}>
-              {item.content}
-            </Text>
-          )}
-
-          <Text style={[
-            styles.messageTime, 
-            { color: isSentByMe ? '#FFFFFF80' : currentTheme.colors.textSecondary }
           ]}>
-            {formatMessageTime(item.created_at)}
-          </Text>
-        </View>
+            {/* Show a placeholder for debugging */}
+            {item.content === 'Sent a file' && !hasMedia && (
+              <View style={styles.mediaPlaceholder}>
+                <Text style={{ color: 'white' }}>Media not loaded properly</Text>
+                <Text style={{ color: 'white', fontSize: 10 }}>Check console for details</Text>
+              </View>
+            )}
+
+            {/* Render media based on type */}
+            {hasMedia && item.Media.media_type === 'image' && (
+              <View style={styles.mediaImageContainer}>
+                <Image
+                  source={{ uri: `${API_URL}/uploads/images/${item.Media.file_name}` }}
+                  style={styles.mediaImage}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+
+            {hasMedia && item.Media.media_type === 'video' && (
+              <View style={styles.videoContainer}>
+                <Video
+                  source={{ uri: `${API_URL}/uploads/videos/${item.Media.file_name}` }}
+                  style={styles.mediaVideo}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                />
+              </View>
+            )}
+
+            {hasMedia && item.Media.media_type === 'audio' && (
+              <View style={styles.audioContainer}>
+                <Icon name="musical-note" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
+                <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
+                  {item.Media.file_name}
+                </Text>
+              </View>
+            )}
+
+            {hasMedia && item.Media.media_type === 'document' && (
+              <View style={styles.documentContainer}>
+                <Icon name="document-text" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
+                <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
+                  {item.Media.file_name}
+                </Text>
+              </View>
+            )}
+
+            {/* Only show content if it's not the default "Sent a file" message or if there's no media */}
+            {(!hasMedia || (item.content && item.content !== 'Sent a file')) && (
+              <Text style={[
+                styles.messageText,
+                { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }
+              ]}>
+                {item.content}
+              </Text>
+            )}
+
+            <Text style={[
+              styles.messageTime,
+              { color: isSentByMe ? '#FFFFFF80' : currentTheme.colors.textSecondary }
+            ]}>
+              {formatMessageTime(item.created_at)}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -605,28 +660,40 @@ const ChatScreen = ({ route, navigation }) => {
     );
   };
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color={currentTheme.colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.username, { color: currentTheme.colors.text }]}>
-          {recipientUser?.username || 'Chat'}
-        </Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="call" size={20} color={currentTheme.colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="videocam" size={20} color={currentTheme.colors.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
+  // Add touch handler to dismiss menu when tapping outside
+  const handleScreenPress = () => {
+    if (selectedMessage) {
+      setSelectedMessage(null);
+    }
+  };
 
-      {isLoading ? (
-        <ActivityIndicator size="large" color={currentTheme.colors.primary} style={styles.loader} />
-      ) : (
+  return (
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={handleScreenPress}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={currentTheme.colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.username, { color: currentTheme.colors.text }]}>
+            {recipientUser?.username || 'Chat'}
+          </Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.iconButton}>
+              <Icon name="call" size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Icon name="videocam" size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {isLoading ? (
+          <ActivityIndicator size="large" color={currentTheme.colors.primary} style={styles.loader} />
+        ) : (
           <FlatList
             style={styles.messagesContainer}
             data={messages}
@@ -634,37 +701,38 @@ const ChatScreen = ({ route, navigation }) => {
             keyExtractor={item => item.id}
             inverted
           />
-      )}
-      <TypingIndicator />
-      <View style={styles.inputContainer}>
-        <View style={[styles.inputWrapper, { backgroundColor: currentTheme.colors.surface }]}>
-          <TouchableOpacity onPress={handlePickDocument} style={styles.mediaButton}>
-            <Icon name="document" size={20} color={currentTheme.colors.text} />
-          </TouchableOpacity>
+        )}
+        <TypingIndicator />
+        <View style={styles.inputContainer}>
+          <View style={[styles.inputWrapper, { backgroundColor: currentTheme.colors.surface }]}>
+            <TouchableOpacity onPress={handlePickDocument} style={styles.mediaButton}>
+              <Icon name="document" size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
 
-          <TextInput
-            style={[styles.input, { color: currentTheme.colors.text }]}
-            value={newMessage}
-            onChangeText={handleTyping}
-            placeholder="Type a message..."
-            placeholderTextColor={currentTheme.colors.textSecondary}
-            multiline
-          />
+            <TextInput
+              style={[styles.input, { color: currentTheme.colors.text }]}
+              value={newMessage}
+              onChangeText={handleTyping}
+              placeholder="Type a message..."
+              placeholderTextColor={currentTheme.colors.textSecondary}
+              multiline
+            />
 
-          <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
-            onPress={handleSendMessage}
-            disabled={isUploading || (!newMessage.trim() && !isUploading)}
-          >
-            {isUploading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Icon name="send" size={15} color="#FFFFFF" />
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
+              onPress={handleSendMessage}
+              disabled={isUploading || (!newMessage.trim() && !isUploading)}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Icon name="send" size={15} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </TouchableOpacity>
   );
 };
 
@@ -694,9 +762,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  messageContainer: {
+  messageWrapper: {
+    position: 'relative',
     marginBottom: 16,
+    width: '100%',
+    zIndex: 1,
+  },
+  messageContainer: {
     maxWidth: '80%',
+    position: 'relative',
+    zIndex: 1,
   },
   messageSent: {
     alignSelf: 'flex-end',
@@ -713,6 +788,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     maxWidth: '100%',
+    position: 'relative',
+    zIndex: 1,
   },
   messageText: {
     fontSize: 16,
@@ -828,6 +905,35 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     marginHorizontal: 2,
+  },
+  messageActionsMenu: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 9999,
+    backgroundColor: '#262626',
+  },
+  messageAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  messageActionText: {
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
