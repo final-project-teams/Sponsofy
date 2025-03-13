@@ -92,8 +92,13 @@ const setupChat = (io) => {
       const sender = activeUsers.get(socket.id);
       const enrichedMessage = {
         ...messageData,
-        sender,
-        timestamp: new Date(),
+        sender: {
+          id: messageData.userId || sender.userId,  // Use the provided userId or fallback to socket's user
+          username: sender.username,
+          first_name: messageData.sender?.first_name || '',
+          last_name: messageData.sender?.last_name || ''
+        },
+        created_at: new Date().toISOString(),
         socketId: socket.id
       };
 
@@ -105,12 +110,17 @@ const setupChat = (io) => {
     socket.on('new_message_with_media', (messageData) => {
       const { roomId } = messageData;
       
-      // Add sender info to the message
-      const sender = activeUsers.get(socket.id);
+      // Get sender info from socket or messageData
+      const socketUser = activeUsers.get(socket.id);
       const enrichedMessage = {
         ...messageData,
-        sender,
-        timestamp: new Date(),
+        sender: messageData.sender || {  // Use provided sender info or fallback to socket user
+          id: socketUser?.userId,
+          username: socketUser?.username,
+          first_name: '',
+          last_name: ''
+        },
+        created_at: new Date().toISOString(),
         socketId: socket.id
       };
 

@@ -53,14 +53,24 @@ interface UploadFile {
 }
 
 const formatMessageTime = (timestamp: string) => {
-  const now = new Date();
-  const messageDate = new Date(timestamp);
-  const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60));
+  try {
+    const now = new Date();
+    const messageDate = new Date(timestamp);
 
-  if (diffMinutes < 1) return 'now';
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
-  return messageDate.toLocaleDateString();
+    if (isNaN(messageDate.getTime())) {
+      return 'just now';
+    }
+
+    const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60));
+
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+    return messageDate.toLocaleDateString();
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'just now';
+  }
 };
 
 const ChatScreen = ({ route, navigation }) => {
@@ -97,10 +107,22 @@ const ChatScreen = ({ route, navigation }) => {
     chatSocket.on('receive_message', (newMessage) => {
       console.log('Received new message:', newMessage);
       setMessages(prev => {
+        // Ensure created_at is a valid date string
+        const messageWithValidDate = {
+          ...newMessage,
+          created_at: newMessage.created_at || new Date().toISOString()
+        };
+
         // Avoid duplicate messages
-        const messageExists = prev.some(msg => msg.id === newMessage.id);
+        const messageExists = prev.some(msg =>
+          msg.id === messageWithValidDate.id ||
+          (msg.content === messageWithValidDate.content &&
+            msg.sender.id === messageWithValidDate.sender.id &&
+            Math.abs(new Date(msg.created_at).getTime() - new Date(messageWithValidDate.created_at).getTime()) < 1000)
+        );
+
         if (messageExists) return prev;
-        return [newMessage, ...prev];
+        return [messageWithValidDate, ...prev];
       });
     });
 
@@ -143,19 +165,25 @@ const ChatScreen = ({ route, navigation }) => {
         return;
       }
 
-      // First, send through socket for real-time update
-      chatSocket.emit('new_message', {
-        roomId,
-        content: newMessage,
-        userId: user.id
-      });
-
-      // Then, save to database
+      // First, save to database
       const response = await api.post(`/messages/room/${roomId}`, {
         content: newMessage
       });
 
       if (response.data) {
+        // Then, emit through socket for real-time update
+        chatSocket.emit('new_message', {
+          ...response.data,
+          roomId,
+          content: newMessage,
+          userId: user.id,
+          sender: {
+            id: user.id,
+            username: user.username,
+            first_name: user.first_name || '',
+            last_name: user.last_name || ''
+          }
+        });
         setNewMessage('');
       }
     } catch (error) {
@@ -213,7 +241,6 @@ const ChatScreen = ({ route, navigation }) => {
       console.log("Uploading file:", file);
 
       const formData = new FormData();
-      // Create a proper Blob object
       const fileBlob = {
         uri: file.uri,
         type: file.type || file.mimeType || 'application/octet-stream',
@@ -252,8 +279,19 @@ const ChatScreen = ({ route, navigation }) => {
             }
           };
 
+        // Add sender information to the message
+        const enrichedMessage = {
+          ...messageWithMedia,
+          sender: {
+            id: user.id,
+            username: user.username,
+            first_name: user.first_name || '',
+            last_name: user.last_name || ''
+          }
+        };
+
         // Emit socket event for real-time update
-        chatSocket.emit('new_message_with_media', messageWithMedia);
+        chatSocket.emit('new_message_with_media', enrichedMessage);
         setNewMessage('');
       }
     } catch (error) {
