@@ -139,7 +139,7 @@ const ProfileContent = () => {
   // Navigate to edit profile screen
   const handleEditProfile = () => {
     if (userProfile) {
-      navigation.navigate("EditProfile", { userId: userProfile.id });
+      navigation.navigate("EditProfileContent", { userId: userProfile.id });
     } else {
       Alert.alert("Error", "Unable to edit profile. Please try again later.");
     }
@@ -165,7 +165,7 @@ const ProfileContent = () => {
         `/user/${userProfile.id}/social-media`,
         {
           platform: currentPlatform,
-          audience: Number.parseInt(socialMediaData.audience),
+          audience: socialMediaData.audience,
           views: Number.parseInt(socialMediaData.views),
           likes: Number.parseInt(socialMediaData.likes),
           followers: Number.parseInt(socialMediaData.followers),
@@ -176,13 +176,19 @@ const ProfileContent = () => {
           },
         }
       );
-
+  
       // Update local state
       const updatedProfile = { ...userProfile };
+  
+      // Ensure ProfilePicture is an array
+      if (!Array.isArray(updatedProfile.profile.ProfilePicture)) {
+        updatedProfile.profile.ProfilePicture = [];
+      }
+  
       const platformIndex = updatedProfile.profile.ProfilePicture.findIndex(
         (item) => item.platform === currentPlatform
       );
-
+  
       if (platformIndex !== -1) {
         updatedProfile.profile.ProfilePicture[platformIndex] = {
           ...updatedProfile.profile.ProfilePicture[platformIndex],
@@ -191,7 +197,7 @@ const ProfileContent = () => {
       } else {
         updatedProfile.profile.ProfilePicture.push(response.data.media);
       }
-
+  
       setUserProfile(updatedProfile);
       setEditModalVisible(false);
       Alert.alert("Success", "Social media data updated successfully!");
@@ -286,7 +292,7 @@ const ProfileContent = () => {
     );
   }
 
-  console.loglog("API_URL ❤️❤️",API_URL)
+  console.log("API_URL ❤️❤️",API_URL)
 
   return (
     <SafeAreaView style={styles.container}>

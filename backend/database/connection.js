@@ -36,16 +36,27 @@ const pre_Term = require('./models/pre_terms')(sequelize, DataTypes);
 Contract.hasMany(pre_Term);
 pre_Term.belongsTo(Contract);
 // User -> ContentCreator (One-to-One)
+
+
 User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
 ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // User -> Company (One-to-One)
 User.hasOne(Company, { foreignKey: 'userId', as: 'company' });
 Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-// ContentCreator -> Media (Profile Picture, One-to-One)
+// ContentCreator and Media relationship for social media stats
+ContentCreator.hasMany(Media, { foreignKey: 'contentCreatorId', as: 'media' });
+Media.belongsTo(ContentCreator, { foreignKey: 'contentCreatorId', as: 'contentCreator' });
+
+// ContentCreator and Media relationship for profile picture
 ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
 Media.hasMany(ContentCreator, { foreignKey: 'profilePictureId' });
 // ContentCreator -> DealReques  (Many-to-Many)
+
+
+
+
 ContentCreator.belongsToMany(Deal,{through:DealRequest,as:'DealRequests'});
 Deal.belongsToMany(ContentCreator,{through:DealRequest,as:'ContentCreators'});
 
@@ -167,7 +178,7 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ alter:true }).then(() => {
+// sequelize.sync({ force:true }).then(() => {
 //   console.log('Database & tables have been synchronized!');
 // }).catch((error) => {
 //   console.error('Error syncing database:', error);

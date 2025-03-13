@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
     },
     audience: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
     views: {
       type: DataTypes.INTEGER,

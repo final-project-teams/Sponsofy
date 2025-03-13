@@ -26,6 +26,7 @@ import AddDeal from './src/screens/AddDeal';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import EditProfileContent from './src/screens/EditProfileContent';
 
 // import TermsScreen from './src/screens/TermsScreen';
 
@@ -101,6 +102,7 @@ const App = () => {
 
               {/* Notifications Screen */}
               <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="EditProfileContent" component={EditProfileContent} options={{ headerShown: false }} />
               {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
             </Stack.Navigator>
 

@@ -552,7 +552,7 @@ module.exports = {
     }
   },
 
-  getSocialMediaStats : async (req, res) => {
+  getSocialMediaStats: async (req, res) => {
     try {
       const { userId } = req.params;
   
@@ -561,7 +561,7 @@ module.exports = {
         include: [
           {
             model: Media,
-            as: 'ProfilePicture',
+            as: 'media', // Use the correct alias for social media stats
             where: { platform: { [Op.not]: null } }, // Only fetch social media entries
           }
         ]
@@ -573,7 +573,7 @@ module.exports = {
   
       res.status(200).json({
         message: "Social media stats fetched successfully",
-        stats: contentCreator.ProfilePicture
+        stats: contentCreator.media // Use the correct alias
       });
   
     } catch (error) {
