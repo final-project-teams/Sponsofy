@@ -2,13 +2,16 @@ import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-
+import { useAuth } from '../context/AuthContext';
 
 const BottomNavBar = () => {
+  const{user} = useAuth()
+  console.log("user insaide bottom navbare ......",user);
+  
   const navigation = useNavigation();
   return (
     <View style={styles.bottomNav}>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('MyDeals')}>
         <Ionicons name="home-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ExploreScreen')}>
@@ -22,7 +25,7 @@ const BottomNavBar = () => {
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ChatList')}>
         <Ionicons name="chatbubble-outline" size={26} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ProfileContent')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => {user.role==="content_creator"?navigation.navigate('ProfileContent'):navigation.navigate('ProfileCompany')}}>
         <Ionicons name="person-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('PremiumScreen')}>

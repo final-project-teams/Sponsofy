@@ -3,7 +3,7 @@ const path = require('path');
 require('dotenv').config();
 const PORT = process.env.DB_PORT;
 const { sequelize } = require('../database/connection');
-const { Server } =require ("socket.io")
+const { Server } = require("socket.io");
 const fs = require('fs');
 const cors = require('cors');
 const http = require('http');
@@ -13,8 +13,9 @@ const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
 
 const io = socketIo(server);
-const {setupContract} = require('../socket/contractSetup');
+const { setupContract } = require('../socket/contractSetup');
 const { setupNotifications } = require('../socket/notificationSetup');
+const { setupDealSocket } = require('../socket/dealSetUp'); // Import the deal socket setup
 
 const contractRoutes = require('../router/contract.router');
 const searchRoutes = require('../router/searchrouter');
@@ -23,6 +24,7 @@ const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
 const termsRouter = require("../router/termsrouter")
 const dealRouter = require("../router/deal.router")
+const companyRouter = require("../router/company.router")
 
 
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
@@ -45,13 +47,13 @@ async function initializeDatabase() {
 
 app.use(
   cors({
-    origin: '*', // Allowed origins
+    origin:"*", // Allowed origins
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
-);
+); 
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contractRoutes);
@@ -60,6 +62,8 @@ app.use('/api/payment', paymentRouter);
 app.use('/api/search', searchRoutes);
 // app.use('/api/contract', contract);
 app.use('/api/user', userRouter);
+app.use('/api/companies', companyRouter);
+
 
 // Root route
 app.get('/', (req, res) => {
@@ -75,8 +79,10 @@ app.use("/api/addDeal", dealRouter)
 const contractIo = io.of("/contract");
 const chatIo = io.of("/chat");
 
+
 setupContract(contractIo);
 setupNotifications(io);
+setupDealSocket(io); // Set up the deal socket
 
 // Error handling middleware
 app.use((err, req, res, next) => {
