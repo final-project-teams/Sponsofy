@@ -320,7 +320,7 @@ module.exports = {
           userData.company.profile_picture = createMediaUrl(userData.company.profile_picture);
         }
       }
-  
+       /// melek 
       // Return the user data with the updated profile picture URL
       res.json({
         user: {
