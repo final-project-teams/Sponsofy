@@ -11,7 +11,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
-import { Video } from 'expo-av';
+import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from "../theme/ThemeContext";
 import Icon from 'react-native-vector-icons/Ionicons';
 import api from '../config/axios';
@@ -19,6 +19,8 @@ import { useAuth } from '../context/AuthContext';
 import * as ImagePicker from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { API_URL } from '../config/source';
+import { SOCKET_URL } from '../config/source';
+import { useSocket } from '../context/socketContext';
 
 interface Message {
   id: string;
@@ -40,6 +42,16 @@ interface Message {
   };
 }
 
+// Add type for file upload
+interface UploadFile {
+  name?: string;
+  fileName?: string;
+  type?: string;
+  mimeType?: string;
+  uri: string;
+  size?: number;
+}
+
 const formatMessageTime = (timestamp: string) => {
   const now = new Date();
   const messageDate = new Date(timestamp);
@@ -54,6 +66,7 @@ const formatMessageTime = (timestamp: string) => {
 const ChatScreen = ({ route, navigation }) => {
   const { currentTheme } = useTheme();
   const { user } = useAuth();
+  const { chatSocket, isConnected } = useSocket();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +75,46 @@ const ChatScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     loadMessages();
-  }, [roomId]);
+
+    if (!chatSocket) {
+      console.error('Socket not initialized');
+      return;
+    }
+
+    // Initialize user in the socket
+    chatSocket.emit('init_user', {
+      id: user.id,
+      username: user.username
+    });
+
+    // Join the room
+    chatSocket.emit('join_room', {
+      roomId,
+      userId: user.id
+    });
+
+    // Listen for new messages
+    chatSocket.on('receive_message', (newMessage) => {
+      console.log('Received new message:', newMessage);
+      setMessages(prev => {
+        // Avoid duplicate messages
+        const messageExists = prev.some(msg => msg.id === newMessage.id);
+        if (messageExists) return prev;
+        return [newMessage, ...prev];
+      });
+    });
+
+    // Cleanup socket listeners when component unmounts
+    return () => {
+      if (chatSocket) {
+        chatSocket.off('receive_message');
+        chatSocket.emit('leave_room', {
+          roomId,
+          userId: user.id
+        });
+      }
+    };
+  }, [roomId, chatSocket, user]);
 
   const loadMessages = async () => {
     try {
@@ -86,12 +138,24 @@ const ChatScreen = ({ route, navigation }) => {
     if (!newMessage.trim()) return;
 
     try {
+      if (!chatSocket || !isConnected) {
+        console.error('Socket not connected');
+        return;
+      }
+
+      // First, send through socket for real-time update
+      chatSocket.emit('new_message', {
+        roomId,
+        content: newMessage,
+        userId: user.id
+      });
+
+      // Then, save to database
       const response = await api.post(`/messages/room/${roomId}`, {
         content: newMessage
       });
 
       if (response.data) {
-        setMessages(prev => [response.data, ...prev]);
         setNewMessage('');
       }
     } catch (error) {
@@ -138,17 +202,24 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const uploadMedia = async (file) => {
+  const uploadMedia = async (file: UploadFile) => {
+    if (!chatSocket || !isConnected) {
+      console.error('Socket not connected');
+      return;
+    }
+
     try {
       setIsUploading(true);
       console.log("Uploading file:", file);
 
       const formData = new FormData();
-      formData.append('file', {
-        name: file.name || file.fileName,
-        type: file.mimeType || file.type,
-        uri: file.uri
-      });
+      // Create a proper Blob object
+      const fileBlob = {
+        uri: file.uri,
+        type: file.type || file.mimeType || 'application/octet-stream',
+        name: file.name || file.fileName || 'file'
+      };
+      formData.append('file', fileBlob as any);
 
       if (newMessage.trim()) {
         formData.append('content', newMessage);
@@ -167,7 +238,6 @@ const ChatScreen = ({ route, navigation }) => {
       console.log("Upload response:", response.data);
 
       if (response.data) {
-        // Make sure the response has the Media property
         const messageWithMedia = response.data.Media
           ? response.data
           : {
@@ -182,7 +252,8 @@ const ChatScreen = ({ route, navigation }) => {
             }
           };
 
-        setMessages(prev => [messageWithMedia, ...prev]);
+        // Emit socket event for real-time update
+        chatSocket.emit('new_message_with_media', messageWithMedia);
         setNewMessage('');
       }
     } catch (error) {
@@ -249,7 +320,7 @@ const ChatScreen = ({ route, navigation }) => {
                 source={{ uri: `${API_URL}/uploads/videos/${item.Media.file_name}` }}
                 style={styles.mediaVideo}
                 useNativeControls
-                resizeMode="contain"
+                resizeMode={ResizeMode.CONTAIN}
               />
             </View>
           )}
