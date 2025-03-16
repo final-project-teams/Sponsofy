@@ -1,4 +1,5 @@
 const { Contract, Company, Criteria, Term ,ContentCreator ,Notification, Negotiation} = require("../database/connection");
+const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account} = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {

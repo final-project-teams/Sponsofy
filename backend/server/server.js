@@ -23,7 +23,9 @@ const searchRoutes = require('../router/searchrouter');
 const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
 const termsRouter = require("../router/termsrouter")
-const dealRouter = require("../router/deal.router");
+const dealRouter = require("../router/deal.router")
+const companyRouter = require("../router/company.router")
+
 const { create } = require('domain');
 
 
@@ -62,6 +64,8 @@ app.use('/api/payment', paymentRouter);
 app.use('/api/search', searchRoutes);
 // app.use('/api/contract', contract);
 app.use('/api/user', userRouter);
+app.use('/api/companies', companyRouter);
+
 
 // Root route
 app.get('/', (req, res) => {
