@@ -1,6 +1,9 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 const config = require('./config');
+const media = require('./models/media');
+const term = require('./models/term');
+const company = require('./models/company');
 
 const sequelize = new Sequelize(config.development.database, config.development.username, config.development.password, {
     host: config.development.host,
@@ -27,9 +30,11 @@ const Room = require('./models/room')(sequelize, DataTypes);
 const Message = require('./models/message')(sequelize, DataTypes);
 const Payment = require('./models/payment')(sequelize, DataTypes);
 const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
+const pre_Term = require('./models/pre_terms')(sequelize, DataTypes);
 
 // Create associations here
-
+Contract.hasMany(pre_Term);
+pre_Term.belongsTo(Contract);
 // User -> ContentCreator (One-to-One)
 User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
 ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -41,17 +46,17 @@ Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
 Media.hasMany(ContentCreator, { foreignKey: 'profilePictureId' });
 // ContentCreator -> DealReques  (Many-to-Many)
-ContentCreator.belongsToMany(Deal,{through:DealRequest});
-Deal.belongsToMany(ContentCreator,{through:DealRequest});
+ContentCreator.belongsToMany(Deal,{through:DealRequest,as:'DealRequests'});
+Deal.belongsToMany(ContentCreator,{through:DealRequest,as:'ContentCreators'});
 
 // ContentCreator -> Deal (One-to-Many)
-ContentCreator.hasMany(Deal);
-Deal.belongsTo(ContentCreator);
-
+ContentCreator.hasMany(Deal,{as:'ContentCreatorDeals',foreignKey:'contentCreatorId'});
+Deal.belongsTo(ContentCreator,{as:'ContentCreatorDeals',foreignKey:'contentCreatorId'});
 
 // Company -> Deal (One-to-Many)
 Company.hasMany(Contract);
 Contract.belongsTo(Company);
+
 
 Contract.hasMany(Deal);
 Deal.belongsTo(Contract);
@@ -69,14 +74,22 @@ Criteria.belongsToMany(Contract, {
   as: 'contracts', // Alias for the association
 });
 
-
 // Company -> Media (One-to-Many)
 Company.hasMany(Media);
 Media.belongsTo(Company);
 
+Term.hasMany(Media);
+Media.belongsTo(Term);
+
+Term.hasMany(Post);
+Post.belongsTo(Term);
+
+Message.hasMany(Media);
+Media.belongsTo(Message);
+
 // ContentCreator -> Media (Many-to-One, Portfolio)
-ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
-Media.belongsTo(ContentCreator, { foreignKey: 'contentCreatorId' });
+// ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+// Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
 Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
@@ -122,13 +135,14 @@ Message.belongsTo(Room);
 User.hasMany(Message);
 Message.belongsTo(User);
 
+
 // ContentCreator can participate in many rooms (many-to-many relationship with room)
-ContentCreator.belongsTo(Room);
-Room.belongsTo(ContentCreator);
+// ContentCreator.belongsToMany(Company, {as:"ContentCreatorRoom", through: Room });
+// Company.belongsToMany(ContentCreator, {as:"CompanyRoom", through: Room });
+
 
 // Company can participate in many rooms (many-to-many relationship with room)
-Company.belongsTo(Room);
-Room.belongsTo(Company);
+
 
 Criteria.hasMany(SubCriteria);
 SubCriteria.belongsTo(Criteria);
@@ -153,7 +167,7 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ force:true }).then(() => {
+// sequelize.sync({ alter:true }).then(() => {
 //   console.log('Database & tables have been synchronized!');
 // }).catch((error) => {
 //   console.error('Error syncing database:', error);
@@ -181,5 +195,6 @@ module.exports = {
     Notification,
     Signature,
     Room,
-    Message
+    Message,
+    pre_Term
 };
