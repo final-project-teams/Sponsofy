@@ -261,7 +261,6 @@ const SponsorshipTerms = () => {
 
   const renderAcceptButtons = (term: ContractTerm) => {
     const negotiation = term.negotiation;
-  
     return (
       <View style={styles.acceptButtonsContainer}>
         <View style={[

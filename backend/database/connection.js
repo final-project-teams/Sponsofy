@@ -111,8 +111,8 @@ Deal.hasMany(Term);
 Term.belongsTo(Deal);
 
 // Term -> Negotiation (One-to-Many)
-Term.hasMany(Negotiation);
-Negotiation.belongsTo(Term);
+Term.hasOne(Negotiation, {as:'negotiation', foreignKey: 'termId'});
+Negotiation.belongsTo(Term,  );
 
 Term.hasMany(Contract);
 Contract.belongsTo(Term);
