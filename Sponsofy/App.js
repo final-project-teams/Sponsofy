@@ -33,7 +33,7 @@ import NotificationsScreen from './src/screens/NotificationsScreen';
 import CompanyCard from './src/components/CompanyCard';
 import CompanyProfile from './src/screens/CompanyProfile';
 import EditProfile from './src/screens/EditProfile';
-
+import ContractQRCode from './src/components/ContractQRCode';
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -82,6 +82,12 @@ const App = () => {
                   },
                   headerTintColor: '#fff',
                 }} 
+              />
+
+              <Stack.Screen
+                name="ContractQRCode"
+                component={ContractQRCode}
+                options={{ headerShown: false }}
               />
 
               {/* Company-Related Screens */}

@@ -121,6 +121,10 @@ Criteria.belongsTo(Contract, { through: ContractCriteria });
 Criteria.hasMany(SubCriteria);
 SubCriteria.belongsTo(Criteria);
 
+// Contract -> Criteria (One-to-Many)
+Contract.hasMany(Criteria);
+Criteria.belongsTo(Contract);
+
 // A user has one signature
 User.hasOne(Signature);
 Signature.belongsTo(User);

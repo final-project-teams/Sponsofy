@@ -261,7 +261,6 @@ const AddDeal = () => {
 
             const userData = JSON.parse(userString);
 
-            // Create the contract data
             const contractData = {
                 title,
                 description,
@@ -271,14 +270,18 @@ const AddDeal = () => {
                 end_date,
                 rank,
                 company_id: userData.id,
-                // Format terms list similar to criteria list
                 termsList: terms.filter(term => term.title.trim() !== '').map(term => ({
                     title: term.title,
                     description: term.description || ''
                 })),
                 criteriaList: selectedCriteria.map(criteria => ({
-                    name: criteria.toLowerCase(),
-                    description: selectedSubCriteria[criteria]
+                    criteria: {
+                        name: criteria.toLowerCase()
+                    },
+                    subCriteria: {
+                        name: selectedSubCriteria[criteria],
+                        description: `${criteria} requirement: ${selectedSubCriteria[criteria]}`
+                    }
                 }))
             };
 

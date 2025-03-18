@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account , pre_terms, pre_Term} = require("../database/connection");
+const { Contract, Company, Criteria, Term, Deal, Media, Post, ContentCreator, Account, pre_terms, pre_Term, SubCriteria } = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -24,12 +24,19 @@ module.exports = {
       });
 
       if (criteriaList && criteriaList.length > 0) {
-        await Promise.all(criteriaList.map(criteria => {
-          return Criteria.create({
+        await Promise.all(criteriaList.map(async ({ criteria, subCriteria }) => {
+          const createdCriteria = await Criteria.create({
             name: criteria.name,
-            description: criteria.description,
             ContractId: contract.id
           });
+
+          if (subCriteria) {
+            await SubCriteria.create({
+              name: subCriteria.name,
+              description: subCriteria.description,
+              CriterionId: createdCriteria.id
+            });
+          }
         }));
       }
 
@@ -78,13 +85,15 @@ module.exports = {
         });
       }
 
-      // Retrieve all contracts associated with the company, including criteria
+      // Retrieve all contracts associated with the company, including criteria and subcriteria
       const contracts = await Contract.findAll({
         where: { CompanyId: company.id },
         include: [
           { 
             model: Criteria,
-            as: 'criteria'
+            include: [{
+              model: SubCriteria
+            }]
           }
         ],
         order: [['createdAt', 'DESC']]
@@ -144,13 +153,15 @@ module.exports = {
         });
       }
 
-      // Retrieve all contracts associated with the company, including criteria
+      // Retrieve all contracts associated with the company, including criteria and subcriteria
       const contracts = await Contract.findAll({
         where: { CompanyId: id },
         include: [
           { 
             model: Criteria,
-            as: 'criteria'
+            include: [{
+              model: SubCriteria
+            }]
           }
         ],
         order: [['createdAt', 'DESC']]
