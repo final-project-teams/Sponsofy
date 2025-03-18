@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account} = require("../database/connection");
+const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account , pre_terms, pre_Term} = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -6,7 +6,7 @@ module.exports = {
       const decoded = req.user;
       console.log("decodedaaa", decoded);
       
-      const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList } = req.body;
+      const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList, termsList } = req.body;
 
       const company = await Company.findOne({ where: { userId: decoded.userId } });
       console.log("companyaaaa", company);
@@ -28,6 +28,17 @@ module.exports = {
           return Criteria.create({
             name: criteria.name,
             description: criteria.description,
+            ContractId: contract.id
+          });
+        }));
+      }
+
+      if (termsList && termsList.length > 0) {
+        await Promise.all(termsList.map(term => {
+          return pre_Term.create({
+            title: term.title,
+            description: term.description || '',
+            status: 'negotiating',
             ContractId: contract.id
           });
         }));

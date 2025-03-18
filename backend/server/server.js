@@ -67,6 +67,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
 
 
+
 // Root route
 app.get('/', (req, res) => {
   res.send('Hello World!');

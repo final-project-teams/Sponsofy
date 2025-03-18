@@ -249,7 +249,6 @@ const AddDeal = () => {
         }
 
         try {
-            // Get both user data and token from AsyncStorage
             const [userString, token] = await Promise.all([
                 AsyncStorage.getItem('userData'),
                 AsyncStorage.getItem('userToken')
@@ -257,31 +256,33 @@ const AddDeal = () => {
 
             if (!userString || !token) {
                 console.error('User data or token not found');
-                // Handle the error appropriately (e.g., redirect to login)
                 return;
             }
 
             const userData = JSON.parse(userString);
 
-            // Create the deal data
-            const dealData = {
+            // Create the contract data
+            const contractData = {
                 title,
                 description,
                 budget: parseFloat(budget),
-                payement_terms,
+                payment_terms: payement_terms,
                 start_date,
                 end_date,
                 rank,
                 company_id: userData.id,
-                termsList: terms.filter(term => term.title.trim() !== ''),
+                // Format terms list similar to criteria list
+                termsList: terms.filter(term => term.title.trim() !== '').map(term => ({
+                    title: term.title,
+                    description: term.description || ''
+                })),
                 criteriaList: selectedCriteria.map(criteria => ({
                     name: criteria.toLowerCase(),
                     description: selectedSubCriteria[criteria]
                 }))
             };
 
-            // Make the API call with the token in headers
-            const response = await api.post("/contract", dealData, {
+            const response = await api.post("/contract", contractData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -289,19 +290,17 @@ const AddDeal = () => {
             });
 
             if (response.data.success) {
-                
+                Alert.alert('Success', 'Contract created successfully');
                 navigation.navigate("Home" as never);
             } else {
-                console.error('Error response:', response.data);
-                // Handle the error appropriately
-                Alert.alert('Error', response.data.message || 'Failed to create deal');
+                Alert.alert('Error', response.data.message || 'Failed to create contract');
             }
 
         } catch (error) {
-            console.error('Error posting deal:', error);
+            console.error('Error posting contract:', error);
             Alert.alert(
                 'Error',
-                'Failed to create deal. Please check your connection and try again.'
+                'Failed to create contract. Please check your connection and try again.'
             );
         }
     };
