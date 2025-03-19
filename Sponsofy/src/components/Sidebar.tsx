@@ -46,7 +46,7 @@ type RootStackParamList = {
   Notifications: undefined;
   Deals: { status: string };
   Contracts: { status: string };
-  ContractDetail: { contract: Contract };
+  ContractDetail: { contract: Contract } | { id: string };
   ChatScreen: undefined;
   PremiumScreen: undefined;
   Settings: undefined;
@@ -56,7 +56,7 @@ type RootStackParamList = {
 
 // Add Contract interface
 interface Contract {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   start_date: string;
@@ -64,6 +64,9 @@ interface Contract {
   status: 'active' | 'completed' | 'terminated' | 'pending';
   payment_terms: string;
   rank?: 'plat' | 'gold' | 'silver';
+  // Add any other fields that might be in the contract
+  companyId?: string;
+  creatorId?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navigation, currentScreen }) => {
@@ -151,8 +154,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       
       // Check if we have a user with a company role
       if (!user) {
-        console.warn('No authenticated user found');
-        setContracts(generateMockContracts());
+        console.error('No authenticated user found - cannot fetch contracts');
+        setError('Authentication required to view contracts');
         setIsLoading(false);
         return;
       }
@@ -161,82 +164,99 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       const companyId = companyData?.id || user.companyId;
       
       if (!companyId) {
-        console.warn('No company ID found');
-        setContracts(generateMockContracts());
+        console.error('No company ID found - cannot fetch contracts');
+        setError('Company ID not found');
         setIsLoading(false);
         return;
       }
       
-      console.log(`Fetching contracts for company ID: ${companyId}, status: ${status || 'all'}`);
-      
-      // Use the contractService to fetch contracts by company ID
-      const response = await contractService.getContractsByCompanyId(companyId);
-      
-      if (response && response.contracts) {
-        console.log(`Fetched ${response.contracts.length} contracts`);
-        
-        // Filter contracts by status if specified
-        let filteredContracts = response.contracts;
-        if (status) {
-          filteredContracts = response.contracts.filter(
-            (contract: Contract) => contract.status.toLowerCase() === status.toLowerCase()
-          );
-          console.log(`Filtered to ${filteredContracts.length} ${status} contracts`);
-        }
-        
-        setContracts(filteredContracts);
-      } else {
-        console.warn('No contracts found or invalid response format');
-        setContracts(generateMockContracts());
+      // Get stored token
+      let token = await AsyncStorage.getItem('userToken');
+
+      // If no token in storage, try to get one from user object
+      if (!token && user?.token) {
+        token = user.token;
+        // Store it for future use
+        await AsyncStorage.setItem('userToken', token);
+        console.log('Retrieved token from user object and stored it');
       }
-    } catch (err) {
-      console.error('Error fetching contracts:', err);
-      setError('Failed to load contracts');
-      // Fallback to mock data on error
-      setContracts(generateMockContracts());
+      
+      if (!token) {
+        console.error('No authentication token found - cannot fetch contracts');
+        setError('Authentication required. Please log in again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log(`Fetching real contracts for company ID: ${companyId}, status: ${status || 'all'}`);
+      
+      // Use the specific status endpoint if status is provided, otherwise get all contracts
+      let response;
+      if (status) {
+        response = await contractService.getContractsByStatus(companyId, status);
+      } else {
+        response = await contractService.getContractsByCompanyId(companyId);
+      }
+      
+      console.log('Contract response in sidebar:', response);
+      
+      // Handle different response formats
+      if (response && response.success && Array.isArray(response.contracts)) {
+        console.log(`Fetched ${response.contracts.length} real contracts for sidebar`);
+        setContracts(response.contracts);
+      } else if (response && Array.isArray(response.contracts)) {
+        // Alternative format without success flag
+        console.log(`Fetched ${response.contracts.length} real contracts for sidebar (alternative format)`);
+        setContracts(response.contracts);
+      } else if (Array.isArray(response)) {
+        // Direct array format
+        console.log(`Fetched ${response.length} real contracts for sidebar (direct array)`);
+        setContracts(response);
+      } else {
+        console.error('Invalid contract response format in sidebar:', response);
+        setError('Invalid response format from server');
+        setContracts([]);
+      }
+    } catch (error) {
+      console.error('API error fetching contracts in sidebar:', error);
+      
+      // Check for authentication error
+      if (error.response && error.response.status === 401) {
+        console.error('Authentication error (401) when fetching contracts in sidebar');
+        setError('Authentication failed. Please log in again to view your contracts.');
+        
+        // Clear the invalid token
+        await AsyncStorage.removeItem('userToken');
+        setContracts([]);
+      } else if (error.response && error.response.status === 403) {
+        setError('You do not have permission to view these contracts.');
+        setContracts([]);
+      } else if (error.response && error.response.status === 404) {
+        setError('No contracts found. The server could not find any contracts.');
+        setContracts([]);
+      } else if (error.response && error.response.status >= 500) {
+        setError('Server error. Please try again later.');
+        setContracts([]);
+      } else if (error.message && error.message.includes('Network Error')) {
+        setError('Network connection issue. Please check your internet connection and try again.');
+        setContracts([]);
+      } else if (error.message && error.message.includes('timeout')) {
+        setError('Request timed out. The server is taking too long to respond.');
+        setContracts([]);
+      } else {
+        setError(`Unable to load contracts: ${error.message || 'Please check your connection and try again.'}`);
+        setContracts([]);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateMockContracts = (): Contract[] => {
-    return [
-      {
-        id: 1,
-        title: 'Instagram Promotion',
-        description: 'Promote our new product on Instagram',
-        start_date: '2023-01-01',
-        end_date: '2023-02-01',
-        status: 'active',
-        payment_terms: 'Net 30',
-        rank: 'gold'
-      },
-      {
-        id: 2,
-        title: 'YouTube Review',
-        description: 'Create a review video for our service',
-        start_date: '2023-02-15',
-        end_date: '2023-03-15',
-        status: 'completed',
-        payment_terms: 'Net 15',
-        rank: 'plat'
-      },
-      {
-        id: 3,
-        title: 'TikTok Campaign',
-        description: 'Run a viral challenge campaign',
-        start_date: '2023-04-01',
-        end_date: '2023-05-01',
-        status: 'terminated',
-        payment_terms: 'Net 45',
-        rank: 'silver'
-      }
-    ];
-  };
-
   const handleContractPress = (contract: Contract) => {
     onClose();
-    navigation.navigate('ContractDetail', { contract });
+    console.log('Navigating to contract detail with contract object:', contract);
+    // Pass the entire contract object to avoid authentication issues
+    navigation.navigate('ContractDetail', { contract: contract });
   };
 
   const handleStatusFilter = (status: string) => {
@@ -248,7 +268,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     <TouchableOpacity
       key={contract.id}
       style={[styles.contractItem, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}
-      onPress={() => handleContractPress(contract)}
+      onPress={() => {
+        console.log('Navigating to contract detail with contract:', contract);
+        navigation.navigate('ContractDetail', { contract: contract });
+      }}
     >
       <View style={styles.contractHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -315,145 +338,268 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     }
   };
 
-  const renderMenuItem = (
-    icon: string,
-    label: string,
-    screen: string,
-    params?: any,
-    badge?: number,
-    onCustomPress?: () => void
-  ) => (
-    <TouchableOpacity
-      style={[
-        styles.menuItem,
-        currentScreen === screen && styles.activeMenuItem
-      ]}
-      onPress={() => onCustomPress ? onCustomPress() : navigateTo(screen, params)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.menuItemIconContainer}>
-        <Icon name={icon} size={22} color={currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text} />
-      </View>
-      <Text 
-        style={[
-          styles.menuItemText, 
-          { 
-            color: currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text,
-            fontWeight: currentScreen === screen ? '600' : 'normal'
-          }
-        ]}
-      >
-        {label}
-      </Text>
-      {badge ? (
-        <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      ) : null}
-    </TouchableOpacity>
-  );
-
-  const renderSubMenuItem = (
-    icon: string,
-    label: string,
-    screen: string,
-    params?: any
-  ) => (
-    <TouchableOpacity
-      style={styles.subMenuItem}
-      onPress={() => navigateTo(screen, params)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.menuItemIconContainer}>
-        <Icon name={icon} size={18} color={currentTheme.colors.textSecondary} />
-      </View>
-      <Text style={[styles.subMenuItemText, { color: currentTheme.colors.textSecondary }]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  // Update the contracts section to navigate to different pages instead of expanding in the sidebar
   const renderContractSection = () => (
-    <View>
+    <View style={styles.sectionContainer}>
       <TouchableOpacity
-        style={styles.menuItem}
+        style={styles.sectionHeader}
         onPress={toggleContractsExpanded}
+        activeOpacity={0.7}
       >
-        <Icon name="file-document-outline" size={24} color={currentTheme.colors.text} />
-        <Text style={[styles.menuItemText, { color: currentTheme.colors.text }]}>
-          Contracts
-        </Text>
+        <View style={styles.sectionHeaderContent}>
+          <Icon
+            name="file-document-outline"
+            size={20}
+            color={isDarkMode ? '#FFFFFF' : '#000000'}
+          />
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
+            Contracts
+          </Text>
+        </View>
         <Icon
-          name={contractsExpanded ? "chevron-up" : "chevron-down"}
+          name={contractsExpanded ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color={currentTheme.colors.textSecondary}
-          style={styles.expandIcon}
+          color={isDarkMode ? '#FFFFFF' : '#000000'}
         />
       </TouchableOpacity>
 
       {contractsExpanded && (
-        <View style={styles.subMenu}>
-          {/* Navigate to different contract pages based on status */}
-          {renderSubMenuItem(
-            "check-circle",
-            "Active Contracts",
-            "Contracts",
-            { status: "active" }
-          )}
-          {renderSubMenuItem(
-            "clock-outline",
-            "Pending Contracts",
-            "Contracts",
-            { status: "pending" }
-          )}
-          {renderSubMenuItem(
-            "check-all",
-            "Completed Contracts",
-            "Contracts",
-            { status: "completed" }
-          )}
-          {renderSubMenuItem(
-            "close-circle",
-            "Terminated Contracts",
-            "Contracts",
-            { status: "terminated" }
-          )}
-          
-          {/* Show recent contracts if available */}
-          {contracts.length > 0 && (
-            <View style={styles.contractsContainer}>
-              <Text style={[styles.contractsHeader, { color: currentTheme.colors.textSecondary }]}>
-                RECENT CONTRACTS
+        <View style={styles.expandedSection}>
+          {/* Status filter tabs */}
+          <View style={styles.statusFilterTabs}>
+            <TouchableOpacity
+              style={[
+                styles.statusFilterTab,
+                selectedStatus === 'active' && { 
+                  backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                  borderColor: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                  borderWidth: 1
+                }
+              ]}
+              onPress={() => handleStatusFilter('active')}
+            >
+              <View style={styles.filterTabContent}>
+                <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
+                <Text
+                  style={[
+                    styles.statusFilterText,
+                    selectedStatus === 'active' && { 
+                      color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                      fontWeight: '600' 
+                    }
+                  ]}
+                >
+                  Active
+                </Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.statusFilterTab,
+                selectedStatus === 'completed' && { 
+                  backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                  borderColor: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                  borderWidth: 1
+                }
+              ]}
+              onPress={() => handleStatusFilter('completed')}
+            >
+              <View style={styles.filterTabContent}>
+                <View style={[styles.statusDot, { backgroundColor: '#2196F3' }]} />
+                <Text
+                  style={[
+                    styles.statusFilterText,
+                    selectedStatus === 'completed' && { 
+                      color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                      fontWeight: '600' 
+                    }
+                  ]}
+                >
+                  Completed
+                </Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.statusFilterTab,
+                selectedStatus === 'terminated' && { 
+                  backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                  borderColor: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                  borderWidth: 1
+                }
+              ]}
+              onPress={() => handleStatusFilter('terminated')}
+            >
+              <View style={styles.filterTabContent}>
+                <View style={[styles.statusDot, { backgroundColor: '#F44336' }]} />
+                <Text
+                  style={[
+                    styles.statusFilterText,
+                    selectedStatus === 'terminated' && { 
+                      color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                      fontWeight: '600' 
+                    }
+                  ]}
+                >
+                  Terminated
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={isDarkMode ? '#8A2BE2' : '#8A2BE2'} size="small" />
+              <Text style={[styles.loadingText, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                Loading your contracts...
               </Text>
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color={currentTheme.colors.primary} />
-                  <Text style={[styles.loadingText, { color: currentTheme.colors.textSecondary }]}>
-                    Loading...
-                  </Text>
-                </View>
-              ) : error ? (
-                <View style={styles.errorContainer}>
-                  <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>
-                    {error}
-                  </Text>
-                </View>
-              ) : contracts.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={[styles.loadingText, { color: currentTheme.colors.textSecondary }]}>
-                    No contracts found
-                  </Text>
-                </View>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Icon name="alert-circle-outline" size={24} color="#FF5252" />
+              <Text style={styles.errorText}>{error}</Text>
+              {error.includes('Authentication') || error.includes('log in') || error.includes('token') ? (
+                <TouchableOpacity
+                  style={[styles.loginButton, { backgroundColor: '#8A2BE2' }]}
+                  onPress={() => {
+                    onClose(); // Close sidebar first
+                    if (navigation) {
+                      // Navigate back to home
+                      navigation.navigate('Home');
+                    }
+                  }}
+                >
+                  <Text style={styles.loginButtonText}>Back to Home</Text>
+                </TouchableOpacity>
               ) : (
-                contracts.slice(0, 2).map(renderContractItem)
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => fetchContracts(selectedStatus || undefined)}
+                >
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
               )}
             </View>
+          ) : contracts.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Icon
+                  name="file-document-outline"
+                  size={24}
+                  color={isDarkMode ? '#8A2BE2' : '#8A2BE2'}
+                />
+              </View>
+              <Text style={[styles.emptyText, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                {selectedStatus 
+                  ? `No ${selectedStatus} contracts found` 
+                  : "You don't have any contracts yet"}
+              </Text>
+              <TouchableOpacity
+                style={styles.createContractButton}
+                onPress={() => navigateTo('AddDeal')}
+              >
+                <Icon name="plus" size={14} color="#FFFFFF" style={{marginRight: 4}} />
+                <Text style={styles.createContractText}>Create New Contract</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ScrollView style={styles.contractsList}>
+              {contracts.map(contract => (
+                <TouchableOpacity
+                  key={contract.id}
+                  style={[
+                    styles.contractItem, 
+                    { 
+                      backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5',
+                      borderLeftWidth: 3,
+                      borderLeftColor: getStatusColor(contract.status)
+                    }
+                  ]}
+                  onPress={() => handleContractPress(contract)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.contractHeader}>
+                    <View style={styles.contractTitleSection}>
+                      <Text style={[styles.contractTitle, { color: currentTheme.colors.text }]}>
+                        {contract.title}
+                      </Text>
+                      <View style={styles.contractMetadata}>
+                        <Text style={[styles.contractDate, { color: currentTheme.colors.textSecondary }]}>
+                          {formatDateRange(contract.start_date, contract.end_date)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: getStatusColor(contract.status) }
+                      ]}
+                    >
+                      <Text style={styles.statusText}>
+                        {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <Text
+                    style={[styles.contractDescription, { color: currentTheme.colors.textSecondary }]}
+                    numberOfLines={2}
+                  >
+                    {contract.description}
+                  </Text>
+                  
+                  <View style={styles.contractFooter}>
+                    {contract.rank && (
+                      <View style={[styles.rankIndicator, { backgroundColor: getRankColor(contract.rank) }]}>
+                        <Text style={styles.rankText}>
+                          {formatRank(contract.rank)}
+                        </Text>
+                      </View>
+                    )}
+                    <Icon name="chevron-right" size={16} color={currentTheme.colors.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           )}
+          
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => navigateTo('Contracts', { status: selectedStatus || 'all' })}
+          >
+            <Text style={styles.viewAllText}>View All Contracts</Text>
+            <Icon name="arrow-right" size={16} color="#8A2BE2" />
+          </TouchableOpacity>
         </View>
       )}
     </View>
   );
+
+  // Format date range for contracts
+  const formatDateRange = (startDate, endDate) => {
+    try {
+      const start = startDate ? new Date(startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'N/A';
+      const end = endDate ? new Date(endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'N/A';
+      return `${start} - ${end}`;
+    } catch (error) {
+      return 'Invalid dates';
+    }
+  };
+
+  // Format rank for display
+  const formatRank = (rank) => {
+    switch (rank.toLowerCase()) {
+      case 'plat':
+        return 'Platinum';
+      case 'gold':
+        return 'Gold';
+      case 'silver':
+        return 'Silver';
+      default:
+        return rank.charAt(0).toUpperCase() + rank.slice(1);
+    }
+  };
 
   // Theme Toggle Option
   const renderThemeToggle = () => (
@@ -542,6 +688,492 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       Alert.alert('Error', 'Could not share profile. Please try again.');
     }
   };
+
+  // Define the renderMenuItem function here
+  const renderMenuItem = (
+    icon: string,
+    label: string,
+    screen: string,
+    params?: any,
+    badge?: number,
+    onCustomPress?: () => void
+  ) => (
+    <TouchableOpacity
+      style={[
+        styles.menuItem,
+        currentScreen === screen && styles.activeMenuItem
+      ]}
+      onPress={() => onCustomPress ? onCustomPress() : navigateTo(screen, params)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.menuItemIconContainer}>
+        <Icon name={icon} size={22} color={currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text} />
+      </View>
+      <Text 
+        style={[
+          styles.menuItemText, 
+          { 
+            color: currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text,
+            fontWeight: currentScreen === screen ? '600' : 'normal'
+          }
+        ]}
+      >
+        {label}
+      </Text>
+      {badge ? (
+        <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+
+  const renderSubMenuItem = (
+    icon: string,
+    label: string,
+    screen: string,
+    params?: any
+  ) => (
+    <TouchableOpacity
+      style={styles.subMenuItem}
+      onPress={() => navigateTo(screen, params)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.menuItemIconContainer}>
+        <Icon name={icon} size={18} color={currentTheme.colors.textSecondary} />
+      </View>
+      <Text style={[styles.subMenuItemText, { color: currentTheme.colors.textSecondary }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Move the styles into the component scope to access isDarkMode
+  const styles = StyleSheet.create({
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 1000,
+    },
+    container: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: SIDEBAR_WIDTH,
+      height: '100%',
+      zIndex: 1001,
+    },
+    header: {
+      paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 10,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(138, 43, 226, 0.1)',
+    },
+    headerContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+    },
+    closeButton: {
+      padding: 8,
+    },
+    profileSection: {
+      alignItems: 'center',
+      paddingVertical: 20,
+      paddingHorizontal: 16,
+    },
+    avatarContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    avatarText: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+    },
+    companyName: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    companyDetails: {
+      fontSize: 14,
+      marginBottom: 16,
+    },
+    profileActions: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      width: '100%',
+    },
+    profileActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      marginHorizontal: 6,
+    },
+    profileActionText: {
+      color: '#FFFFFF',
+      marginLeft: 6,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    menuContainer: {
+      flex: 1,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      marginLeft: 16,
+      marginTop: 16,
+      marginBottom: 12,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginHorizontal: 8,
+      borderRadius: 8,
+    },
+    activeMenuItem: {
+      backgroundColor: 'rgba(138, 43, 226, 0.1)',
+    },
+    menuItemIconContainer: {
+      width: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    menuItemText: {
+      marginLeft: 12,
+      fontSize: 15,
+      flex: 1,
+    },
+    subMenuContainer: {
+      paddingLeft: 16,
+      backgroundColor: 'rgba(138, 43, 226, 0.05)',
+    },
+    subMenuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      marginHorizontal: 8,
+      borderRadius: 8,
+    },
+    subMenuItemText: {
+      marginLeft: 12,
+      fontSize: 14,
+    },
+    badge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    badgeText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      paddingVertical: 24,
+    },
+    loadingText: {
+      marginTop: 8,
+      fontSize: 14,
+    },
+    errorContainer: {
+      alignItems: 'center',
+      padding: 24,
+    },
+    errorText: {
+      color: '#FF5252',
+      marginTop: 8,
+      fontSize: 14,
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    retryButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      backgroundColor: '#8A2BE2',
+      borderRadius: 4,
+    },
+    retryText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      paddingVertical: 24,
+    },
+    emptyIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.1)' : 'rgba(138, 43, 226, 0.05)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    emptyText: {
+      marginTop: 8,
+      fontSize: 14,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    createContractButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      backgroundColor: '#8A2BE2',
+      borderRadius: 20,
+      elevation: 2,
+      shadowColor: '#8A2BE2',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+    },
+    createContractText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    viewAllButton: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.1)' : 'rgba(138, 43, 226, 0.05)',
+      borderRadius: 8,
+      marginTop: 8,
+    },
+    viewAllText: {
+      color: '#8A2BE2',
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    sectionContainer: {
+      padding: 16,
+      marginBottom: 8,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    sectionHeaderContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    expandedSection: {
+      marginTop: 16,
+      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+      borderRadius: 10,
+      padding: 16,
+    },
+    statusFilterTabs: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    statusFilterTab: {
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#333333' : '#EEEEEE',
+      flex: 1,
+      marginHorizontal: 4,
+    },
+    filterTabContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginRight: 6,
+    },
+    statusFilterText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: isDarkMode ? '#CCCCCC' : '#666666',
+    },
+    contractsList: {
+      marginBottom: 16,
+    },
+    contractItem: {
+      padding: 14,
+      marginBottom: 10,
+      borderRadius: 8,
+      elevation: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+    },
+    contractHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 8,
+    },
+    contractTitleSection: {
+      flex: 1,
+      marginRight: 8,
+    },
+    contractTitle: {
+      fontWeight: 'bold',
+      fontSize: 14,
+      marginBottom: 4,
+    },
+    contractMetadata: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    contractDate: {
+      fontSize: 12,
+    },
+    contractDescription: {
+      fontSize: 13,
+      lineHeight: 18,
+      marginBottom: 10,
+    },
+    contractFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 12,
+      alignSelf: 'flex-start',
+    },
+    statusText: {
+      color: 'white',
+      fontSize: 10,
+      fontWeight: 'bold',
+    },
+    rankIndicator: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    rankText: {
+      color: 'white',
+      fontSize: 10,
+      fontWeight: 'bold',
+    },
+    rankBadge: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      marginRight: 8,
+    },
+    expandIcon: {
+      marginLeft: 8,
+    },
+    themeToggleWrapper: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 8,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(138, 43, 226, 0.1)',
+    },
+    themeToggleTitle: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      marginBottom: 12,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    themeToggleContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      backgroundColor: 'rgba(138, 43, 226, 0.05)',
+      borderRadius: 12,
+      padding: 4,
+      marginHorizontal: 8,
+    },
+    themeOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      flex: 1,
+      justifyContent: 'center',
+    },
+    activeThemeOption: {
+      backgroundColor: 'rgba(138, 43, 226, 0.15)',
+    },
+    themeOptionText: {
+      marginLeft: 8,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    premiumButton: {
+      flexDirection: 'row',
+      backgroundColor: '#8A2BE2',
+      margin: 16,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#8A2BE2',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    premiumButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    loginButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      backgroundColor: '#8A2BE2',
+      borderRadius: 4,
+    },
+    loginButtonText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '500',
+    },
+  });
 
   return (
     <>
@@ -698,304 +1330,5 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 1000,
-  },
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: SIDEBAR_WIDTH,
-    height: '100%',
-    zIndex: 1001,
-  },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 10,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(138, 43, 226, 0.1)',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  companyName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  companyDetails: {
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  profileActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  profileActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginHorizontal: 6,
-  },
-  profileActionText: {
-    color: '#FFFFFF',
-    marginLeft: 6,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  menuContainer: {
-    flex: 1,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 8,
-    borderRadius: 8,
-  },
-  activeMenuItem: {
-    backgroundColor: 'rgba(138, 43, 226, 0.1)',
-  },
-  menuItemIconContainer: {
-    width: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuItemText: {
-    marginLeft: 12,
-    fontSize: 15,
-    flex: 1,
-  },
-  subMenuContainer: {
-    paddingLeft: 16,
-    backgroundColor: 'rgba(138, 43, 226, 0.05)',
-  },
-  subMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginHorizontal: 8,
-    borderRadius: 8,
-  },
-  subMenuItemText: {
-    marginLeft: 12,
-    fontSize: 14,
-  },
-  badge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-  },
-  errorContainer: {
-    padding: 16,
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-  },
-  errorText: {
-    color: '#FF5252',
-  },
-  emptyContainer: {
-    padding: 16,
-    backgroundColor: 'rgba(138, 43, 226, 0.05)',
-  },
-  contractsContainer: {
-    marginTop: 8,
-    paddingBottom: 8,
-  },
-  contractsHeader: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 16,
-    marginBottom: 8,
-  },
-  contractItem: {
-    padding: 12,
-    marginVertical: 6,
-    marginHorizontal: 10,
-    borderRadius: 8,
-    elevation: 1,
-  },
-  contractHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  contractTitle: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    flex: 1,
-  },
-  contractDescription: {
-    fontSize: 12,
-    marginBottom: 6,
-  },
-  contractFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  contractDate: {
-    fontSize: 11,
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 6,
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  rankBadge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  rankText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  expandIcon: {
-    marginLeft: 8,
-  },
-  subMenu: {
-    padding: 16,
-    backgroundColor: 'rgba(138, 43, 226, 0.05)',
-  },
-  // Theme toggle styles
-  themeToggleWrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(138, 43, 226, 0.1)',
-  },
-  themeToggleTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  themeToggleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(138, 43, 226, 0.05)',
-    borderRadius: 12,
-    padding: 4,
-    marginHorizontal: 8,
-  },
-  themeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  activeThemeOption: {
-    backgroundColor: 'rgba(138, 43, 226, 0.15)',
-  },
-  themeOptionText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  // Premium button
-  premiumButton: {
-    flexDirection: 'row',
-    backgroundColor: '#8A2BE2',
-    margin: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#8A2BE2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  premiumButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
 
 export default Sidebar; 

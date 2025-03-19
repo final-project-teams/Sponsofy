@@ -147,6 +147,10 @@ const CompanyProfile = () => {
       setContractsError(null);
       console.log('Fetching contracts for company ID:', company.id);
       
+      // Get the authentication token (if needed)
+      const token = await AsyncStorage.getItem('userToken');
+      console.log('Using token for contract fetch:', token ? 'Token exists' : 'No token');
+      
       const response = await contractService.getContractsByCompanyId(company.id);
       console.log('Contract response:', response);
       
@@ -160,7 +164,7 @@ const CompanyProfile = () => {
       }
     } catch (error) {
       console.error('Error loading company contracts:', error);
-      setContractsError(error.message);
+      setContractsError(error.message || 'Failed to load contracts');
       setContracts([]);
     } finally {
       setContractsLoading(false);
@@ -266,7 +270,7 @@ const CompanyProfile = () => {
   
   // Render contracts section
   const renderContractsSection = () => {
-    // Ensure contracts is always an array
+    // Ensure contracts is always an array, even if null or undefined
     const contractsArray = Array.isArray(contracts) ? contracts : [];
     
     if (contractsLoading) {
@@ -299,50 +303,50 @@ const CompanyProfile = () => {
       );
     }
     
-    if (!contractsArray || contractsArray.length === 0) {
-      return (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
-            Previous Contracts
-          </Text>
-          <View style={styles.contractsGrid}>
-            <View style={[styles.emptyContractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
-              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Title...</Text>
-              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>1 month ago</Text>
-              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>Description...</Text>
-            </View>
-            <View style={[styles.emptyContractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
-              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Title...</Text>
-              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>3 month ago</Text>
-              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>Description...</Text>
-            </View>
-          </View>
-        </View>
-      );
-    }
-    
     return (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
           Previous Contracts ({contractsArray.length})
         </Text>
-        <View style={styles.contractsGrid}>
-          {contractsArray.map((contract) => (
-            <TouchableOpacity 
-              key={contract.id} 
-              style={[styles.contractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}
-              onPress={() => handleContractPress(contract.id)}
-            >
-              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>{contract.title}</Text>
-              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
-                {new Date(contract.createdAt).toLocaleDateString()} ago
+        
+        {contractsArray.length === 0 ? (
+          <View style={styles.contractsGrid}>
+            <View style={[styles.emptyContractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
+              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>No contracts yet</Text>
+              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>-</Text>
+              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                Create your first contract to see it here.
               </Text>
-              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]} numberOfLines={1}>
-                {contract.description || 'Description...'}
+            </View>
+            <View style={[styles.emptyContractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
+              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Need help?</Text>
+              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>-</Text>
+              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                Use the + button to add a new contract.
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.contractsGrid}>
+            {contractsArray.map((contract) => (
+              <TouchableOpacity 
+                key={contract.id || Math.random().toString()} 
+                style={[styles.contractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}
+                onPress={() => handleContractPress(contract.id)}
+              >
+                <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
+                  {contract.title || 'Untitled Contract'}
+                </Text>
+                <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                  {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'No date'} 
+                </Text>
+                <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]} numberOfLines={1}>
+                  {contract.description || 'No description available'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
     );
   };

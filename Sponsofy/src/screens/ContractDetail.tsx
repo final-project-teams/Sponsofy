@@ -23,7 +23,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
-  ContractDetail: { id: string };
+  ContractDetail: { id?: string; contract?: Contract };
   Contracts: { status?: string };
   CompanyProfile: { company: any };
 };
@@ -37,42 +37,87 @@ const ContractDetail = () => {
   const route = useRoute();
   const navigation = useNavigation<ContractDetailNavigationProp>();
   const theme = useTheme();
-  const { id } = route.params as { id: string };
+  
+  // Get parameters from route
+  const params = route.params as { id?: string; contract?: Contract };
+  const contractId = params?.id;
+  const contractFromParams = params?.contract;
 
-  // Initialize token for authentication
+  // Add a main useEffect to check if we have contract from params
   useEffect(() => {
-    const initToken = async () => {
+    if (contractFromParams) {
+      console.log('Using contract object from navigation params');
+      setContract(contractFromParams);
+      setLoading(false);
+    } else if (contractId) {
+      console.log('Will fetch contract by ID:', contractId);
+      fetchContractDetails();
+    } else {
+      console.error('No contract ID or object provided');
+      setError('Missing contract information');
+      setLoading(false);
+    }
+  }, [contractId, contractFromParams]);
+
+  useEffect(() => {
+    // We don't need to set a hardcoded token anymore
+    // Authentication token should be managed by the auth context or set elsewhere
+    const checkToken = async () => {
       try {
-        // Store the token for authentication
-        await AsyncStorage.setItem('userToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJjb21wYW55IiwiaWF0IjoxNzQxNDgzMDg2LCJleHAiOjE3NDE1Njk0ODZ9.SkQDEtGUaLEdD78TdupkJSKLIVk0Dxq2U994srrgQdU');
-        console.log('Token initialized for authentication');
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) {
+          console.log('No token found for authentication');
+          setError('Authentication required. Please login again.');
+        } else {
+          console.log('Authentication token found');
+        }
       } catch (err) {
-        console.error('Error initializing token:', err);
+        console.error('Error checking token:', err);
       }
     };
 
-    initToken();
+    checkToken();
   }, []);
 
   const fetchContractDetails = async () => {
+    if (!contractId) {
+      setError('No contract ID provided');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
-      console.log(`Fetching contract details for ID: ${id}`);
-      const data = await contractService.getContractById(id);
+      console.log(`Fetching contract details for ID: ${contractId}`);
+      const data = await contractService.getContractById(contractId);
       console.log('Contract details fetched successfully:', data);
       setContract(data);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch contract details');
       console.error('Error fetching contract details:', err);
+      
+      // Handle different error types
+      if (err.response) {
+        if (err.response.status === 401) {
+          setError('Authentication failed. Please log in again.');
+          // Clear the invalid token
+          await AsyncStorage.removeItem('userToken');
+        } else if (err.response.status === 404) {
+          setError('Contract not found. It may have been deleted.');
+        } else if (err.response.status >= 500) {
+          setError('Server error. Please try again later.');
+        } else {
+          setError(`Error: ${err.response.data?.message || 'Failed to fetch contract details'}`);
+        }
+      } else if (err.message && err.message.includes('Network Error')) {
+        setError('Network connection issue. Please check your internet connection.');
+      } else {
+        setError('Failed to fetch contract details. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchContractDetails();
-  }, [id]);
 
   const getInitials = (name: string) => {
     if (!name) return 'NA';

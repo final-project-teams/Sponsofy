@@ -152,7 +152,7 @@ export const contractService = {
       }
       
       console.error('Invalid contracts response format:', response.data);
-      return { contracts: [] };
+      return { success: false, contracts: [] };
     } catch (error) {
       console.error(`Error fetching contracts for company ID ${companyId}:`, error);
       console.error('Error details:', error.response?.data || error.message);
@@ -186,6 +186,26 @@ export const contractService = {
       return { contracts: [] };
     } catch (error) {
       console.error(`Error fetching ${status} contracts for company ID ${companyId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  createContract: async (contractData) => {
+    try {
+      console.log('Creating new contract:', contractData);
+      
+      // The baseURL already includes '/api', so we don't need to include it in the path
+      const response = await api.post('/contract', contractData);
+      
+      if (!response.data) {
+        throw new Error('Failed to create contract');
+      }
+      
+      console.log('Create contract response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating contract:', error);
       console.error('Error details:', error.response?.data || error.message);
       throw error;
     }
