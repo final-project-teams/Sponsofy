@@ -26,6 +26,9 @@ import AddDeal from './src/screens/AddDeal';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import ContractDeals from './src/screens/ContractDeals';
+import DealDetail from './src/screens/DealDetail';
+import CreateDeal from './src/screens/CreateDeal';
 
 // import TermsScreen from './src/screens/TermsScreen';
 
@@ -101,6 +104,28 @@ const App = () => {
 
               {/* Notifications Screen */}
               <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+
+              {/* Contract Deals Screen */}
+              <Stack.Screen
+                name="ContractDeals"
+                component={ContractDeals}
+                options={{ headerShown: false }}
+              />
+
+              {/* Deal Detail Screen */}
+              <Stack.Screen
+                name="DealDetail"
+                component={DealDetail}
+                options={{ headerShown: false }}
+              />
+
+              {/* Create Deal Screen */}
+              <Stack.Screen
+                name="CreateDeal"
+                component={CreateDeal}
+                options={{ headerShown: false }}
+              />
+
               {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
             </Stack.Navigator>
 

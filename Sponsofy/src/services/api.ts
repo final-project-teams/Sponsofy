@@ -222,6 +222,85 @@ export const contractService = {
     }
   },
 
+  getContractById: async (contractId) => {
+    try {
+      console.log(`Fetching contract with ID ${contractId}`);
+      
+      // Try to fetch the contract directly using the contract ID
+      const response = await api.get(`/contract/${contractId}`);
+      
+      if (response.data && response.data.contract) {
+        console.log(`Successfully fetched contract with ID ${contractId} directly`);
+        return response.data.contract;
+      }
+      
+      // If direct fetch fails or not available, fall back to fetching from the contracts list
+      console.log(`Direct contract fetch not available, trying to find contract in the contract list`);
+      const allContractsResponse = await api.get(`/contract/current`);
+      
+      if (allContractsResponse.data && allContractsResponse.data.success && Array.isArray(allContractsResponse.data.contracts)) {
+        console.log(`Searching for contract with ID ${contractId} in ${allContractsResponse.data.contracts.length} contracts`);
+        
+        const contract = allContractsResponse.data.contracts.find(c => c.id.toString() === contractId.toString());
+        
+        if (contract) {
+          console.log(`Found contract with ID ${contractId} in contracts list`);
+          return contract;
+        } else {
+          console.error(`Contract with ID ${contractId} not found in contracts list`);
+          throw new Error(`Contract with ID ${contractId} not found`);
+        }
+      }
+      
+      console.error('Invalid contracts response format:', allContractsResponse.data);
+      throw new Error('Invalid response format from server');
+    } catch (error) {
+      console.error(`Error fetching contract with ID ${contractId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Get deals associated with a contract
+  getDealsByContractId: async (contractId) => {
+    try {
+      console.log(`Fetching deals for contract ID ${contractId}`);
+      
+      // The endpoint should be /contract/:contractId/deals - remove any duplicate /api prefix
+      // as the baseURL in axios.ts already includes it
+      const response = await api.get(`/contract/${contractId}/deals`);
+      
+      console.log(`Deals for contract ${contractId} response status:`, response.status);
+      
+      if (response.data && response.data.success) {
+        // Check for deals array and contract summary
+        const deals = Array.isArray(response.data.deals) ? response.data.deals : [];
+        const contractSummary = response.data.contractSummary || null;
+        
+        console.log(`Found ${deals.length} deals for contract ${contractId}`);
+        
+        if (contractSummary) {
+          console.log('Contract summary included in response:', contractSummary.title);
+        }
+        
+        return {
+          success: true,
+          deals,
+          contractSummary
+        };
+      }
+      
+      console.error('Invalid deals response format:', response.data);
+      return { success: false, deals: [], contractSummary: null };
+    } catch (error) {
+      console.error(`Error fetching deals for contract ID ${contractId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      
+      // Throw the error to let the component handle it
+      throw error;
+    }
+  },
+
   createContract: async (contractData) => {
     try {
       console.log('Creating new contract:', contractData);
@@ -237,6 +316,190 @@ export const contractService = {
       return response.data;
     } catch (error) {
       console.error('Error creating contract:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Add this method to get a contract with its deals in a single request
+  getContractWithDeals: async (contractId) => {
+    try {
+      console.log(`Fetching contract with deals for ID ${contractId}`);
+      
+      const response = await api.get(`/contract/${contractId}/with-deals`);
+      
+      console.log(`Contract with deals for ID ${contractId} response status:`, response.status);
+      
+      if (response.data && response.data.success) {
+        const contract = response.data.contract || null;
+        const deals = Array.isArray(response.data.deals) ? response.data.deals : [];
+        
+        console.log(`Found contract with ${deals.length} deals for ID ${contractId}`);
+        
+        return {
+          success: true,
+          contract,
+          deals
+        };
+      }
+      
+      console.error('Invalid contract with deals response format:', response.data);
+      return { success: false, contract: null, deals: [] };
+    } catch (error) {
+      console.error(`Error fetching contract with deals for ID ${contractId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+};
+
+// Add a deal service to work with the deal API
+export const dealService = {
+  // Get all deals for the current content creator
+  getContentCreatorDeals: async () => {
+    try {
+      console.log('Fetching deals for current content creator');
+      
+      const response = await api.get('/addDeal/creator/deals');
+      
+      if (response.data && response.data.success && response.data.deals) {
+        console.log(`Found ${response.data.deals.length} deals for content creator`);
+        return {
+          success: true,
+          deals: response.data.deals
+        };
+      }
+      
+      console.error('Invalid deals response format:', response.data);
+      return { success: false, deals: [] };
+    } catch (error) {
+      console.error('Error fetching content creator deals:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  
+  // Get all deals for the current company
+  getCompanyDeals: async () => {
+    try {
+      console.log('Fetching deals for current company');
+      
+      const response = await api.get('/addDeal/company/deals');
+      
+      if (response.data && response.data.success && response.data.deals) {
+        console.log(`Found ${response.data.deals.length} deals for company`);
+        return {
+          success: true,
+          deals: response.data.deals
+        };
+      }
+      
+      console.error('Invalid deals response format:', response.data);
+      return { success: false, deals: [] };
+    } catch (error) {
+      console.error('Error fetching company deals:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  
+  // Get deal by ID
+  getDealById: async (dealId) => {
+    try {
+      console.log(`Fetching deal with ID ${dealId}`);
+      
+      const response = await api.get(`/addDeal/details/${dealId}`);
+      
+      if (response.data && response.data.success && response.data.deal) {
+        console.log(`Found deal with ID ${dealId}`);
+        return {
+          success: true,
+          deal: response.data.deal
+        };
+      }
+      
+      console.error('Invalid deal response format:', response.data);
+      return { success: false, deal: null };
+    } catch (error) {
+      console.error(`Error fetching deal with ID ${dealId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  
+  // Create a deal request (for content creator)
+  createDealRequest: async (contractId, dealData) => {
+    try {
+      console.log(`Creating deal request for contract ID ${contractId}`);
+      
+      const response = await api.post('/addDeal/request', {
+        contractId,
+        ...dealData
+      });
+      
+      if (response.data && response.data.success) {
+        console.log('Deal request created successfully');
+        return {
+          success: true,
+          deal: response.data.deal
+        };
+      }
+      
+      console.error('Invalid deal creation response:', response.data);
+      return { success: false, message: response.data.message || 'Failed to create deal request' };
+    } catch (error) {
+      console.error(`Error creating deal request for contract ID ${contractId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  
+  // Accept a deal (for company)
+  acceptDeal: async (dealId) => {
+    try {
+      console.log(`Accepting deal with ID ${dealId}`);
+      
+      const response = await api.post('/addDeal/accept', { dealId });
+      
+      if (response.data && response.data.success) {
+        console.log('Deal accepted successfully');
+        return {
+          success: true,
+          deal: response.data.deal
+        };
+      }
+      
+      console.error('Invalid deal acceptance response:', response.data);
+      return { success: false, message: response.data.message || 'Failed to accept deal' };
+    } catch (error) {
+      console.error(`Error accepting deal with ID ${dealId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  
+  // Reject a deal (for company)
+  rejectDeal: async (dealId, reason) => {
+    try {
+      console.log(`Rejecting deal with ID ${dealId}`);
+      
+      const response = await api.post('/addDeal/reject', { 
+        dealId,
+        reason
+      });
+      
+      if (response.data && response.data.success) {
+        console.log('Deal rejected successfully');
+        return {
+          success: true,
+          deal: response.data.deal
+        };
+      }
+      
+      console.error('Invalid deal rejection response:', response.data);
+      return { success: false, message: response.data.message || 'Failed to reject deal' };
+    } catch (error) {
+      console.error(`Error rejecting deal with ID ${dealId}:`, error);
       console.error('Error details:', error.response?.data || error.message);
       throw error;
     }

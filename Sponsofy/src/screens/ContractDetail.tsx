@@ -26,6 +26,7 @@ type RootStackParamList = {
   ContractDetail: { id?: string; contract?: Contract };
   Contracts: { status?: string };
   CompanyProfile: { company: any };
+  ContractDeals: { contractId: string };
 };
 
 type ContractDetailNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -330,6 +331,18 @@ const ContractDetail = () => {
           Back to Contracts
         </Button>
       </View>
+
+      {/* View Deals Button */}
+      <TouchableOpacity
+        style={[
+          styles.actionButton,
+          { backgroundColor: theme.colors.primary }
+        ]}
+        onPress={() => navigation.navigate('ContractDeals', { contractId: contract.id })}
+      >
+        <Icon name="handshake" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+        <Text style={styles.actionButtonText}>View Deals</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -463,6 +476,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ccc',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

@@ -50,13 +50,20 @@ async function initializeDatabase() {
 
 app.use(
   cors({
-    origin:"*", // Allowed origins
+    origin: "*", // Allow all origins - for development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
-); 
+);
+
+// Log all incoming requests for debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} | ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contractRoutes);
