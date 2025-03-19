@@ -35,6 +35,7 @@ import CompanyProfile from './src/screens/CompanyProfile';
 import EditProfile from './src/screens/EditProfile';
 import ContractQRCode from './src/components/ContractQRCode';
 import ContractDetails from './src/screens/ContractDetails';
+import SignatureManagement from './src/screens/SignatureManagement';
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -54,7 +55,7 @@ const App = () => {
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
               {/* Main App Screens */}
-              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Home" component={SignatureManagement} options={{ headerShown: false }} />
               <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
               <Stack.Screen name="PremiumScreen" component={PremiumScreen} options={{ headerShown: false }} />
@@ -96,6 +97,12 @@ const App = () => {
                 component={UploadSignature}
                 options={{ headerShown: false }}
               />
+
+<Stack.Screen 
+    name="SignatureManagement" 
+    component={SignatureManagement}
+    options={{ headerShown: false }}
+/>
 
               {/* Company-Related Screens */}
               <Stack.Screen name="CompanyProfile" component={CompanyProfile} options={{ headerShown: false }} />
