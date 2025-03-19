@@ -163,18 +163,49 @@ export const contractService = {
   // Get contracts with a specific status
   getContractsByStatus: async (companyId, status) => {
     try {
-      console.log(`Fetching ${status} contracts for company ID ${companyId}`);
+      console.log(`Fetching contracts with status '${status}' for company ID ${companyId}`);
       
       // First get all contracts
       const response = await api.get(`/contract/company/${companyId}`);
       
       if (response.data && response.data.success && response.data.contracts) {
+        // Get all contracts before filtering
+        const allContracts = response.data.contracts;
+        console.log(`Retrieved ${allContracts.length} total contracts before filtering`);
+        
+        // Log all the statuses present in the contracts for debugging
+        const statusesInContracts = [...new Set(allContracts.map(c => c.status?.toLowerCase()))];
+        console.log('Status values present in contracts:', statusesInContracts);
+        
+        // Normalize target status (lowercase and trim)
+        const targetStatus = status?.toLowerCase()?.trim();
+        console.log('Normalized target status for filtering:', targetStatus);
+        
         // Filter contracts by status
-        const filteredContracts = response.data.contracts.filter(
-          contract => contract.status.toLowerCase() === status.toLowerCase()
+        const filteredContracts = allContracts.filter(
+          contract => {
+            // Normalize contract status (lowercase and trim)
+            const contractStatus = contract.status?.toLowerCase()?.trim();
+            
+            // Special case for terminated/cancelled (handle both)
+            if (targetStatus === 'terminated' && contractStatus === 'cancelled') {
+              return true;
+            }
+            
+            if (targetStatus === 'cancelled' && contractStatus === 'terminated') {
+              return true;
+            }
+            
+            console.log(`Contract ID ${contract.id}: '${contractStatus}' vs target '${targetStatus}'`);
+            
+            return contractStatus === targetStatus;
+          }
         );
         
-        console.log(`Found ${filteredContracts.length} ${status} contracts for company ${companyId}`);
+        console.log(`Found ${filteredContracts.length} contracts with status '${status}' out of ${allContracts.length} total`);
+        if (filteredContracts.length > 0) {
+          console.log('Sample filtered contract IDs:', filteredContracts.slice(0, 3).map(c => c.id));
+        }
         
         return {
           success: true,
@@ -183,9 +214,9 @@ export const contractService = {
       }
       
       console.error('Invalid contracts response format:', response.data);
-      return { contracts: [] };
+      return { success: false, contracts: [] };
     } catch (error) {
-      console.error(`Error fetching ${status} contracts for company ID ${companyId}:`, error);
+      console.error(`Error fetching contracts with status '${status}' for company ID ${companyId}:`, error);
       console.error('Error details:', error.response?.data || error.message);
       throw error;
     }

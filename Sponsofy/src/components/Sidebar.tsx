@@ -61,7 +61,7 @@ interface Contract {
   description: string;
   start_date: string;
   end_date: string;
-  status: 'active' | 'completed' | 'terminated' | 'pending';
+  status: 'active' | 'completed' | 'terminated' | 'pending' | string;
   payment_terms: string;
   rank?: 'plat' | 'gold' | 'silver';
   // Add any other fields that might be in the contract
@@ -138,8 +138,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
 
   const toggleContractsExpanded = () => {
     setContractsExpanded(!contractsExpanded);
-    if (!contractsExpanded && contracts.length === 0) {
-      fetchContracts();
+    if (!contractsExpanded) {
+      // Only clear contracts and don't fetch any when expanding
+      setContracts([]);
+      setSelectedStatus(null);
     }
   };
 
@@ -184,6 +186,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       if (!token) {
         console.error('No authentication token found - cannot fetch contracts');
         setError('Authentication required. Please log in again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // If no status is provided and not explicitly requesting all contracts, don't fetch anything
+      if (!status && selectedStatus !== 'all') {
+        console.log('No status filter selected - not fetching contracts');
+        setContracts([]);
         setIsLoading(false);
         return;
       }
@@ -260,6 +270,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
   };
 
   const handleStatusFilter = (status: string) => {
+    console.log(`Filtering contracts by status: ${status}`);
     setSelectedStatus(status);
     fetchContracts(status);
   };
@@ -324,7 +335,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    const normalizedStatus = status?.toLowerCase()?.trim() || '';
+    
+    switch (normalizedStatus) {
       case 'active':
         return '#4CAF50';
       case 'completed':
@@ -566,7 +579,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
           
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => navigateTo('Contracts', { status: selectedStatus || 'all' })}
+            onPress={() => {
+              setSelectedStatus('all');
+              fetchContracts();
+              navigateTo('Contracts', { status: 'all' });
+            }}
           >
             <Text style={styles.viewAllText}>View All Contracts</Text>
             <Icon name="arrow-right" size={16} color="#8A2BE2" />
