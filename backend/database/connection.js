@@ -125,10 +125,6 @@ SubCriteria.belongsTo(Criteria);
 Contract.hasMany(Criteria);
 Criteria.belongsTo(Contract);
 
-// A user has one signature
-User.hasOne(Signature);
-Signature.belongsTo(User);
-
 // A user has many notifications
 User.hasMany(Notification);
 Notification.belongsTo(User);
@@ -182,6 +178,26 @@ Account.belongsTo(ContentCreator, {
 // Message.hasOne(Media, { foreignKey: 'messageId' });
 // Media.belongsTo(Message, { foreignKey: 'messageId' });
 
+// Contract -> Signature (One-to-One)
+Contract.hasOne(Signature, {
+    foreignKey: 'contractId',
+    as: 'signature'
+});
+Signature.belongsTo(Contract, {
+    foreignKey: 'contractId',
+    as: 'contract'
+});
+
+// User -> Signature (One-to-Many, since a user can sign multiple contracts)
+User.hasMany(Signature, {
+    foreignKey: 'userId',
+    as: 'signatures'
+});
+Signature.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'signer'
+});
+
 sequelize.authenticate()
   .then(() => {
     console.log('Connection to the database has been established successfully.');
@@ -191,7 +207,7 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ alter:true }).then(() => {
+// sequelize.sync({ force:true }).then(() => {
 //   console.log('Database & tables have been synchronized!');
 // }).catch((error) => {
 //   console.error('Error syncing database:', error);
