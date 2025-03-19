@@ -34,6 +34,7 @@ import CompanyCard from './src/components/CompanyCard';
 import CompanyProfile from './src/screens/CompanyProfile';
 import EditProfile from './src/screens/EditProfile';
 import ContractQRCode from './src/components/ContractQRCode';
+import ContractDetails from './src/screens/ContractDetails';
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -85,8 +86,8 @@ const App = () => {
               />
 
               <Stack.Screen
-                name="ContractQRCode"
-                component={ContractQRCode}
+                name="ContractDetails"
+                component={ContractDetails}
                 options={{ headerShown: false }}
               />
 

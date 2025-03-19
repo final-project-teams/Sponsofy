@@ -14,7 +14,7 @@ module.exports = {
       const contract = await Contract.create({
         title,
         description,
-        amount: budget,
+        budget,
         payment_terms,
         start_date: new Date(start_date),
         end_date: new Date(end_date),
@@ -57,7 +57,9 @@ module.exports = {
         contract: {
           id: contract.id,
           title,
-          status: contract.status
+          status: contract.status,
+          contractData: contract.contractData,
+          serialNumber: contract.serialNumber,
         }
       });
 
@@ -244,6 +246,52 @@ module.exports = {
       res.status(500).json({
         success: false,
         message: 'Error fetching deals',
+        error: error.message
+      });
+    }
+  },
+
+  getContractById: async (req, res) => {
+    try {
+      const { contractId } = req.params;
+      
+      const contract = await Contract.findOne({
+        where: { id: contractId },
+        include: [
+          { 
+            model: Company,
+            attributes: ['id', 'name']
+          },
+          { 
+            model: Criteria,
+            include: [{
+              model: SubCriteria
+            }]
+          },
+          {
+            model: pre_Term,
+            attributes: ['title', 'description', 'status']
+          }
+        ]
+      });
+
+      if (!contract) {
+        return res.status(404).json({
+          success: false,
+          message: 'Contract not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        contract
+      });
+
+    } catch (error) {
+      console.error("Error fetching contract details:", error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching contract details',
         error: error.message
       });
     }

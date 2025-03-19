@@ -191,7 +191,7 @@ sequelize.authenticate()
   });
 
 // Sync models with the database
-// sequelize.sync({ force:true }).then(() => {
+// sequelize.sync({ alter:true }).then(() => {
 //   console.log('Database & tables have been synchronized!');
 // }).catch((error) => {
 //   console.error('Error syncing database:', error);

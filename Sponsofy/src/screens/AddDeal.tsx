@@ -292,9 +292,34 @@ const AddDeal = () => {
                 }
             });
 
+            console.log("response.data.contract!!!!!!!!!!!!!!!!", response.data.contract);
+
             if (response.data.success) {
-                Alert.alert('Success', 'Contract created successfully');
-                navigation.navigate("Home" as never);
+                Alert.alert(
+                    'Success',
+                    `Contract created successfully!\n\nSerial Number: ${response.data.contract.serialNumber}`,
+                    [
+                        {
+                            text: 'View Details',
+                            onPress: () => {
+                                navigation.reset({
+                                    index: 0,
+                                    routes: [
+                                        { name: 'Home' as never },
+                                        {
+                                            name: 'ContractDetails' as never,
+                                            params: { contractId: response.data.contract.id } as never
+                                        }
+                                    ],
+                                });
+                            }
+                        },
+                        {
+                            text: 'Go Home',
+                            onPress: () => navigation.navigate('Home' as never),
+                        }
+                    ]
+                );
             } else {
                 Alert.alert('Error', response.data.message || 'Failed to create contract');
             }
