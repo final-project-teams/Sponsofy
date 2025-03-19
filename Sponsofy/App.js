@@ -26,7 +26,7 @@ import AddDeal from './src/screens/AddDeal';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
-
+import UploadSignature from './src/screens/UploadSignature';
 // import TermsScreen from './src/screens/TermsScreen';
 
 
@@ -88,6 +88,12 @@ const App = () => {
               <Stack.Screen
                 name="ContractDetails"
                 component={ContractDetails}
+                options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+                name="UploadSignature"
+                component={UploadSignature}
                 options={{ headerShown: false }}
               />
 

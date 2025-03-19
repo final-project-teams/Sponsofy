@@ -178,15 +178,6 @@ Account.belongsTo(ContentCreator, {
 // Message.hasOne(Media, { foreignKey: 'messageId' });
 // Media.belongsTo(Message, { foreignKey: 'messageId' });
 
-// Contract -> Signature (One-to-One)
-Contract.hasOne(Signature, {
-    foreignKey: 'contractId',
-    as: 'signature'
-});
-Signature.belongsTo(Contract, {
-    foreignKey: 'contractId',
-    as: 'contract'
-});
 
 // User -> Signature (One-to-Many, since a user can sign multiple contracts)
 User.hasMany(Signature, {
