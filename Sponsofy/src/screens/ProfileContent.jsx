@@ -21,8 +21,6 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import api from "../config/axios";
 import { API_URL } from "../config/source";
 
-
-
 const ProfileContent = () => {
   const navigation = useNavigation();
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -44,7 +42,6 @@ const ProfileContent = () => {
   const [creatorInfoVisible, setCreatorInfoVisible] = useState(false);
 
   // Fetch user profile
-  // Fetch user profile
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
@@ -63,8 +60,8 @@ const ProfileContent = () => {
           : null;
 
         setProfilePictureUrl(pictureUrl);
-        ///: this is what I have changed "profile_picture"
         setUserProfile(response.data.user);
+        console.log("User Profile", response.data.user);
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -176,19 +173,19 @@ const ProfileContent = () => {
           },
         }
       );
-  
+
       // Update local state
       const updatedProfile = { ...userProfile };
-  
+
       // Ensure ProfilePicture is an array
       if (!Array.isArray(updatedProfile.profile.ProfilePicture)) {
         updatedProfile.profile.ProfilePicture = [];
       }
-  
+
       const platformIndex = updatedProfile.profile.ProfilePicture.findIndex(
         (item) => item.platform === currentPlatform
       );
-  
+
       if (platformIndex !== -1) {
         updatedProfile.profile.ProfilePicture[platformIndex] = {
           ...updatedProfile.profile.ProfilePicture[platformIndex],
@@ -197,7 +194,7 @@ const ProfileContent = () => {
       } else {
         updatedProfile.profile.ProfilePicture.push(response.data.media);
       }
-  
+
       setUserProfile(updatedProfile);
       setEditModalVisible(false);
       Alert.alert("Success", "Social media data updated successfully!");
@@ -292,8 +289,6 @@ const ProfileContent = () => {
     );
   }
 
-  console.log("API_URL ❤️❤️",API_URL)
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#121212" />
@@ -359,15 +354,68 @@ const ProfileContent = () => {
               >
                 <Text style={styles.editProfileText}>Edit Profile</Text>
               </TouchableOpacity>
-              {/* Inside the profileInfo View, after the editProfileButton: */}
+              {/* View Info Button */}
               <TouchableOpacity
                 style={[styles.editProfileButton, styles.viewInfoButton]}
-                onPress={() => setCreatorInfoVisible(true)}
+                onPress={() => setCreatorInfoVisible(!creatorInfoVisible)}
               >
-                <Text style={styles.editProfileText}>View Info</Text>
+                <Text style={styles.editProfileText}>
+                  {creatorInfoVisible ? "Hide Info" : "View Info"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Content Creator Info Section */}
+          {creatorInfoVisible && (
+           <View style={styles.creatorInfoContainer}>
+           <Text style={styles.creatorInfoTitle}>Creator Information</Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Name: {userProfile.profile.first_name} {userProfile.profile.last_name}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Bio: {userProfile.profile.bio || "No bio available"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Pricing: {userProfile.profile.pricing || "Not specified"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Portfolio Links: {userProfile.profile.portfolio_links || "No links available"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Location: {userProfile.profile.location || "Not specified"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Category: {userProfile.profile.category || "Not specified"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Verified: {userProfile.profile.verified ? "Yes" : "No"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Membership: {userProfile.profile.isPremium ? "Premium" : "Regular"}
+           </Text>
+           
+           <Text style={styles.creatorInfoText}>
+             Email: {userProfile.email}
+           </Text>
+         
+           {userProfile.profile.profile_picture && (
+             <Image
+               source={{ uri: userProfile.profile.profile_picture }}
+               style={styles.profilePicture}
+             />
+           )}
+         </View>
+         
+          )}
 
           {/* Bio */}
           <Text style={styles.bio}>
@@ -596,33 +644,6 @@ const ProfileContent = () => {
                     </Text>
                   </View>
                 )}
-              </View>
-            </View>
-          </Modal>
-
-          {/* Content Creator Info Modal */}
-          <Modal
-            visible={creatorInfoVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setCreatorInfoVisible(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View
-                style={[styles.modalContent, styles.creatorInfoModalContent]}
-              >
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Creator Information</Text>
-                  <TouchableOpacity
-                    onPress={() => setCreatorInfoVisible(false)}
-                  >
-                    <Feather name="x" size={24} color="white" />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView style={styles.creatorInfoScroll}>
-                  {/* Creator info content */}
-                </ScrollView>
               </View>
             </View>
           </Modal>
@@ -970,113 +991,26 @@ const styles = StyleSheet.create({
   dealDetailsScroll: {
     width: "100%",
   },
-  dealDetailSection: {
-    marginBottom: 20,
+  creatorInfoContainer: {
+    padding: 20,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 10,
+    margin: 20,
   },
-  dealDetailLabel: {
-    color: "#888",
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  dealDetailValue: {
+  creatorInfoTitle: {
     color: "white",
-    fontSize: 16,
-  },
-  termItem: {
-    backgroundColor: "#2A2A2A",
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 10,
-  },
-  termHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  termTitle: {
-    color: "white",
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "bold",
-  },
-  termDescription: {
-    color: "#bbb",
-    fontSize: 14,
-  },
-  dealActionsContainer: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  dealActionRow: {
-    marginTop: 10,
-  },
-  dealActionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
     marginBottom: 10,
   },
-  messageButton: {
-    backgroundColor: "#8A2BE2",
-  },
-  cancelButton: {
-    backgroundColor: "#e74c3c",
-  },
-  dealActionButtonText: {
+  creatorInfoText: {
     color: "white",
-    fontWeight: "bold",
-    marginLeft: 8,
+    fontSize: 14,
+    marginBottom: 8,
   },
   viewInfoButton: {
     backgroundColor: "#6A5ACD",
     marginLeft: 10,
-  },
-  creatorInfoModalContent: {
-    maxHeight: "80%",
-    width: "95%",
-  },
-  creatorInfoScroll: {
-    width: "100%",
-  },
-  creatorInfoSection: {
-    marginBottom: 20,
-  },
-  creatorInfoLabel: {
-    color: "#888",
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  creatorInfoValue: {
-    color: "white",
-    fontSize: 16,
-  },
-  verificationBadge: {
-    backgroundColor: "#2ecc71",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-  },
-  verificationText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  membershipBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-  },
-  regularBadge: {
-    backgroundColor: "#3498db",
-  },
-  membershipText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
   },
 });
 
