@@ -353,11 +353,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
 
   const renderContractSection = () => (
     <View style={styles.sectionContainer}>
-      <TouchableOpacity
+    <TouchableOpacity
         style={styles.sectionHeader}
         onPress={toggleContractsExpanded}
-        activeOpacity={0.7}
-      >
+      activeOpacity={0.7}
+    >
         <View style={styles.sectionHeaderContent}>
           <Icon
             name="file-document-outline"
@@ -367,7 +367,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
             Contracts
           </Text>
-        </View>
+      </View>
         <Icon
           name={contractsExpanded ? 'chevron-up' : 'chevron-down'}
           size={20}
@@ -392,8 +392,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
             >
               <View style={styles.filterTabContent}>
                 <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
-                <Text
-                  style={[
+      <Text 
+        style={[
                     styles.statusFilterText,
                     selectedStatus === 'active' && { 
                       color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
@@ -402,11 +402,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                   ]}
                 >
                   Active
-                </Text>
-              </View>
-            </TouchableOpacity>
+      </Text>
+        </View>
+    </TouchableOpacity>
             
-            <TouchableOpacity
+    <TouchableOpacity
               style={[
                 styles.statusFilterTab,
                 selectedStatus === 'completed' && { 
@@ -429,11 +429,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                   ]}
                 >
                   Completed
-                </Text>
+      </Text>
               </View>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
+    </TouchableOpacity>
+
+      <TouchableOpacity
               style={[
                 styles.statusFilterTab,
                 selectedStatus === 'terminated' && { 
@@ -456,20 +456,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                   ]}
                 >
                   Terminated
-                </Text>
+        </Text>
               </View>
-            </TouchableOpacity>
+      </TouchableOpacity>
           </View>
 
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
               <ActivityIndicator color={isDarkMode ? '#8A2BE2' : '#8A2BE2'} size="small" />
               <Text style={[styles.loadingText, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
                 Loading your contracts...
-              </Text>
-            </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
+                  </Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorContainer}>
               <Icon name="alert-circle-outline" size={24} color="#FF5252" />
               <Text style={styles.errorText}>{error}</Text>
               {error.includes('Authentication') || error.includes('log in') || error.includes('token') ? (
@@ -493,9 +493,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                   <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
               )}
-            </View>
-          ) : contracts.length === 0 ? (
-            <View style={styles.emptyContainer}>
+                </View>
+              ) : contracts.length === 0 ? (
+                <View style={styles.emptyContainer}>
               <View style={styles.emptyIconContainer}>
                 <Icon
                   name="file-document-outline"
@@ -507,16 +507,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                 {selectedStatus 
                   ? `No ${selectedStatus} contracts found` 
                   : "You don't have any contracts yet"}
-              </Text>
+                  </Text>
               <TouchableOpacity
-                style={styles.createContractButton}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  backgroundColor: '#8A2BE2',
+                  borderRadius: 20,
+                  elevation: 2,
+                  shadowColor: '#8A2BE2',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  marginTop: 16,
+                  justifyContent: 'center'
+                }}
                 onPress={() => navigateTo('AddDeal')}
               >
-                <Icon name="plus" size={14} color="#FFFFFF" style={{marginRight: 4}} />
-                <Text style={styles.createContractText}>Create New Contract</Text>
+                <Icon name="plus" size={16} color="#FFFFFF" style={{marginRight: 8}} />
+                <Text style={styles.createDealButtonText}>Create New Deal</Text>
               </TouchableOpacity>
-            </View>
-          ) : (
+                </View>
+              ) : (
             <ScrollView style={styles.contractsList}>
               {contracts.map(contract => (
                 <TouchableOpacity
@@ -571,7 +585,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                       </View>
                     )}
                     <Icon name="chevron-right" size={16} color={currentTheme.colors.textSecondary} />
-                  </View>
+            </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -715,8 +729,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     badge?: number,
     onCustomPress?: () => void
   ) => (
-    <TouchableOpacity
-      style={[
+          <TouchableOpacity
+        style={[
         styles.menuItem,
         currentScreen === screen && styles.activeMenuItem
       ]}
@@ -725,9 +739,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     >
       <View style={styles.menuItemIconContainer}>
         <Icon name={icon} size={22} color={currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text} />
-      </View>
+          </View>
       <Text 
-        style={[
+            style={[
           styles.menuItemText, 
           { 
             color: currentScreen === screen ? currentTheme.colors.primary : currentTheme.colors.text,
@@ -736,13 +750,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
         ]}
       >
         {label}
-      </Text>
+            </Text>
       {badge ? (
         <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]}>
           <Text style={styles.badgeText}>{badge}</Text>
-        </View>
+          </View>
       ) : null}
-    </TouchableOpacity>
+            </TouchableOpacity>
   );
 
   const renderSubMenuItem = (
@@ -751,182 +765,182 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     screen: string,
     params?: any
   ) => (
-    <TouchableOpacity
+            <TouchableOpacity 
       style={styles.subMenuItem}
       onPress={() => navigateTo(screen, params)}
       activeOpacity={0.7}
     >
       <View style={styles.menuItemIconContainer}>
         <Icon name={icon} size={18} color={currentTheme.colors.textSecondary} />
-      </View>
+          </View>
       <Text style={[styles.subMenuItemText, { color: currentTheme.colors.textSecondary }]}>
         {label}
-      </Text>
-    </TouchableOpacity>
+            </Text>
+            </TouchableOpacity>
   );
 
   // Move the styles into the component scope to access isDarkMode
-  const styles = StyleSheet.create({
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 1000,
-    },
-    container: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: SIDEBAR_WIDTH,
-      height: '100%',
-      zIndex: 1001,
-    },
-    header: {
-      paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 10,
-      paddingBottom: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(138, 43, 226, 0.1)',
-    },
-    headerContent: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-    },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-    },
-    closeButton: {
-      padding: 8,
-    },
-    profileSection: {
-      alignItems: 'center',
-      paddingVertical: 20,
-      paddingHorizontal: 16,
-    },
-    avatarContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    avatarText: {
-      fontSize: 32,
-      fontWeight: 'bold',
-      color: '#FFFFFF',
-    },
-    companyName: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 4,
-    },
-    companyDetails: {
-      fontSize: 14,
-      marginBottom: 16,
-    },
-    profileActions: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      width: '100%',
-    },
-    profileActionButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 20,
-      marginHorizontal: 6,
-    },
-    profileActionText: {
-      color: '#FFFFFF',
-      marginLeft: 6,
-      fontSize: 14,
-      fontWeight: '500',
-    },
-    menuContainer: {
-      flex: 1,
-    },
-    section: {
-      marginBottom: 24,
-    },
-    sectionTitle: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      marginLeft: 16,
-      marginTop: 16,
-      marginBottom: 12,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-    },
-    menuItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      marginHorizontal: 8,
-      borderRadius: 8,
-    },
-    activeMenuItem: {
-      backgroundColor: 'rgba(138, 43, 226, 0.1)',
-    },
-    menuItemIconContainer: {
-      width: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    menuItemText: {
-      marginLeft: 12,
-      fontSize: 15,
-      flex: 1,
-    },
-    subMenuContainer: {
-      paddingLeft: 16,
-      backgroundColor: 'rgba(138, 43, 226, 0.05)',
-    },
-    subMenuItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      marginHorizontal: 8,
-      borderRadius: 8,
-    },
-    subMenuItemText: {
-      marginLeft: 12,
-      fontSize: 14,
-    },
-    badge: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    badgeText: {
-      color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: 'bold',
-    },
-    loadingContainer: {
-      alignItems: 'center',
+const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
+  },
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: SIDEBAR_WIDTH,
+    height: '100%',
+    zIndex: 1001,
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 10,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 43, 226, 0.1)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  companyName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  companyDetails: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  profileActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginHorizontal: 6,
+  },
+  profileActionText: {
+    color: '#FFFFFF',
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  menuContainer: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 16,
+    marginTop: 16,
+    marginBottom: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 8,
+    borderRadius: 8,
+  },
+  activeMenuItem: {
+    backgroundColor: 'rgba(138, 43, 226, 0.1)',
+  },
+  menuItemIconContainer: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuItemText: {
+    marginLeft: 12,
+    fontSize: 15,
+    flex: 1,
+  },
+  subMenuContainer: {
+    paddingLeft: 16,
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
+  },
+  subMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginHorizontal: 8,
+    borderRadius: 8,
+  },
+  subMenuItemText: {
+    marginLeft: 12,
+    fontSize: 14,
+  },
+  badge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
       paddingVertical: 24,
-    },
-    loadingText: {
+  },
+  loadingText: {
       marginTop: 8,
-      fontSize: 14,
-    },
-    errorContainer: {
+    fontSize: 14,
+  },
+  errorContainer: {
       alignItems: 'center',
       padding: 24,
-    },
-    errorText: {
-      color: '#FF5252',
+  },
+  errorText: {
+    color: '#FF5252',
       marginTop: 8,
       fontSize: 14,
       textAlign: 'center',
@@ -942,8 +956,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       color: '#FFFFFF',
       fontSize: 12,
       fontWeight: '500',
-    },
-    emptyContainer: {
+  },
+  emptyContainer: {
       alignItems: 'center',
       paddingVertical: 24,
     },
@@ -957,12 +971,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       marginBottom: 12,
     },
     emptyText: {
-      marginTop: 8,
+    marginTop: 8,
       fontSize: 14,
       textAlign: 'center',
       marginBottom: 16,
     },
-    createContractButton: {
+    createDealButton: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 8,
@@ -975,9 +989,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       shadowOpacity: 0.2,
       shadowRadius: 4,
     },
-    createContractText: {
+    createDealButtonText: {
       color: '#FFFFFF',
-      fontSize: 12,
+      fontSize: 14,
       fontWeight: '600',
     },
     viewAllButton: {
@@ -997,8 +1011,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     },
     sectionContainer: {
       padding: 16,
-      marginBottom: 8,
-    },
+    marginBottom: 8,
+  },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -1048,29 +1062,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     contractsList: {
       marginBottom: 16,
     },
-    contractItem: {
+  contractItem: {
       padding: 14,
       marginBottom: 10,
-      borderRadius: 8,
-      elevation: 1,
+    borderRadius: 8,
+    elevation: 1,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
       shadowRadius: 3,
-    },
-    contractHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
+  },
+  contractHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
       alignItems: 'flex-start',
       marginBottom: 8,
     },
     contractTitleSection: {
       flex: 1,
       marginRight: 8,
-    },
-    contractTitle: {
-      fontWeight: 'bold',
-      fontSize: 14,
+  },
+  contractTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
       marginBottom: 4,
     },
     contractMetadata: {
@@ -1078,20 +1092,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       alignItems: 'center',
     },
     contractDate: {
-      fontSize: 12,
+    fontSize: 12,
     },
     contractDescription: {
       fontSize: 13,
       lineHeight: 18,
       marginBottom: 10,
-    },
-    contractFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+  },
+  contractFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
       marginTop: 4,
-    },
-    statusBadge: {
+  },
+  statusBadge: {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 12,
@@ -1104,81 +1118,81 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
     },
     rankIndicator: {
       paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
     rankText: {
-      color: 'white',
-      fontSize: 10,
-      fontWeight: 'bold',
-    },
-    rankBadge: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      marginRight: 8,
-    },
-    expandIcon: {
-      marginLeft: 8,
-    },
-    themeToggleWrapper: {
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 8,
-      borderTopWidth: 1,
-      borderTopColor: 'rgba(138, 43, 226, 0.1)',
-    },
-    themeToggleTitle: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      marginBottom: 12,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-    },
-    themeToggleContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      backgroundColor: 'rgba(138, 43, 226, 0.05)',
-      borderRadius: 12,
-      padding: 4,
-      marginHorizontal: 8,
-    },
-    themeOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 10,
-      flex: 1,
-      justifyContent: 'center',
-    },
-    activeThemeOption: {
-      backgroundColor: 'rgba(138, 43, 226, 0.15)',
-    },
-    themeOptionText: {
-      marginLeft: 8,
-      fontSize: 14,
-      fontWeight: '500',
-    },
-    premiumButton: {
-      flexDirection: 'row',
-      backgroundColor: '#8A2BE2',
-      margin: 16,
-      paddingVertical: 14,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#8A2BE2',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 6,
-    },
-    premiumButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: 'bold',
-    },
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  rankBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  expandIcon: {
+    marginLeft: 8,
+  },
+  themeToggleWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(138, 43, 226, 0.1)',
+  },
+  themeToggleTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  themeToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 8,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  activeThemeOption: {
+    backgroundColor: 'rgba(138, 43, 226, 0.15)',
+  },
+  themeOptionText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  premiumButton: {
+    flexDirection: 'row',
+    backgroundColor: '#8A2BE2',
+    margin: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  premiumButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
     loginButton: {
       paddingVertical: 6,
       paddingHorizontal: 12,
@@ -1189,6 +1203,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
       color: '#FFFFFF',
       fontSize: 12,
       fontWeight: '500',
+    },
+    dealMenuOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      marginTop: 8,
+    },
+    dealMenuOptionText: {
+      marginLeft: 12,
+      fontSize: 14,
+      flex: 1,
     },
   });
 
@@ -1310,6 +1337,145 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, companyData, navi
                 style={styles.expandIcon}
               />
             </TouchableOpacity>
+            
+            {expandedDeals && (
+              <View style={styles.expandedSection}>
+                {/* Deal Status filters */}
+                <View style={styles.statusFilterTabs}>
+                  <TouchableOpacity
+                    style={[
+                      styles.statusFilterTab,
+                      { 
+                        backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                        borderColor: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                        borderWidth: 1
+                      }
+                    ]}
+                    onPress={() => navigateTo('Deals', { status: 'pending' })}
+                  >
+                    <View style={styles.filterTabContent}>
+                      <View style={[styles.statusDot, { backgroundColor: '#FFC107' }]} />
+                      <Text
+                        style={[
+                          styles.statusFilterText,
+                          { 
+                            color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                            fontWeight: '600' 
+                          }
+                        ]}
+                      >
+                        Pending
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.statusFilterTab,
+                      { 
+                        backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                        borderColor: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                        borderWidth: 1
+                      }
+                    ]}
+                    onPress={() => navigateTo('Deals', { status: 'accepted' })}
+                  >
+                    <View style={styles.filterTabContent}>
+                      <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
+                      <Text
+                        style={[
+                          styles.statusFilterText,
+                          { 
+                            color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                            fontWeight: '600' 
+                          }
+                        ]}
+                      >
+                        Accepted
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.statusFilterTab,
+                      { 
+                        backgroundColor: isDarkMode ? 'rgba(138, 43, 226, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                        borderColor: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                        borderWidth: 1
+                      }
+                    ]}
+                    onPress={() => navigateTo('Deals', { status: 'completed' })}
+                  >
+                    <View style={styles.filterTabContent}>
+                      <View style={[styles.statusDot, { backgroundColor: '#2196F3' }]} />
+                      <Text
+                        style={[
+                          styles.statusFilterText,
+                          { 
+                            color: isDarkMode ? '#8A2BE2' : '#8A2BE2',
+                            fontWeight: '600' 
+                          }
+                        ]}
+                      >
+                        Completed
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Additional Deal Options */}
+                <TouchableOpacity
+                  style={[
+                    styles.dealMenuOption,
+                    { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }
+                  ]}
+                  onPress={() => navigateTo('Deals', { status: 'rejected' })}
+                >
+                  <Icon name="close-circle-outline" size={20} color="#F44336" />
+                  <Text style={styles.dealMenuOptionText}>
+                    Rejected Deals
+                  </Text>
+                  <Icon name="chevron-right" size={16} color={currentTheme.colors.textSecondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.dealMenuOption,
+                    { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }
+                  ]}
+                  onPress={() => navigateTo('Deals', { status: 'all' })}
+                >
+                  <Icon name="view-list" size={20} color={currentTheme.colors.text} />
+                  <Text style={styles.dealMenuOptionText}>
+                    All Deals
+                  </Text>
+                  <Icon name="chevron-right" size={16} color={currentTheme.colors.textSecondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    backgroundColor: '#8A2BE2',
+                    borderRadius: 20,
+                    elevation: 2,
+                    shadowColor: '#8A2BE2',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    marginTop: 16,
+                    justifyContent: 'center'
+                  }}
+                  onPress={() => navigateTo('AddDeal')}
+                >
+                  <Icon name="plus" size={16} color="#FFFFFF" style={{marginRight: 8}} />
+                  <Text style={styles.createDealButtonText}>Create New Deal</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             
             {/* Replace the old contracts section with the new one */}
             {renderContractSection()}

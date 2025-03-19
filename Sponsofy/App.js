@@ -29,6 +29,7 @@ import NotificationsScreen from './src/screens/NotificationsScreen';
 import ContractDeals from './src/screens/ContractDeals';
 import DealDetail from './src/screens/DealDetail';
 import CreateDeal from './src/screens/CreateDeal';
+import DealsScreen from './src/screens/DealsScreen';
 
 // import TermsScreen from './src/screens/TermsScreen';
 
@@ -123,6 +124,13 @@ const App = () => {
               <Stack.Screen
                 name="CreateDeal"
                 component={CreateDeal}
+                options={{ headerShown: false }}
+              />
+
+              {/* Deals Screen */}
+              <Stack.Screen
+                name="Deals"
+                component={DealsScreen}
                 options={{ headerShown: false }}
               />
 
