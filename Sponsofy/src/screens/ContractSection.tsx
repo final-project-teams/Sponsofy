@@ -8,7 +8,9 @@ import {
   StatusBar,
   ScrollView,
   Alert,
-  TextInput
+  TextInput,
+  Image,
+  Modal
 } from 'react-native';
 import { contractService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -49,6 +51,33 @@ interface Contract {
   updatedAt: string;
 }
 
+interface TermHistory {
+  id: number;
+  termId: number;
+  previousTitle: string;
+  previousDescription: string;
+  updatedBy: string;
+  timestamp: Date;
+}
+
+interface PaymentModalProps {
+  visible: boolean;
+  onClose: () => void;
+  paymentMethod: string;
+  onSubmit: (paymentDetails: PaymentDetails) => void;
+}
+
+interface PaymentDetails {
+  accountNumber?: string;
+  routingNumber?: string;
+  amount?: string;
+  cardNumber?: string;
+  cardHolder?: string;
+  expiryDate?: string;
+  cvv?: string;
+  email?: string;
+}
+
 const SponsorshipTerms = () => {
   const [currentStep, setCurrentStep] = useState(2);
   const [contract, setContract] = useState<Contract | null>(null);
@@ -60,26 +89,43 @@ const SponsorshipTerms = () => {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [termHistory, setTermHistory] = useState<Record<number, TermHistory[]>>({});
+  const [showHistory, setShowHistory] = useState<number | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
 
   // Use the contractSocket from the useSocket hook
-  const { contractSocket } = useSocket();
+  const { contractSocket} = useSocket();
+
 
   useEffect(() => {
     fetchUserAndContract();
 
     // Only set up socket listeners if contractSocket exists
     if (contractSocket) {
+      // Join the contract room when component mounts
+      if (contract?.id) {
+        contractSocket.emit('join_contract_room', contract.id);
+      }
+
       // Listen for socket events
-      contractSocket.on('termUpdated', handleTermUpdated);
-      contractSocket.on('termAccepted', handleTermAccepted);
+      contractSocket.on('term_status_changed', handleTermStatusChanged);
+      contractSocket.on('term_content_changed', handleTermContentChanged);
+      contractSocket.on('contract_status_changed', handleContractStatusChanged);
 
       // Cleanup on unmount
       return () => {
-        contractSocket.off('termUpdated', handleTermUpdated);
-        contractSocket.off('termAccepted', handleTermAccepted);
+        if (contract?.id) {
+          contractSocket.emit('unsubscribe', contract.id);
+        }
+        contractSocket.off('term_status_changed', handleTermStatusChanged);
+        contractSocket.off('term_content_changed', handleTermContentChanged);
+        contractSocket.off('contract_status_changed', handleContractStatusChanged);
       };
     }
-  }, [contractSocket]); // Add contractSocket as a dependency
+  }, [contractSocket, contract?.id]);
 
   const fetchUserAndContract = async () => {
     try {
@@ -90,7 +136,7 @@ const SponsorshipTerms = () => {
       }
   
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
-      console.log('User info:', decodedToken);
+      // console.log('User info:', decodedToken);
   
       let contracts;
       if (decodedToken.role === 'company') {
@@ -135,56 +181,190 @@ const SponsorshipTerms = () => {
     }
   };
 
+  const handleTermStatusChanged = (data: {
+    termId: number;
+    acceptedBy: string;
+    confirmationField: string;
+    action: string;
+    timestamp: Date;
+  }) => {
+    setTerms(prevTerms => prevTerms.map(term => 
+      term.id === data.termId 
+        ? {
+            ...term,
+            negotiation: {
+              ...term.negotiation,
+              [data.confirmationField]: true,
+              status: term.negotiation?.confirmation_company && term.negotiation?.confirmation_Influencer 
+                ? 'completed' 
+                : 'pending'
+            }
+          }
+        : term
+    ));
+  };
+
+  const handleTermContentChanged = (data: {
+    termId: number;
+    updates: { title?: string; description?: string };
+    updatedBy: string;
+    timestamp: Date;
+  }) => {
+    setTerms(prevTerms => prevTerms.map(term =>
+      term.id === data.termId
+        ? { ...term, ...data.updates }
+        : term
+    ));
+  };
+
+  const handleContractStatusChanged = (data: {
+    status: string;
+    confirmedBy: string;
+    timestamp: Date;
+  }) => {
+    if (contract) {
+      setContract({ ...contract, status: data.status as Contract['status'] });
+    }
+  };
+
   const handleAccept = async (termId: number) => {
     try {
       if (!contract || !userRole || !contractSocket) return;
-  
+
+      const confirmationField = userRole === 'company' ? 'confirmation_company' : 'confirmation_Influencer';
+      
       const response = await contractService.acceptTerm(contract.id, termId, userRole);
-      console.log("Accept response:", response);
-  
+
       if (response.success) {
-        // Update local state immediately
+        // Update local state first
         setTerms(prevTerms => prevTerms.map(term => 
-          term.id === termId 
+          term.id === termId
             ? {
                 ...term,
-                status: response.negotiation.status,
-                negotiation: response.negotiation
+                negotiation: {
+                  ...term.negotiation,
+                  [confirmationField]: true,
+                  status: 'pending'
+                }
               }
             : term
         ));
-  
-        // Save acceptance status to AsyncStorage
-        await AsyncStorage.setItem(`term_${termId}_accepted`, 'true');
 
-        // Emit socket event using contractSocket
-        contractSocket.emit('termAccepted', { termId, userRole });
+        // Then emit socket event
+        contractSocket.emit('term_accepted', {
+          contractId: contract.id,
+          termId,
+          role: userRole,
+          confirmationField,
+          userId: (jwtDecode<CustomJwtPayload>(await AsyncStorage.getItem('userToken') || '')).userId
+        });
       }
-  
     } catch (err) {
       console.error('Accept error:', err);
       Alert.alert('Error', 'Failed to accept term');
     }
   };
 
-  const handleTermUpdated = (updatedTerm: ContractTerm) => {
-    setTerms(prevTerms => prevTerms.map(term => 
-      term.id === updatedTerm.id ? updatedTerm : term
-    ));
+  const handleUpdateTerm = async (termId: number) => {
+    try {
+      if (!contract) return;
+
+      const currentTerm = terms.find(t => t.id === termId);
+      if (!currentTerm) return;
+
+      const updates = {
+        title: editedTitle,
+        description: editedDescription
+      };
+
+      const response = await contractService.updateTerm(contract.id, termId, updates);
+
+      if (response.success && response.term) {
+        // Save the history
+        setTermHistory(prev => ({
+          ...prev,
+          [termId]: [
+            {
+              id: Date.now(),
+              termId,
+              previousTitle: currentTerm.title,
+              previousDescription: currentTerm.description,
+              updatedBy: userRole || 'unknown',
+              timestamp: new Date()
+            },
+            ...(prev[termId] || [])
+          ]
+        }));
+
+        // Update the term
+        setTerms(prevTerms => prevTerms.map(term => 
+          term.id === termId ? response.term : term
+        ));
+
+        setEditingTermId(null);
+        setEditedTitle('');
+        setEditedDescription('');
+      }
+    } catch (error) {
+      console.error('Error updating term:', error);
+      Alert.alert('Error', 'Failed to update term. Please try again.');
+    }
   };
 
-  const handleTermAccepted = ({ termId, userRole }: { termId: number, userRole: string }) => {
-    setTerms(prevTerms => prevTerms.map(term => 
-      term.id === termId 
-        ? {
-            ...term,
-            negotiation: {
-              ...term.negotiation,
-              [userRole === 'company' ? 'confirmation_company' : 'confirmation_Influencer']: true
+  const handleContractCompletion = async () => {
+    try {
+      if (!contract || !contractSocket) return;
+      
+      const response = await contractService.updateContractStatus(contract.id, 'completed');
+      if (response.success) {
+        setContract({ ...contract, status: 'completed' });
+        
+        // Emit socket event for contract confirmation
+        contractSocket.emit('contract_confirmed', {
+          contractId: contract.id,
+          confirmedBy: userRole
+        });
+        
+        Alert.alert('Success', 'Contract has been completed');
+      }
+    } catch (error) {
+      console.error('Error completing contract:', error);
+      Alert.alert('Error', 'Failed to complete contract');
+    }
+  };
+
+  const handleProcessPayment = (paymentDetails: PaymentDetails) => {
+    try {
+      // Here you would integrate with your payment processing API
+      Alert.alert(
+        'Processing Payment',
+        'Please wait while we process your payment...',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Simulate successful payment
+              Alert.alert(
+                'Payment Successful',
+                'Your payment has been processed successfully!',
+                [
+                  {
+                    text: 'Continue',
+                    onPress: () => {
+                      setShowPaymentModal(false);
+                      setCurrentStep(currentStep + 1);
+                      handleContractCompletion();
+                    }
+                  }
+                ]
+              );
             }
           }
-        : term
-    ));
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Payment processing failed. Please try again.');
+    }
   };
 
   const isTermAccepted = (term: ContractTerm, party: string) => {
@@ -195,67 +375,11 @@ const SponsorshipTerms = () => {
     return term.negotiation?.confirmation_company && term.negotiation?.confirmation_Influencer;
   };
 
-  const steps = [1, 2, 3, 4];
+  const steps = [1, 2, 3, 4, 5];
   
   const handleContinue = () => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleUpdateTerm = async (termId: number) => {
-    try {
-      if (!contract || !contractSocket) {
-        throw new Error('No contract found or socket not connected');
-      }
-
-      const updates = {
-        title: editedTitle,
-        description: editedDescription
-      };
-
-      console.log('Attempting to update term:', { termId, updates });
-
-      const response = await contractService.updateTerm(contract.id, termId, updates);
-
-      if (response.success && response.term) {
-        // Update the local state with the server response
-        setTerms(prevTerms => prevTerms.map(term => 
-          term.id === termId ? response.term : term
-        ));
-
-        // Reset edit state
-        setEditingTermId(null);
-        setEditedTitle('');
-        setEditedDescription('');
-
-        console.log('Term updated successfully');
-
-        // Emit socket event using contractSocket
-        contractSocket.emit('termUpdated', response.term);
-      } else {
-        throw new Error('Failed to update term');
-      }
-
-    } catch (error) {
-      console.error('Error updating term:', error);
-      Alert.alert(
-        'Error',
-        'Failed to update term. Please try again.'
-      );
-    }
-  };
-
-  const getImportanceIcon = (importance: string) => {
-    switch (importance) {
-      case 'critical':
-        return { icon: '🔴', label: 'Critical' };
-      case 'important':
-        return { icon: '🔴', label: 'Important' };
-      case 'standard':
-        return { icon: '🔴', label: 'Standard' };
-      default :
-        return { icon: '🔴', label: 'Standard' };
     }
   };
 
@@ -310,18 +434,106 @@ const SponsorshipTerms = () => {
           style={styles.previewButton}
           onPress={() => setShowPreview(!showPreview)}
         >
-          <MaterialIcons 
-            name={showPreview ? "visibility-off" : "visibility"} 
-            size={20} 
-            color="white" 
-          />
-          <Text style={styles.previewButtonText}>
-            {showPreview ? 'Hide Preview' : 'Show All Terms'}
-          </Text>
+        
+         
         </TouchableOpacity>
       );
     }
     return null;
+  };
+
+  const renderTermHistory = (termId: number) => {
+    const history = termHistory[termId] || [];
+    
+    return (
+      <View style={styles.historyContainer}>
+        <View style={styles.historyHeader}>
+          <Text style={styles.historyTitle}>Change History</Text>
+          <TouchableOpacity 
+            style={styles.closeHistoryButton}
+            onPress={() => setShowHistory(null)}
+          >
+            <MaterialIcons name="close" size={24} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+        
+        {history.length > 0 ? (
+          <ScrollView style={styles.historyList}>
+            {history.map((change, index) => (
+              <View key={index} style={styles.historyItem}>
+                <View style={styles.historyItemHeader}>
+                  <Text style={styles.historyTimestamp}>
+                    {new Date(change.timestamp).toLocaleString()}
+                  </Text>
+                  <Text style={styles.historyUpdatedBy}>
+                    Updated by {change.updatedBy}
+                  </Text>
+                </View>
+                
+                <View style={styles.historyContent}>
+                  <View style={styles.historyField}>
+                    <Text style={styles.historyLabel}>Previous Title:</Text>
+                    <Text style={styles.historyValue}>{change.previousTitle}</Text>
+                  </View>
+                  
+                  <View style={styles.historyField}>
+                    <Text style={styles.historyLabel}>Previous Description:</Text>
+                    <Text style={styles.historyValue}>{change.previousDescription}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={styles.noHistoryText}>No changes recorded yet</Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderTermCard = (term: ContractTerm) => {
+   
+    
+    return (
+      <View style={styles.termCard}>
+        <View style={styles.termCardHeader}>
+          <View style={styles.termCardHeaderLeft}>
+            <Text style={styles.termCardTitle}>{term.title}</Text>
+            <View style={[styles.importanceBadge, styles[`importance${term.importance}`]]}>
+             
+            </View>
+          </View>
+          <View style={styles.termCardActions}>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={() => setShowHistory(term.id)}
+            >
+              <MaterialIcons name="history" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => {
+                setEditingTermId(term.id);
+                setEditedTitle(term.title);
+                setEditedDescription(term.description);
+              }}
+            >
+              <MaterialIcons name="edit" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {showHistory === term.id && renderTermHistory(term.id)}
+        
+        <View style={styles.termCardContent}>
+          <Text style={styles.termCardDescription}>{term.description}</Text>
+        </View>
+        
+        <View style={styles.termCardFooter}>
+          {renderAcceptButtons(term)}
+        </View>
+      </View>
+    );
   };
 
   const renderContent = () => {
@@ -329,7 +541,77 @@ const SponsorshipTerms = () => {
     const allTermsAccepted = areAllTermsAccepted();
 
     switch (currentStep) {
-     case 3:
+      // Payment step case
+      case 5:
+        return (
+          <View style={styles.paymentContainer}>
+            <Text style={styles.sectionTitle}>Select Payment Method</Text>
+            
+            <View style={styles.paymentMethodsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodCard,
+                  selectedPaymentMethod === 'credit_card' && styles.selectedPaymentMethod
+                ]}
+                onPress={() => {
+                  setSelectedPaymentMethod('credit_card');
+                  setShowPaymentModal(true);
+                }}
+              >
+                <MaterialIcons 
+                  name="credit-card" 
+                  size={32} 
+                  color={selectedPaymentMethod === 'credit_card' ? "#10B981" : "#9CA3AF"} 
+                />
+                <Text style={styles.paymentMethodText}>Credit Card</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodCard,
+                  selectedPaymentMethod === 'paypal' && styles.selectedPaymentMethod
+                ]}
+                onPress={() => {
+                  setSelectedPaymentMethod('paypal');
+                  setShowPaymentModal(true);
+                }}
+              >
+                <MaterialIcons 
+                  name="account-balance-wallet" 
+                  size={32} 
+                  color={selectedPaymentMethod === 'paypal' ? "#10B981" : "#9CA3AF"} 
+                />
+                <Text style={styles.paymentMethodText}>PayPal</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodCard,
+                  selectedPaymentMethod === 'bank_transfer' && styles.selectedPaymentMethod
+                ]}
+                onPress={() => {
+                  setSelectedPaymentMethod('bank_transfer');
+                  setShowPaymentModal(true);
+                }}
+              >
+                <MaterialIcons 
+                  name="account-balance" 
+                  size={32} 
+                  color={selectedPaymentMethod === 'bank_transfer' ? "#10B981" : "#9CA3AF"} 
+                />
+                <Text style={styles.paymentMethodText}>Bank Transfer</Text>
+              </TouchableOpacity>
+            </View>
+
+            <PaymentModal
+              visible={showPaymentModal}
+              onClose={() => setShowPaymentModal(false)}
+              paymentMethod={selectedPaymentMethod || ''}
+              onSubmit={handleProcessPayment}
+            />
+          </View>
+        );
+      case 3:
   return (
     <View style={styles.termsList}>
       <Text style={styles.sectionTitle}>Contract Terms</Text>
@@ -353,9 +635,7 @@ const SponsorshipTerms = () => {
                       <View style={styles.previewHeader}>
                         <Text style={styles.previewTitle}>{term.title}</Text>
                         <View style={styles.importanceBadge}>
-                          <Text>{getImportanceIcon(term.importance).icon}</Text>
                           <Text style={styles.importanceLabel}>
-                            {getImportanceIcon(term.importance).label}
                           </Text>
                         </View>
                       </View>
@@ -408,9 +688,7 @@ const SponsorshipTerms = () => {
                         <View style={styles.termHeaderLeft}>
                           <Text style={styles.termTitle}>{term.title}</Text>
                           <View style={styles.importanceBadge}>
-                            <Text>{getImportanceIcon(term.importance).icon}</Text>
                             <Text style={styles.importanceLabel}>
-                              {getImportanceIcon(term.importance).label}
                             </Text>
                           </View>
                         </View>
@@ -444,11 +722,11 @@ const SponsorshipTerms = () => {
    case 4:
   return (
     <View style={styles.termsList}>
-      <Text style={styles.sectionTitle}>Payment Terms</Text>
+      <Text style={styles.sectionTitle}>Confirm Terms</Text>
       {allTermsAccepted ? (
         <View style={styles.lockedContainer}>
           <MaterialIcons name="lock" size={48} color="#10B981" />
-          <Text style={styles.lockedText}>Payment Terms Locked</Text>
+          <Text style={styles.lockedText}>Terms Locked</Text>
           <Text style={styles.lockedSubText}>
             All terms have been accepted by both parties
           </Text>
@@ -461,9 +739,7 @@ const SponsorshipTerms = () => {
                 <View style={styles.termHeaderLeft}>
                   <Text style={styles.termTitle}>{term.title}</Text>
                   <View style={styles.importanceBadge}>
-                    <Text>{getImportanceIcon(term.importance).icon}</Text>
                     <Text style={styles.importanceLabel}>
-                      {getImportanceIcon(term.importance).label}
                     </Text>
                   </View>
                 </View>
@@ -574,7 +850,7 @@ const SponsorshipTerms = () => {
     }
   };
 
-  const stepLabels = ['Contract', 'Review', 'Terms', 'Payment'];
+  const stepLabels = ['Contract', 'Review', 'Terms', 'Confirm', 'Payment'];
 
   const areAllTermsAccepted = () => {
     return terms.every(term => 
@@ -583,30 +859,173 @@ const SponsorshipTerms = () => {
     );
   };
 
-  const handleContractCompletion = async () => {
-    try {
-      if (!contract) return;
-      
-      const response = await contractService.updateContractStatus(contract.id, 'completed');
-      if (response.success) {
-        setContract({ ...contract, status: 'completed' });
-        Alert.alert('Success', 'Contract has been completed');
+  const PaymentModal = ({ visible, onClose, paymentMethod, onSubmit }: PaymentModalProps) => {
+    const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
+
+    const handleConfirm = () => {
+      // Validate based on payment method
+      if (paymentMethod === 'credit_card') {
+        if (!paymentDetails.cardNumber || !paymentDetails.cardHolder || 
+            !paymentDetails.expiryDate || !paymentDetails.cvv) {
+          Alert.alert('Error', 'Please fill in all card details');
+          return;
+        }
+      } else if (paymentMethod === 'bank_transfer') {
+        if (!paymentDetails.accountNumber || !paymentDetails.routingNumber) {
+          Alert.alert('Error', 'Please fill in all bank details');
+          return;
+        }
+      } else if (paymentMethod === 'paypal') {
+        if (!paymentDetails.email) {
+          Alert.alert('Error', 'Please enter PayPal email');
+          return;
+        }
       }
-    } catch (error) {
-      console.error('Error completing contract:', error);
-      Alert.alert('Error', 'Failed to complete contract');
-    }
+
+      onSubmit(paymentDetails);
+    };
+
+    const renderPaymentForm = () => {
+      switch (paymentMethod) {
+        case 'credit_card':
+          return (
+            <View style={styles.paymentForm}>
+              <TextInput
+                style={styles.input}
+                placeholder="Card Number"
+                value={paymentDetails.cardNumber}
+                onChangeText={(text) => setPaymentDetails({...paymentDetails, cardNumber: text})}
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Cardholder Name"
+                value={paymentDetails.cardHolder}
+                onChangeText={(text) => setPaymentDetails({...paymentDetails, cardHolder: text})}
+                placeholderTextColor="#9CA3AF"
+              />
+              <View style={styles.rowInputs}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="MM/YY"
+                  value={paymentDetails.expiryDate}
+                  onChangeText={(text) => setPaymentDetails({...paymentDetails, expiryDate: text})}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="CVV"
+                  value={paymentDetails.cvv}
+                  onChangeText={(text) => setPaymentDetails({...paymentDetails, cvv: text})}
+                  keyboardType="numeric"
+                  secureTextEntry
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+          );
+
+        case 'bank_transfer':
+          return (
+            <View style={styles.paymentForm}>
+              <TextInput
+                style={styles.input}
+                placeholder="Account Number"
+                value={paymentDetails.accountNumber}
+                onChangeText={(text) => setPaymentDetails({...paymentDetails, accountNumber: text})}
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Routing Number"
+                value={paymentDetails.routingNumber}
+                onChangeText={(text) => setPaymentDetails({...paymentDetails, routingNumber: text})}
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          );
+
+        case 'paypal':
+          return (
+            <View style={styles.paymentForm}>
+              <TextInput
+                style={styles.input}
+                placeholder="PayPal Email"
+                value={paymentDetails.email}
+                onChangeText={(text) => setPaymentDetails({...paymentDetails, email: text})}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          );
+
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Complete Payment</Text>
+            
+            {renderPaymentForm()}
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={onClose}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]} 
+                onPress={handleConfirm}
+              >
+                <MaterialIcons name="lock" size={20} color="#FFFFFF" />
+                <Text style={styles.buttonText}>Confirm Payment</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Contract Details</Text>
-        <View style={styles.headerIcons}>
-          {areAllTermsAccepted() && (
+        <View style={styles.headerActions}>
+          {currentStep === 3 && ( // Only show for step 3
+            <TouchableOpacity
+              style={styles.previewButton}
+              onPress={() => setShowPreview(!showPreview)}
+            >
+              <MaterialIcons 
+                name={showPreview ? "visibility-off" : "visibility"} 
+                size={20} 
+                color="white" 
+              />
+              <Text style={styles.previewButtonText}>
+                {showPreview ? 'Hide Terms' : 'Show All Terms'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {areAllTermsAccepted() && currentStep !== 5 && (
             <TouchableOpacity 
               style={styles.completeButton}
               onPress={handleContractCompletion}
@@ -624,7 +1043,7 @@ const SponsorshipTerms = () => {
           <View style={styles.progressBar}>
             {steps.map((step, index) => (
               <React.Fragment key={step}>
-                <View style={{ alignItems: 'center' }}>
+                <View style={styles.stepWrapper}>
                   <View 
                     style={[
                       styles.stepCircle,
@@ -633,7 +1052,7 @@ const SponsorshipTerms = () => {
                     ]}
                   >
                     {step < currentStep ? (
-                      <MaterialIcons name="check" size={24} color="#FFFFFF" />
+                      <MaterialIcons name="check" size={20} color="#FFFFFF" />
                     ) : (
                       <Text style={styles.stepText}>{step}</Text>
                     )}
@@ -648,7 +1067,6 @@ const SponsorshipTerms = () => {
                     {stepLabels[index]}
                   </Text>
                 </View>
-                
                 {index < steps.length - 1 && (
                   <View 
                     style={[
@@ -702,7 +1120,7 @@ const SponsorshipTerms = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A', // Darker background for better contrast
+    backgroundColor: '#0A0A0A',
   },
   header: {
     flexDirection: 'row',
@@ -713,106 +1131,128 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#222222',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 5,
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  headerIcons: {
+  headerActions: {
     flexDirection: 'row',
-    gap: 16,
+    alignItems: 'center',
+    gap: 12,
   },
-  icon: {
-    fontSize: 20,
-    marginLeft: 16,
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D2D2D',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  previewButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#065F46',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   progressContainer: {
-    paddingHorizontal: 24,
     paddingVertical: 24,
-    backgroundColor: '#111111',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#171717',
+    marginHorizontal: 20,
+    marginVertical: 16,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
+    elevation: 5,
   },
   progressBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     position: 'relative',
-    paddingVertical: 8,
   },
   stepCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#2D2D2D',
-    borderWidth: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
     borderColor: '#3D3D3D',
-    zIndex: 2,
+    zIndex: 1,
   },
   activeStep: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#A78BFA',
+    backgroundColor: '#7C3AED',
+    borderColor: '#8B5CF6',
     transform: [{ scale: 1.1 }],
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 8,
   },
   completedStep: {
     backgroundColor: '#059669',
-    borderColor: '#34D399',
+    borderColor: '#10B981',
   },
   stepText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   stepLabel: {
-    position: 'absolute',
-    top: 52,
     color: '#9CA3AF',
     fontSize: 12,
     fontWeight: '500',
-    width: 80,
+    marginTop: 8,
     textAlign: 'center',
-    marginLeft: -20,
+    width: 64,
   },
   activeLabel: {
-    color: '#A78BFA',
+    color: '#8B5CF6',
     fontWeight: '600',
   },
   completedLabel: {
-    color: '#34D399',
+    color: '#10B981',
   },
   connector: {
-    height: 3,
+    height: 2,
     flex: 1,
-    marginHorizontal: -4,
     backgroundColor: '#2D2D2D',
-    zIndex: 1,
+    marginHorizontal: -2,
+    zIndex: 0,
   },
   activeConnector: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#7C3AED',
   },
   completedConnector: {
     backgroundColor: '#059669',
   },
+  stepWrapper: {
+    alignItems: 'center',
+    flex: 1,
+  },
   termsContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    paddingBottom: 90, // Add extra padding at bottom to account for fixed button
+    padding: 20,
   },
   termsTitle: {
     color: 'white',
@@ -829,18 +1269,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: '#2A2A2A',
+  },
+  termHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  termHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   termTitle: {
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
-    marginBottom: 12,
     letterSpacing: 0.5,
   },
   termContent: {
@@ -892,26 +1343,28 @@ const styles = StyleSheet.create({
   acceptButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 20,
     gap: 12,
   },
   acceptButton: {
     flex: 1,
     backgroundColor: '#2D2D2D',
-    padding: 14,
+    padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
   },
   acceptedButton: {
-    backgroundColor: '#059669',
+    backgroundColor: '#065F46',
+    borderColor: '#059669',
+    borderWidth: 1,
   },
   acceptButtonText: {
     color: 'white',
@@ -937,41 +1390,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomPadding: {
-    height: 32,
+    height: 40,
   },
   // Status styles
   statusactive: {
-    borderLeftColor: '#10B981', // green
+    borderLeftColor: '#10B981',
     borderLeftWidth: 4,
   },
   statuscompleted: {
-    borderLeftColor: '#6366F1', // indigo
+    borderLeftColor: '#8B5CF6',
     borderLeftWidth: 4,
   },
   statusterminated: {
-    borderLeftColor: '#EF4444', // red
+    borderLeftColor: '#EF4444',
     borderLeftWidth: 4,
   },
 
   // Rank styles
   rankplat: {
-    borderLeftColor: '#818CF8', // indigo-400
+    borderLeftColor: '#8B5CF6',
     borderLeftWidth: 4,
   },
   rankgold: {
-    borderLeftColor: '#FCD34D', // yellow-400
+    borderLeftColor: '#F59E0B',
     borderLeftWidth: 4,
   },
   ranksilver: {
-    borderLeftColor: '#9CA3AF', // gray-400
+    borderLeftColor: '#9CA3AF',
     borderLeftWidth: 4,
   },
   sectionTitle: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 24,
-    paddingHorizontal: 4,
+    marginBottom: 20,
+    marginHorizontal: 20,
     letterSpacing: 0.5,
   },
   acceptanceStatus: {
@@ -993,12 +1446,6 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     marginTop: 16,
-  },
-  termHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   editContainer: {
     backgroundColor: '#374151',
@@ -1040,21 +1487,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  previewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2D2D2D',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 20,
-    gap: 8,
-  },
-  previewButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   previewContainer: {
     backgroundColor: '#171717',
     borderRadius: 16,
@@ -1094,50 +1526,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  termHeaderLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
   importanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2D2D2D',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
   },
   importanceLabel: {
     color: '#E5E5E5',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   acceptActionButton: {
-    backgroundColor: '#8B5CF6',
-    padding: 14,
+    backgroundColor: '#7C3AED',
+    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 16,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 10,
-  },
-  completeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#064E3B',
-    padding: 8,
-    borderRadius: 8,
-    gap: 8,
-  },
-  completeButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
   },
   completedBanner: {
     flexDirection: 'row',
@@ -1158,10 +1570,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#1F2937',
     padding: 32,
-    borderRadius: 16,
+    borderRadius: 20,
     marginTop: 16,
     borderWidth: 1,
     borderColor: '#374151',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
   lockedText: {
     color: '#10B981',
@@ -1177,6 +1594,289 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#2D2D2D',
+    marginVertical: 24,
+    marginHorizontal: 20,
+  },
+  historyContainer: {
+    backgroundColor: '#202020',
+    borderTopWidth: 1,
+    borderTopColor: '#2D2D2D',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+  },
+  historyTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  closeHistoryButton: {
+    padding: 8,
+  },
+  historyList: {
+    maxHeight: 300,
+  },
+  historyItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+  },
+  historyItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  historyTimestamp: {
+    color: '#9CA3AF',
+    fontSize: 12,
+  },
+  historyUpdatedBy: {
+    color: '#8B5CF6',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  historyContent: {
+    gap: 12,
+  },
+  historyField: {
+    gap: 4,
+  },
+  historyLabel: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  historyValue: {
+    color: '#E5E5E5',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noHistoryText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    textAlign: 'center',
+    padding: 16,
+  },
+  termCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  historyButton: {
+    backgroundColor: '#2D2D2D',
+    padding: 10,
+    borderRadius: 12,
+  },
+  termCard: {
+    backgroundColor: '#171717',
+    borderRadius: 16,
+    marginBottom: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  termCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  termCardHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  termCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  termCardContent: {
+    backgroundColor: '#1F1F1F',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+  },
+  termCardDescription: {
+    color: '#E5E5E5',
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.3,
+  },
+  termCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  paymentContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  paymentSection: {
+    backgroundColor: '#171717',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  paymentLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D2D2D',
+    borderRadius: 8,
+    padding: 12,
+  },
+  currencySymbol: {
+    color: '#9CA3AF',
+    fontSize: 20,
+    marginRight: 8,
+  },
+  paymentInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 18,
+    padding: 0,
+  },
+  paymentMethodTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    marginTop: 24,
+  },
+  paymentMethodsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 24,
+  },
+  paymentMethodCard: {
+    flex: 1,
+    backgroundColor: '#171717',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#2D2D2D',
+  },
+  selectedPaymentMethod: {
+    borderColor: '#10B981',
+    backgroundColor: '#064E3B',
+  },
+  paymentMethodText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  processPaymentButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#374151',
+    opacity: 0.7,
+  },
+  processPaymentText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  paymentInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#171717',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    gap: 12,
+  },
+  paymentInfoText: {
+    flex: 1,
+    color: '#9CA3AF',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#171717',
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  paymentForm: {
+    gap: 16,
+    marginVertical: 20,
+  },
+  input: {
+    height: 50,
+    backgroundColor: '#2D2D2D',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    color: '#FFFFFF',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#3D3D3D',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+
 });
 
 export default SponsorshipTerms;

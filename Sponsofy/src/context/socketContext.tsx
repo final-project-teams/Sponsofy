@@ -6,7 +6,7 @@ interface SocketContextType {
     notificationSocket: typeof Socket | null;
     dealSocket: typeof Socket | null;
     contractSocket: typeof Socket | null;
-
+   
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -20,6 +20,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const [requestSocket, setRequestSocket] = useState<typeof Socket | null>(null);
     const [dealSocket, setDealSocket] = useState<typeof Socket | null>(null);
     const [contractSocket, setContractSocket] = useState<typeof Socket | null>(null);
+
+  
 
     useEffect(() => {
         const chatIO = io(`${SOCKET_URL}/chat`);

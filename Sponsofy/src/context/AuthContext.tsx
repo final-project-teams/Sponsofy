@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     if (user && contractSocket) {
       console.log("Joining contract room with user ID:", user.id);
-      contractSocket.emit("join_contract_room", user.id);
+      contractSocket.emit("subscribe_contract", user.id);
     }
   }, [user, dealSocket,notificationSocket,contractSocket]);
 
@@ -70,6 +70,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (dealSocket && response.data.user) {
         console.log("Joining deal room with user ID:", response.data.user.id);
         dealSocket.emit("join_deal_room", response.data.user.id);
+      }
+      if (contractSocket && response.data.user) {
+        console.log("Joining contract room with user ID:", response.data.user.id);
+        contractSocket.emit("subscribe_contract", response.data.user.id);
       }
     } catch (error) {
       console.error('Error fetching current user:', error);
