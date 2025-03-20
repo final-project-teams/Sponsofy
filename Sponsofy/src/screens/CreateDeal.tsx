@@ -117,6 +117,34 @@ const CreateDeal = () => {
       setCreating(true);
       setError(null);
       
+      // Check for token first
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('Authentication Error', 'Please log in to create a deal.');
+        setCreating(false);
+        return;
+      }
+      
+      // Verify user role
+      const userData = await AsyncStorage.getItem('userData');
+      let userRole = '';
+      
+      if (userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          userRole = parsedUser.role;
+          
+          // Check if user has permission to create deals
+          if (userRole !== 'contentCreator' && userRole !== 'admin') {
+            Alert.alert('Permission Error', 'You must be a content creator to request deals.');
+            setCreating(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      
       const dealData = {
         price: parseFloat(price),
         deal_terms: dealTerms.trim(),
@@ -153,7 +181,7 @@ const CreateDeal = () => {
           // Clear the invalid token
           await AsyncStorage.removeItem('userToken');
         } else if (error.response.status === 403) {
-          errorMessage = 'You do not have permission to create deals for this contract.';
+          errorMessage = 'You do not have permission to create deals for this contract. Only content creators can request deals.';
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }

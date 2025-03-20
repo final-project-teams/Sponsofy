@@ -12,7 +12,7 @@ const {
   getSocialMediaStats,
   updateProfile
 } = require("../controller/userController");
-const { upload } = require("../middleware/uploadMiddleware"); // Import Multer configuration
+const { uploadSingle, handleUploadError } = require("../middleware/uploadMiddleware"); // Import the new middleware
 
 const { GoogleAuth } = require("../controller/googleAuthController");
 const authenticateJWT = require("../auth/refreshToken");
@@ -26,13 +26,13 @@ router.get('/:userId/social-media', getSocialMediaStats);
 
 // Existing routes
 router.post("/login", Login);
-router.post("/register", upload.single("media"), Register);
+router.post("/register", uploadSingle, handleUploadError, Register);
 router.post("/google-auth", GoogleAuth);
 router.get("/me", authenticateJWT, getCurrentUser);
 router.get("/users/:userId", getUserById);
-router.put("/content-creator/:userId", upload.single("media"), updateContentCreatorProfile);
+router.put("/content-creator/:userId", uploadSingle, handleUploadError, updateContentCreatorProfile);
 
 // New route for updating profiles
-router.put("/profile",authenticateJWT, upload.single("media"), updateProfile);
+router.put("/profile", authenticateJWT, uploadSingle, handleUploadError, updateProfile);
 
 module.exports = router;

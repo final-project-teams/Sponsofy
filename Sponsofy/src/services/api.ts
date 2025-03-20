@@ -1,5 +1,7 @@
 import api from '../config/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../config/source';
 
 export const companyService = {
 
@@ -132,6 +134,100 @@ export const companyService = {
       console.error('Error fetching all companies:', error);
       console.error('Error details:', error.response?.data || error.message);
       throw error;
+    }
+  },
+
+  // Upload media for a company
+  uploadCompanyMedia: async (companyId, formData) => {
+    try {
+      console.log(`Uploading media for company ID ${companyId}`);
+      
+      // Get token for authentication
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        throw new Error('Authentication required. Please log in to upload media.');
+      }
+
+      // Create a custom instance for this request
+      const customInstance = axios.create({
+        baseURL: API_URL,
+        timeout: 30000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      // Log the request details
+      console.log('Upload request details:', {
+        url: `/companies/${companyId}/media`,
+        companyId,
+        formDataKeys: Array.from(formData.entries()).map(([key]) => key),
+      });
+
+      // Make the request with the custom instance
+      const response = await customInstance.post(`/companies/${companyId}/media`, formData);
+      
+      console.log('Upload response:', response.data);
+      
+      if (response.data && response.data.success) {
+        return {
+          success: true,
+          media: response.data.media || response.data
+        };
+      } else if (response.data && response.data.file_url) {
+        return {
+          success: true,
+          media: { file_url: response.data.file_url }
+        };
+      }
+      
+      throw new Error(response.data?.message || 'Failed to upload media');
+    } catch (error) {
+      console.error(`Error uploading media for company ID ${companyId}:`, error);
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Server response:', {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      }
+      
+      // Throw a more specific error message
+      const errorMessage = error.response?.data?.message 
+        || error.message 
+        || 'Failed to upload media';
+      
+      throw new Error(`Upload error: ${errorMessage}`);
+    }
+  },
+
+  // Get all media for a company
+  getCompanyMedia: async (companyId) => {
+    try {
+      console.log(`Fetching media for company ID ${companyId}`);
+      
+      const response = await api.get(`/companies/${companyId}/media`);
+      
+      console.log(`Media for company ${companyId} response status:`, response.status);
+      
+      if (response.data && response.data.success) {
+        console.log(`Found ${response.data.media.length} media items for company ${companyId}`);
+        return {
+          success: true,
+          media: response.data.media
+        };
+      }
+      
+      console.error('Invalid media response format:', response.data);
+      return { success: false, media: [] };
+    } catch (error) {
+      console.error(`Error fetching media for company ID ${companyId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      return { success: false, media: [] };
     }
   }
 };
@@ -432,6 +528,38 @@ export const dealService = {
     try {
       console.log(`Creating deal request for contract ID ${contractId}`);
       
+      // Get the authentication token
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.error('No authentication token found - cannot create deal request');
+        return { 
+          success: false, 
+          message: 'Authentication required. Please log in to create a deal request.' 
+        };
+      }
+      
+      // Make sure token is set in headers for this request
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Get user data to check role
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          const userRole = parsedUser.role;
+          
+          if (userRole !== 'contentCreator' && userRole !== 'admin') {
+            console.error('User role not allowed to create deals:', userRole);
+            return { 
+              success: false, 
+              message: 'Only content creators can request deals.' 
+            };
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      
       const response = await api.post('/addDeal/request', {
         contractId,
         ...dealData
@@ -449,6 +577,29 @@ export const dealService = {
       return { success: false, message: response.data.message || 'Failed to create deal request' };
     } catch (error) {
       console.error(`Error creating deal request for contract ID ${contractId}:`, error);
+      
+      if (error.response) {
+        // Handle specific HTTP errors with more detailed messages
+        if (error.response.status === 401) {
+          console.error('Authentication error (401) when creating deal');
+          return { 
+            success: false, 
+            message: 'Authentication failed. Please log in again.' 
+          };
+        } else if (error.response.status === 403) {
+          console.error('Permission error (403) when creating deal');
+          return { 
+            success: false, 
+            message: 'You do not have permission to create deals for this contract. Only content creators can request deals.' 
+          };
+        } else if (error.response.data?.message) {
+          return { 
+            success: false, 
+            message: error.response.data.message 
+          };
+        }
+      }
+      
       console.error('Error details:', error.response?.data || error.message);
       throw error;
     }
