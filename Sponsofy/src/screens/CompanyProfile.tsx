@@ -53,7 +53,7 @@ const CompanyProfile = () => {
   const route = useRoute<CompanyProfileScreenRouteProp>();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
-  
+  console.log('User from AuthContext:', user);
   // Add default company and safely access route.params
   const defaultCompany = {
     id: '',

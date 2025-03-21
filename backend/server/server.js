@@ -39,7 +39,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 async function initializeDatabase() {
   try {
-    await sequelize.sync({ alter: true }); // Sync database with models
+    // Comment out this line since synchronization is now handled in database/connection.js
+    // await sequelize.sync({ alter: true }); // Sync database with models
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Add a small delay before seeding
     await seedDatabase(); // Seed the database
     console.log('Database initialized successfully');
