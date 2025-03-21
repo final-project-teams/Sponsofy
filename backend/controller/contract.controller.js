@@ -25,8 +25,11 @@ module.exports = {
 
       if (criteriaList && criteriaList.length > 0) {
         await Promise.all(criteriaList.map(async ({ criteria, subCriteria }) => {
+          console.log('Creating criteria with platform:', criteria.platform);
+          
           const createdCriteria = await Criteria.create({
             name: criteria.name,
+            platform: criteria.platform,
             ContractId: contract.id
           });
 

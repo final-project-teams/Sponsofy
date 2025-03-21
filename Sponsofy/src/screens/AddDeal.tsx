@@ -47,18 +47,10 @@ const AddDeal = () => {
 
     const [selectedCriteria, setSelectedCriteria] = useState<string[]>([]);
     const [selectedSubCriteria, setSelectedSubCriteria] = useState<{ [key: string]: string }>({});
+    const [selectedPlatform, setSelectedPlatform] = useState<string>('');
 
     const rankOptions = ['plat', 'gold', 'silver'];
-
-    // const followerMarks = [
-    //     { value: 20000, label: '20k' },
-    //     { value: 2000000, label: '2M' },
-    //     { value: 3500000, label: '3.5M' },
-    //     { value: 5000000, label: '5M' },
-    //     { value: 6500000, label: '6.5M' },
-    //     { value: 8000000, label: '8M' },
-    //     { value: 10000000, label: '10M' },
-    // ];
+    const platformOptions = ['instagram', 'facebook', 'twitter', 'tiktok', 'youtube'];
 
     const handleTitleChange = (text: string) => {
         setTitle(text);
@@ -181,6 +173,12 @@ const AddDeal = () => {
     const handleContinueCriteria = () => {
         const newErrors = { ...errors };
 
+        if (!selectedPlatform) {
+            newErrors.criteria = "Please select a platform";
+            setErrors(newErrors);
+            return;
+        }
+
         if (selectedCriteria.length === 0) {
             newErrors.criteria = "Please select at least one criteria";
             setErrors(newErrors);
@@ -276,7 +274,8 @@ const AddDeal = () => {
                 })),
                 criteriaList: selectedCriteria.map(criteria => ({
                     criteria: {
-                        name: criteria.toLowerCase()
+                        name: criteria.toLowerCase(),
+                        platform: selectedPlatform
                     },
                     subCriteria: {
                         name: selectedSubCriteria[criteria],
@@ -284,6 +283,8 @@ const AddDeal = () => {
                     }
                 }))
             };
+
+            console.log('Contract Data being sent:', JSON.stringify(contractData, null, 2));
 
             const response = await api.post("/contract", contractData, {
                 headers: {
@@ -332,16 +333,6 @@ const AddDeal = () => {
             );
         }
     };
-
-    // const handleGoBack = () => {
-    //     if (view === "Terms") {
-    //         setView("Basic Information");
-    //     } else if (view === "Criteria") {
-    //         setView("Terms");
-    //     } else if (view === "Start & End Date") {
-    //         setView("Criteria");
-    //     }
-    // };
 
     const styles = StyleSheet.create({
         container: {
@@ -653,6 +644,27 @@ const AddDeal = () => {
         criteriaSectionContainer: {
             marginBottom: 24,
         },
+        platformContainer: {
+            marginBottom: 16,
+        },
+        platformButton: {
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            backgroundColor: currentTheme.colors.surface,
+            marginRight: 8,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+        },
+        platformButtonActive: {
+            backgroundColor: currentTheme.colors.primary,
+        },
+        platformButtonText: {
+            color: currentTheme.colors.text,
+            fontSize: 14,
+            fontFamily: currentTheme.fonts.medium,
+        },
     });
 
     const getStepNumber = () => {
@@ -767,12 +779,12 @@ const AddDeal = () => {
 
             case "Criteria":
                 isValid = selectedCriteria.length > 0 &&
-                    selectedCriteria.every(criteria => selectedSubCriteria[criteria]);
+                    selectedCriteria.every(criteria => selectedSubCriteria[criteria] && selectedPlatform);
 
                 if (selectedCriteria.length === 0) {
                     newErrors.criteria = "Please select at least one criteria";
-                } else if (!selectedCriteria.every(criteria => selectedSubCriteria[criteria])) {
-                    newErrors.criteria = "Please select ranges for all criteria";
+                } else if (!selectedCriteria.every(criteria => selectedSubCriteria[criteria] && selectedPlatform)) {
+                    newErrors.criteria = "Please select platforms and ranges for all criteria";
                 }
                 break;
 
@@ -897,14 +909,6 @@ const AddDeal = () => {
             </View>
 
             <ScrollView style={{ flex: 1 }}>
-                {/* <Text style={styles.viewTitle}>
-                    {view === "Basic Information" && "Basic Information"}
-                    {view === "Terms" && "Terms"}
-                    {view === "Criteria" && "Criteria"}
-                    {view === "Start & End Date" && "Start & End Date"}
-                    {view === "Review" && "Review"}
-                </Text> */}
-
                 {view === "Basic Information" && (
                     <View>
                         <Text style={styles.label}>Title</Text>
@@ -1048,7 +1052,25 @@ const AddDeal = () => {
 
                 {view === "Criteria" && (
                     <View>
-                        <Text style={styles.label}>Select Criteria (Multiple)</Text>
+                        <Text style={styles.label}>Select Platform</Text>
+                        <View style={styles.criteriaContainer}>
+                            {platformOptions.map((platform) => (
+                                <TouchableOpacity
+                                    key={platform}
+                                    style={[
+                                        styles.criteriaButton,
+                                        selectedPlatform === platform && styles.criteriaButtonActive
+                                    ]}
+                                    onPress={() => setSelectedPlatform(platform)}
+                                >
+                                    <Text style={styles.criteriaButtonText}>
+                                        {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.label, { marginTop: 24 }]}>Select Criteria (Multiple)</Text>
                         <View style={styles.criteriaContainer}>
                             {['Followers', 'Views', 'Posts'].map((criteriaName) => (
                                 <TouchableOpacity
@@ -1197,6 +1219,12 @@ const AddDeal = () => {
 
                         <View style={styles.reviewSection}>
                             <Text style={styles.reviewSectionTitle}>Criteria</Text>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Platform</Text>
+                                <Text style={styles.reviewValue}>
+                                    {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                                </Text>
+                            </View>
                             {selectedCriteria.map((criteria) => (
                                 <View key={criteria} style={styles.reviewItem}>
                                     <Text style={styles.reviewLabel}>{criteria} Requirement</Text>
