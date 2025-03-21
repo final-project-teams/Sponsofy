@@ -336,22 +336,26 @@ module.exports = {
   // Add this new method to get a single contract by ID
   getContractById: async (req, res) => {
     try {
-      const { id } = req.params;
+      const { contractId } = req.params;
       const decoded = req.user;
 
-      console.log(`Fetching contract with ID: ${id}`);
+      console.log(`Fetching contract with ID: ${contractId}`);
       console.log(`User ID from token: ${decoded.userId}`);
 
       // Find the contract with its associated data
-      const contract = await Contract.findByPk(id, {
+      const contract = await Contract.findOne({
+        where: { id: contractId },
         include: [
           { 
-            model: Criteria,
-            as: 'criteria'
+            model: Company,
+            include: [{ model: User, as: 'user' }]
           },
           {
-            model: Company,
-            attributes: ['id', 'name', 'industry', 'location', 'verified']
+            model: Criteria,
+            include: [{ model: SubCriteria }]
+          },
+          {
+            model: pre_Term // Include pre-terms if needed
           }
         ]
       });
@@ -363,27 +367,7 @@ module.exports = {
         });
       }
 
-      // Verify if the user has access to this contract
-      // If the user is a company, they should only access their own contracts
-      if (decoded.role === 'company') {
-        const userCompany = await Company.findOne({ where: { userId: decoded.userId } });
-        
-        if (!userCompany) {
-          return res.status(404).json({
-            success: false,
-            message: 'Company not found for this user'
-          });
-        }
-
-        // Check if the requested contract belongs to the user's company
-        if (contract.CompanyId.toString() !== userCompany.id.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to access this contract'
-          });
-        }
-      }
-
+      // Return the contract data
       res.status(200).json({
         success: true,
         contract

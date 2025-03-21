@@ -33,12 +33,13 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const contractId = 4;
+  const  contractId  = 4;
   const { currentTheme } = useTheme();
   const [contract, setContract] = useState<Contract | null>(null);
   const [companySignature, setCompanySignature] = useState<Signature | null>(null);
   const [creatorSignature, setCreatorSignature] = useState<Signature | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const styles = StyleSheet.create({
     container: {
@@ -153,19 +154,34 @@ const ContractPreview = ({ route }) => {
     },
   });
 
+  const getSignatureUrl = (signature: Signature | null) => {
+    if (!signature || !signature.signature_data) return null;
+
+    if (signature.signature_data.startsWith('http')) {
+      return signature.signature_data;
+    }
+    return `${API_URL}/uploads/signatures/${signature.signature_data.split('/').pop()}`;
+  };
+
   const fetchContractAndSignatures = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       const contractRes = await api.get(`${API_URL}/contract/detail/${contractId}`);
 
-      if (contractRes.data.success) {
-        const contract = contractRes.data.contract;
-        setContract(contract);
+      if (!contractRes.data.success) {
+        throw new Error(contractRes.data.message || 'Failed to fetch contract');
+      }
 
-        // Get signatures for both parties
+      const contractData = contractRes.data.contract;
+      setContract(contractData);
+
+      if (contractData.Company?.userId && contractData.ContentCreator?.userId) {
         const signaturesRes = await api.get(`${API_URL}/signature/contract-parties`, {
           params: {
-            companyUserId: contract.Company.userId,
-            creatorUserId: contract.ContentCreator.userId // Make sure your contract includes ContentCreator
+            companyUserId: contractData.Company.userId,
+            creatorUserId: contractData.ContentCreator.userId
           }
         });
 
@@ -175,15 +191,18 @@ const ContractPreview = ({ route }) => {
           setCreatorSignature(creatorSignature);
         }
       }
-    } catch (error) {
-      console.error('Error fetching contract details:', error);
+    } catch (err) {
+      console.error('Error fetching contract details:', err);
+      setError(err.message || 'Failed to load contract details');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchContractAndSignatures();
+    if (contractId) {
+      fetchContractAndSignatures();
+    }
   }, [contractId]);
 
   if (loading) {
@@ -194,10 +213,22 @@ const ContractPreview = ({ route }) => {
     );
   }
 
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="alert-circle" size={48} color={currentTheme.colors.error} />
+        <Text style={[styles.text, { color: currentTheme.colors.error, marginTop: 10 }]}>
+          {error}
+        </Text>
+      </View>
+    );
+  }
+
   if (!contract) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={styles.text}>Contract not found</Text>
+        <Ionicons name="document-outline" size={48} color={currentTheme.colors.textSecondary} />
+        <Text style={[styles.text, { marginTop: 10 }]}>Contract not found</Text>
       </View>
     );
   }
@@ -274,7 +305,7 @@ const ContractPreview = ({ route }) => {
                 {companySignature ? (
                   <>
                     <Image
-                      source={{ uri: `${API_URL}/uploads/signatures/${companySignature.signature_data.split('/').pop()}` }}
+                      source={{ uri: getSignatureUrl(companySignature) }}
                       style={styles.signatureImage}
                       resizeMode="contain"
                     />
@@ -284,7 +315,10 @@ const ContractPreview = ({ route }) => {
                     </Text>
                   </>
                 ) : (
-                  <Text style={styles.text}>Pending signature</Text>
+                    <View style={{ alignItems: 'center' }}>
+                      <Ionicons name="pencil-outline" size={32} color={currentTheme.colors.textSecondary} />
+                      <Text style={[styles.text, { marginTop: 8 }]}>Pending signature</Text>
+                    </View>
                 )}
               </View>
 
@@ -292,7 +326,7 @@ const ContractPreview = ({ route }) => {
                 {creatorSignature ? (
                   <>
                     <Image
-                      source={{ uri: `${API_URL}/uploads/signatures/${creatorSignature.signature_data.split('/').pop()}` }}
+                      source={{ uri: getSignatureUrl(creatorSignature) }}
                       style={styles.signatureImage}
                       resizeMode="contain"
                     />
@@ -302,7 +336,10 @@ const ContractPreview = ({ route }) => {
                     </Text>
                   </>
                 ) : (
-                  <Text style={styles.text}>Pending signature</Text>
+                    <View style={{ alignItems: 'center' }}>
+                      <Ionicons name="pencil-outline" size={32} color={currentTheme.colors.textSecondary} />
+                      <Text style={[styles.text, { marginTop: 8 }]}>Pending signature</Text>
+                    </View>
                 )}
               </View>
             </View>
