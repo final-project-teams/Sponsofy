@@ -16,6 +16,7 @@ const io = socketIo(server);
 const { setupContract } = require('../socket/contractSetup');
 const { setupNotifications } = require('../socket/notificationSetup');
 const { setupDealSocket } = require('../socket/dealSetUp'); // Import the deal socket setup
+const { setupChat } = require('../socket/chatSetup'); // Import the chat socket setup
 
 const contractRoutes = require('../router/contract.router');
 const searchRoutes = require('../router/searchrouter');
@@ -26,6 +27,8 @@ const termsRouter = require("../router/termsrouter")
 const dealRouter = require("../router/deal.router")
 const companyRouter = require("../router/company.router")
 
+const roomRoutes = require('../router/roomRoutes');
+const messageRoutes = require('../router/messageRoutes');
 
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
 console.log(path.join(__dirname, 'uploads'))
@@ -64,6 +67,9 @@ app.use('/api/search', searchRoutes);
 app.use('/api/user', userRouter);
 app.use('/api/companies', companyRouter);
 
+app.use('/api/rooms', roomRoutes);
+app.use('/api/messages', messageRoutes);
+
 
 // Root route
 app.get('/', (req, res) => {
@@ -73,6 +79,29 @@ app.get('/', (req, res) => {
 app.use("/api/addDeal", dealRouter)
 
 
+// Add this to your server.js file
+// const express = require('express');
+// const path = require('path');
+// const cors = require('cors');
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Create a dedicated route for serving static files
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Add a test endpoint to check if images are accessible
+app.get('/test-image', (req, res) => {
+  res.send(`
+    <html>
+      <body>
+        <h1>Image Test</h1>
+        <p>If you can see an image below, your static file server is working:</p>
+        <img src="/uploads/images/file-1741623016694-545084615.jpg" alt="Test Image" style="max-width: 300px;" />
+      </body>
+    </html>
+  `);
+});
 
 
 // sockettttttttttttttttt
@@ -83,6 +112,7 @@ const chatIo = io.of("/chat");
 setupContract(contractIo);
 setupNotifications(io);
 setupDealSocket(io); // Set up the deal socket
+setupChat(io); // Set up the chat socket
 
 // Error handling middleware
 app.use((err, req, res, next) => {
