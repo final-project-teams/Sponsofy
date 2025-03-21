@@ -26,7 +26,7 @@ import AddDeal from './src/screens/AddDeal';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
-
+import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 // import TermsScreen from './src/screens/TermsScreen';
 
 
@@ -98,12 +98,12 @@ const App = () => {
               <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
               <Stack.Screen name="VideoCallScreen" component={VideoCallScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
-
+              <Stack.Screen name="MyDeals" component={ContentCreatorDealsScreen} />
               {/* Notifications Screen */}
               <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
               {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
             </Stack.Navigator>
-
+            
             {/* Flash Message for Notifications */}
             <FlashMessage position="top" />
           </NavigationContainer>

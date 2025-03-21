@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -20,8 +20,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import api from "../config/axios";
 import { API_URL } from "../config/source";
+import authService from "../services/authService"; // Import the authService
+import * as WebBrowser from 'expo-web-browser';
+import instagramService from "../services/instagramService";
+import { useAuth } from "../context/AuthContext";
 
 
+// Register your WebBrowser for authentication
+WebBrowser.maybeCompleteAuthSession();
 
 const ProfileContent = () => {
   const navigation = useNavigation();
@@ -42,8 +48,12 @@ const ProfileContent = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [dealDetailsVisible, setDealDetailsVisible] = useState(false);
   const [creatorInfoVisible, setCreatorInfoVisible] = useState(false);
+  const [instagramConnected, setInstagramConnected] = useState(false);
+  const { user } = useAuth();
+  const [instagramStats, setInstagramStats] = useState(null);
+  const [instagramPosts, setInstagramPosts] = useState([]);
+  const [loadingInstagram, setLoadingInstagram] = useState(false);
 
-  // Fetch user profile
   // Fetch user profile
   const fetchUserProfile = async () => {
     try {
@@ -63,7 +73,6 @@ const ProfileContent = () => {
           : null;
 
         setProfilePictureUrl(pictureUrl);
-        ///: this is what I have changed "profile_picture"
         setUserProfile(response.data.user);
       }
     } catch (error) {
@@ -136,6 +145,16 @@ const ProfileContent = () => {
     }, [])
   );
 
+  // Check if Instagram is connected on component mount
+  useEffect(() => {
+    const checkInstagramConnection = async () => {
+      const token = await AsyncStorage.getItem('instagram_token');
+      setInstagramConnected(!!token);
+    };
+    
+    checkInstagramConnection();
+  }, []);
+
   // Navigate to edit profile screen
   const handleEditProfile = () => {
     if (userProfile) {
@@ -147,14 +166,43 @@ const ProfileContent = () => {
 
   // Handle social media edit
   const handleSocialMediaEdit = (platform, data = {}) => {
-    setCurrentPlatform(platform);
-    setSocialMediaData({
-      audience: data.audience?.toString() || "",
-      views: data.views?.toString() || "",
-      likes: data.likes?.toString() || "",
-      followers: data.followers?.toString() || "",
-    });
-    setEditModalVisible(true);
+    if (platform === "instagram") {
+      if (instagramConnected) {
+        // If Instagram is connected, show options
+        Alert.alert(
+          "Instagram Account",
+          "Your Instagram account is connected",
+          [
+            {
+              text: "Import Posts",
+              onPress: fetchInstagramData
+            },
+            {
+              text: "Disconnect",
+              onPress: handleInstagramLogout,
+              style: "destructive"
+            },
+            {
+              text: "Cancel",
+              style: "cancel"
+            }
+          ]
+        );
+      } else {
+        // If Instagram is not connected, initiate login
+        handleInstagramLogin();
+      }
+    } else {
+      // For other platforms, show the edit modal
+      setCurrentPlatform(platform);
+      setSocialMediaData({
+        audience: data.audience?.toString() || "",
+        views: data.views?.toString() || "",
+        likes: data.likes?.toString() || "",
+        followers: data.followers?.toString() || "",
+      });
+      setEditModalVisible(true);
+    }
   };
 
   // Handle social media update
@@ -270,6 +318,128 @@ const ProfileContent = () => {
     fetchDealById(dealId);
   };
 
+  // Handle Instagram login
+  const handleInstagramLogin = async () => {
+    try {
+      setLoading(true);
+      console.log("Starting Instagram login");
+      
+      const result = await authService.instagramLogin();
+      console.log("Instagram login result:", result);
+
+      if (result.success) {
+        setInstagramConnected(true);
+        Alert.alert(
+          "Instagram Connected", 
+          "Your Instagram account has been linked successfully. Would you like to import your posts now?",
+          [
+            {
+              text: "Not Now",
+              style: "cancel"
+            },
+            {
+              text: "Import Posts",
+              onPress: fetchInstagramData
+            }
+          ]
+        );
+        
+        // Refresh user profile to show updated social media
+        fetchUserProfile();
+      } else {
+        console.error("Instagram login failed:", result);
+        
+        // Show a more detailed error message
+        let errorMessage = result.error || "Failed to link Instagram account";
+        if (result.details) {
+          errorMessage += "\n\nDetails: " + JSON.stringify(result.details);
+        }
+        
+        Alert.alert(
+          "Instagram Login Failed", 
+          errorMessage,
+          [
+            {
+              text: "OK"
+            },
+            {
+              text: "Try Again",
+              onPress: handleInstagramLogin
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error("Instagram login error:", error);
+      Alert.alert(
+        "Error", 
+        "Failed to connect to Instagram: " + (error.message || "Unknown error")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Instagram logout
+  const handleInstagramLogout = async () => {
+    try {
+      setLoading(true);
+      const result = await authService.logoutInstagram();
+      
+      if (result.success) {
+        setInstagramConnected(false);
+        setInstagramStats(null);
+        setInstagramPosts([]);
+        Alert.alert("Success", "Instagram account unlinked successfully");
+        // Refresh user profile
+        fetchUserProfile();
+      } else {
+        Alert.alert("Error", result.error || "Failed to unlink Instagram account");
+      }
+    } catch (error) {
+      console.error("Instagram logout error:", error);
+      Alert.alert("Error", "Failed to unlink Instagram account");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add this function to fetch Instagram data
+  const fetchInstagramData = async () => {
+    try {
+      setLoadingInstagram(true);
+      const result = await instagramService.fetchInstagramData();
+      
+      if (result.success) {
+        setInstagramPosts(result.posts || []);
+        
+        // Also fetch stats
+        const statsResult = await instagramService.getInstagramStats();
+        if (statsResult.success) {
+          setInstagramStats(statsResult.stats);
+        }
+        
+        Alert.alert("Success", "Instagram data imported successfully");
+      } else {
+        Alert.alert("Error", result.error || "Failed to import Instagram data");
+      }
+    } catch (error) {
+      console.error("Error fetching Instagram data:", error);
+      Alert.alert("Error", "Failed to import Instagram data");
+    } finally {
+      setLoadingInstagram(false);
+    }
+  };
+
+  const simpleInstagramAuth = async () => {
+    const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${INSTAGRAM_CLIENT_ID}&redirect_uri=${encodeURIComponent(INSTAGRAM_REDIRECT_URI)}&scope=user_profile,user_media&response_type=code`;
+    
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, INSTAGRAM_REDIRECT_URI);
+    console.log("Simple auth result:", result);
+    
+    // This won't handle the token exchange, but will help verify if your app ID is valid
+  };
+  simpleInstagramAuth()
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -285,8 +455,6 @@ const ProfileContent = () => {
       </View>
     );
   }
-
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -377,21 +545,33 @@ const ProfileContent = () => {
                   (item) => item.platform === platform
                 ) || {};
 
+              // Special handling for Instagram to show connection status
+              const isInstagram = platform === "instagram";
+              const isConnected = isInstagram && instagramConnected;
+
               return (
                 <TouchableOpacity
                   key={platform}
-                  style={styles.socialIcon}
+                  style={[
+                    styles.socialIcon,
+                    isConnected && styles.connectedSocialIcon
+                  ]}
                   onPress={() => handleSocialMediaEdit(platform, platformData)}
                 >
                   <FontAwesome
                     name={platform === "tiktok" ? "tiktok" : platform}
                     size={24}
-                    color="white"
+                    color={isConnected ? "#3897f0" : "white"}
                   />
                   {platformData.followers && (
                     <Text style={styles.socialStats}>
                       {platformData.followers} followers
                     </Text>
+                  )}
+                  {isConnected && (
+                    <View style={styles.connectedBadge}>
+                      <Feather name="check" size={10} color="white" />
+                    </View>
                   )}
                 </TouchableOpacity>
               );
@@ -1071,6 +1251,22 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
     fontWeight: "bold",
+  },
+  connectedSocialIcon: {
+    position: 'relative',
+  },
+  connectedBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#3897f0',
+    borderRadius: 10,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#121212',
   },
 });
 

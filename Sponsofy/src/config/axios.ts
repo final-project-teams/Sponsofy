@@ -42,23 +42,10 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    // Handle 401 Unauthorized errors
+  (error) => {
     if (error.response?.status === 401) {
-      console.log('Unauthorized request detected');
-      
-      // Clear token from storage on auth errors
-      try {
-        await AsyncStorage.removeItem('userToken');
-        console.log('Cleared invalid token from storage');
-        
-        // You could redirect to login screen here if needed
-        // For example, using a navigation service or event emitter
-      } catch (storageError) {
-        console.error('Error clearing token:', storageError);
-      }
+      // Handle unauthorized access
     }
-    
     return Promise.reject(error);
   }
 );

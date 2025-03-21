@@ -17,8 +17,8 @@
       "assets/fonts/*"
     ],
     "extra": {
-      "API_URL": "http://192.168.1.13:3304/api",
-      "SOCKET_URL": "http://192.168.1.13:4000"
+      "API_URL": "http://192.168.0.125:3304/api",
+      "SOCKET_URL": "http://192.168.0.125:4000"
     },
     "fonts": [
       {
@@ -48,10 +48,13 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    
+    "scheme": "sponsofy"
   }
 }
