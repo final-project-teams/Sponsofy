@@ -1861,12 +1861,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginTop: 20,
-  },
   modalButton: {
     flex: 1,
     height: 50,
@@ -1876,7 +1870,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-
+  confirmButton: {
+    backgroundColor: '#10B981',
+  },
 });
 
 export default SponsorshipTerms;

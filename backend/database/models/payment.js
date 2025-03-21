@@ -16,8 +16,14 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('succeeded', 'pending', 'failed'),
-      defaultValue: 'pending',
+      type: DataTypes.ENUM(
+        'escrow_pending',
+        'escrow_held',
+        'completed',
+        'refunded',
+        'failed'
+      ),
+      defaultValue: 'escrow_pending',
     },
     userId: {
       type: DataTypes.INTEGER,
@@ -27,6 +33,22 @@ module.exports = (sequelize) => {
         key: 'id',
       },
     },
+    contractId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'contracts',
+        key: 'id',
+      },
+    },
+    refundReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    releasedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    }
   }, {
     tableName: 'payments',
     timestamps: true, // Automatically add createdAt and updatedAt columns
