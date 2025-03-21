@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
 import { API_URL } from '../config/source';
 import { useParams } from 'react-router-dom';
@@ -8,7 +8,7 @@ import api from '../config/axios';
 
 const ContractPreview = () => {
 
-    const { contractId } = useParams();
+    const contractId = 1;
 
     interface Contract {
         id: number;
@@ -22,6 +22,10 @@ const ContractPreview = () => {
       const data = await api.get(`${API_URL}/contract/detail/${contractId}`);
         setContract(data.data);
     }
+
+  useEffect(() => {
+    fetchContract();
+  }, []);
 
 const [contract, setContract] = useState<Contract | null>(null);
 

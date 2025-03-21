@@ -27,6 +27,7 @@ import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import UploadSignature from './src/screens/UploadSignature';
+import ContractPreview from './src/screens/ContractPreview';
 // import TermsScreen from './src/screens/TermsScreen';
 
 
@@ -55,7 +56,7 @@ const App = () => {
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
               {/* Main App Screens */}
-              <Stack.Screen name="Home" component={SignatureManagement} options={{ headerShown: false }} />
+              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
               <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
               <Stack.Screen name="PremiumScreen" component={PremiumScreen} options={{ headerShown: false }} />
