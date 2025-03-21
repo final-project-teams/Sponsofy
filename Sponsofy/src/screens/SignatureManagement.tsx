@@ -119,6 +119,58 @@ const SignatureManagement = () => {
             justifyContent: 'center',
             alignItems: 'center',
         },
+        sectionTitle: {
+            fontSize: currentTheme.fontSizes.large,
+            fontFamily: currentTheme.fonts.semibold,
+            color: currentTheme.colors.text,
+            marginBottom: 15,
+            marginTop: 20,
+        },
+        currentSignatureCard: {
+            backgroundColor: currentTheme.colors.surface,
+            borderRadius: currentTheme.borderRadius.large,
+            padding: 20,
+            marginBottom: 25,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.primary,
+            shadowColor: currentTheme.colors.primary,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 4,
+        },
+        currentSignatureImage: {
+            width: '100%',
+            height: 250,
+            borderRadius: currentTheme.borderRadius.medium,
+            marginBottom: 15,
+        },
+        historicalSignatureImage: {
+            width: '100%',
+            height: 180,
+            borderRadius: currentTheme.borderRadius.medium,
+            marginBottom: 10,
+        },
+        currentLabel: {
+            backgroundColor: currentTheme.colors.primary,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 20,
+            position: 'absolute',
+            top: -12,
+            right: 20,
+            zIndex: 1,
+        },
+        currentLabelText: {
+            color: currentTheme.colors.white,
+            fontSize: currentTheme.fontSizes.small,
+            fontFamily: currentTheme.fonts.medium,
+        },
+        divider: {
+            height: 1,
+            backgroundColor: currentTheme.colors.border,
+            marginVertical: 20,
+        },
     });
 
     const fetchSignatures = async () => {
@@ -217,24 +269,52 @@ const SignatureManagement = () => {
         );
     };
 
-    const renderSignature = ({ item }: { item: Signature }) => (
-        <View style={styles.signatureCard}>
-            <Image
-                source={{ uri: `${API_URL}/uploads/signatures/${item.signature_data.split('/').pop()}` }}
-                style={styles.signatureImage}
-                resizeMode="contain"
-            />
-            <Text style={styles.dateText}>
-                Created: {new Date(item.created_at).toLocaleDateString()}
-            </Text>
-            <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDelete(item.id)}
-            >
-                <Ionicons name="trash-outline" size={20} color={currentTheme.colors.white} />
-            </TouchableOpacity>
-        </View>
-    );
+    const renderSignature = ({ item, index }: { item: Signature; index: number }) => {
+        if (index === 0) {
+            return (
+                <>
+                    <Text style={styles.sectionTitle}>Current Signature</Text>
+                    <View style={styles.currentSignatureCard}>
+                        <Image
+                            source={{ uri: `${API_URL}/uploads/signatures/${item.signature_data.split('/').pop()}` }}
+                            style={styles.currentSignatureImage}
+                            resizeMode="contain"
+                        />
+                        <Text style={styles.dateText}>
+                            Created: {new Date(item.created_at).toLocaleDateString()}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.deleteButton}
+                            onPress={() => handleDelete(item.id)}
+                        >
+                            <Ionicons name="trash-outline" size={20} color={currentTheme.colors.white} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.divider} />
+                    <Text style={styles.sectionTitle}>Signature History</Text>
+                </>
+            );
+        }
+
+        return (
+            <View style={styles.signatureCard}>
+                <Image
+                    source={{ uri: `${API_URL}/uploads/signatures/${item.signature_data.split('/').pop()}` }}
+                    style={styles.historicalSignatureImage}
+                    resizeMode="contain"
+                />
+                <Text style={styles.dateText}>
+                    Created: {new Date(item.created_at).toLocaleDateString()}
+                </Text>
+                <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDelete(item.id)}
+                >
+                    <Ionicons name="trash-outline" size={20} color={currentTheme.colors.white} />
+                </TouchableOpacity>
+            </View>
+        );
+    };
 
     const EmptyState = () => (
         <View style={styles.emptyContainer}>
