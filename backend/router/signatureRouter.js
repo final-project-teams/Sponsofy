@@ -32,4 +32,16 @@ router.delete('/:id',
     signatureController.deleteSignature
 );
 
+// Add this route to your existing routes
+// router.get('/contract/:contractId', 
+//     authenticateJWT,
+//     signatureController.getContractSignatures
+// );
+
+// Add this new route
+router.get('/contract-parties', 
+    authenticateJWT,
+    signatureController.getContractPartySignatures
+);
+
 module.exports = router;

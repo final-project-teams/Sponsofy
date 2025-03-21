@@ -1,4 +1,4 @@
-const { Signature } = require('../database/connection');
+const { Signature, User, Company, ContentCreator } = require('../database/connection');
 
 module.exports = {
     createSignature: async (req, res) => {
@@ -150,6 +150,85 @@ module.exports = {
             res.status(500).json({
                 success: false,
                 message: 'Error deleting signature',
+                error: error.message
+            });
+        }
+    },
+
+    // // Get signatures for a specific contract
+    // getContractSignatures: async (req, res) => {
+    //     try {
+    //         const { contractId } = req.params;
+            
+    //         const signatures = await Signature.findAll({
+    //             where: { contractId },
+    //             order: [['created_at', 'DESC']],
+    //             limit: 2 // Get only the latest 2 signatures
+    //         });
+
+    //         res.status(200).json({
+    //             success: true,
+    //             signatures
+    //         });
+
+    //     } catch (error) {
+    //         console.error('Error fetching contract signatures:', error);
+    //         res.status(500).json({
+    //             success: false,
+    //             message: 'Error fetching signatures',
+    //             error: error.message
+    //         });
+    //     }
+    // },
+
+    // Get signatures for a specific contract party
+    getContractPartySignatures: async (req, res) => {
+        try {
+            const { companyUserId, creatorUserId } = req.query;
+            
+            // Get latest signatures for both parties
+            const [companySignature, creatorSignature] = await Promise.all([
+                // Get company's latest signature
+                Signature.findOne({
+                    where: { userId: companyUserId },
+                    order: [['created_at', 'DESC']],
+                    include: [{
+                        model: User,
+                        as: 'signer',
+                        include: [{
+                            model: Company,
+                            as: 'company'
+                        }]
+                    }]
+                }),
+                // Get creator's latest signature
+                Signature.findOne({
+                    where: { userId: creatorUserId },
+                    order: [['created_at', 'DESC']],
+                    include: [{
+                        model: User,
+                        as: 'signer',
+                        include: [{
+                            model: ContentCreator,
+                            as: 'contentCreator'
+                        }]
+                    }]
+                })
+            ]);
+
+            res.status(200).json({
+                success: true,
+                signatures: {
+                    companySignature,
+                    creatorSignature
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching signatures:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching signatures',
                 error: error.message
             });
         }

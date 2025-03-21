@@ -27,7 +27,8 @@ import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import UploadSignature from './src/screens/UploadSignature';
-import ContractPreview from './src/screens/ContractPreview';import EditProfileContent from './src/screens/EditProfileContent';
+import ContractPreview from './src/screens/ContractPreview';
+import EditProfileContent from './src/screens/EditProfileContent';
 
 // New Screens
 import PlatformSelection from './src/screens/PlatformSelection ';
@@ -66,7 +67,7 @@ const App = () => {
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
               {/* Main App Screens */}
-              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Home" component={ContractPreview} options={{ headerShown: false }} />
               <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
               <Stack.Screen name="ContentCreatorInfo" component={ContentCreatorInfo} options={{ headerShown: false }} />

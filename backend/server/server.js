@@ -74,7 +74,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-app.use("/api/addDeal", dealRouter)
+app.use("/api/deal", dealRouter)
 
 
 // Add this to your server.js file
