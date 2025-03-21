@@ -18,8 +18,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const { dealSocket, chatSocket } = useSocket();
-  const { dealSocket, notificationSocket,contractSocket } = useSocket();
+  
+  const { dealSocket, notificationSocket,contractSocket,chatSocket } = useSocket();
 
   useEffect(() => {
     const loadStoredData = async () => {
@@ -53,7 +53,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Joining contract room with user ID:", user.id);
       contractSocket.emit("subscribe_contract", user.id);
     }
-  }, [user, dealSocket,notificationSocket,contractSocket]);
+    if (user && chatSocket) {
+      console.log("Joining chat room with user ID:", user.id);
+      chatSocket.emit("init_user", user);
+    }
+  }, [user, dealSocket,notificationSocket,contractSocket,chatSocket]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -104,6 +108,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Leaving contract room for user ID:", user.id);
         contractSocket.emit("leave_contract_room", user.id);
       }
+      if (chatSocket && user) {
+        console.log("Leaving chat room for user ID:", user.id);
+        chatSocket.emit("leave_chat_room", user.id);
+      }
+      
 
       
 
