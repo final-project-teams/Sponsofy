@@ -1,4 +1,6 @@
-import React, { useState, useCallback } from "react";
+"use client"
+
+import { useState, useCallback } from "react"
 import {
   StyleSheet,
   View,
@@ -11,205 +13,214 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  TextInput,
   FlatList,
-} from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { Feather, FontAwesome, FontAwesome5, Entypo } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import api from "../config/axios";
-import { API_URL } from "../config/source";
-
-
+  Animated,
+  Linking,
+} from "react-native"
+import * as ImagePicker from "expo-image-picker"
+import { Feather, FontAwesome5, Entypo } from "@expo/vector-icons"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
+import api from "../config/axios"
+import { API_URL } from "../config/source"
+import SideBarContent from "../components/SideBarContent"
 
 const ProfileContent = () => {
-  const navigation = useNavigation();
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [currentPlatform, setCurrentPlatform] = useState(null);
-  const [socialMediaData, setSocialMediaData] = useState({
-    audience: "",
-    views: "",
-    likes: "",
-    followers: "",
-  });
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [profilePictureUrl, setProfilePictureUrl] = useState(null);
-  const [dealsModalVisible, setDealsModalVisible] = useState(false);
-  const [deals, setDeals] = useState([]);
-  const [loadingDeals, setLoadingDeals] = useState(false);
-  const [selectedDeal, setSelectedDeal] = useState(null);
-  const [dealDetailsVisible, setDealDetailsVisible] = useState(false);
-  const [creatorInfoVisible, setCreatorInfoVisible] = useState(false);
+  const navigation = useNavigation()
+  const [userProfile, setUserProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [profilePictureUrl, setProfilePictureUrl] = useState(null)
+  const [dealsModalVisible, setDealsModalVisible] = useState(false)
+  const [deals, setDeals] = useState([])
+  const [loadingDeals, setLoadingDeals] = useState(false)
+  const [selectedDeal, setSelectedDeal] = useState(null)
+  const [dealDetailsVisible, setDealDetailsVisible] = useState(false)
+  const [creatorInfoVisible, setCreatorInfoVisible] = useState(false)
+  const [sidebarVisible, setSidebarVisible] = useState(false)
+  const sidebarOffset = useState(new Animated.Value(-233))[0]
+  const [portfolioLinks, setPortfolioLinks] = useState([])
 
-  // Fetch user profile
+  // Toggle sidebar with animation
+  const toggleSidebar = () => {
+    if (sidebarVisible) {
+      // Slide out to the left
+      Animated.timing(sidebarOffset, {
+        toValue: -233, // Move off-screen to the left
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setSidebarVisible(false))
+    } else {
+      // Slide in from the left
+      setSidebarVisible(true)
+      Animated.timing(sidebarOffset, {
+        toValue: 0, // Move to the visible position
+        duration: 300,
+        useNativeDriver: true,
+      }).start()
+    }
+  }
+
+  // Close sidebar when clicking outside
+  const closeSidebar = () => {
+    if (sidebarVisible) {
+      Animated.timing(sidebarOffset, {
+        toValue: -233,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setSidebarVisible(false))
+    }
+  }
+
+  // Parse portfolio links from string to array
+  const parsePortfolioLinks = (linksString) => {
+    if (!linksString) return []
+
+    try {
+      // Try to parse as JSON if it's in JSON format
+      return JSON.parse(linksString)
+    } catch (e) {
+      // If not JSON, split by commas or spaces
+      return linksString.split(/[,\s]+/).filter((link) => link.trim() !== "")
+    }
+  }
+
+  // Open URL
+  const openUrl = (url) => {
+    // Add http:// prefix if not present
+    if (!/^https?:\/\//i.test(url)) {
+      url = "https://" + url
+    }
+
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(url)
+        } else {
+          Alert.alert("Error", `Cannot open URL: ${url}`)
+        }
+      })
+      .catch((err) => Alert.alert("Error", "An error occurred while opening the link"))
+  }
+
+  // Navigate to creator info screen
+  const navigateToCreatorInfo = () => {
+    if (userProfile) {
+      navigation.navigate("ContentCreatorInfo", {
+        userId: userProfile.id,
+        profile: userProfile.profile,
+      })
+    }
+  }
+
   // Fetch user profile
   const fetchUserProfile = async () => {
     try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem("userToken");
+      setLoading(true)
+      const token = await AsyncStorage.getItem("userToken")
 
       if (token) {
         const response = await api.get("/user/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
+        })
 
-        const profile = response.data.user.profile;
-        const pictureUrl = profile.profile_picture
-          ? `${API_URL}/uploads/images/${profile.profile_picture}`
-          : null;
+        const profile = response.data.user.profile
+        console.log("User Profile", profile.profile_picture)
+        const pictureUrl = profile.profile_picture ? `${API_URL}/uploads/images/${profile.profile_picture}` : null
 
-        setProfilePictureUrl(pictureUrl);
-        ///: this is what I have changed "profile_picture"
-        setUserProfile(response.data.user);
+        setProfilePictureUrl(pictureUrl)
+        setUserProfile(response.data.user)
+
+        // Parse portfolio links
+        if (profile.portfolio_links) {
+          setPortfolioLinks(parsePortfolioLinks(profile.portfolio_links))
+        }
+
+        console.log("User Profile", response.data.user)
       }
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.error("Error fetching user profile:", error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // Fetch all deals
   const fetchDeals = async () => {
     try {
-      setLoadingDeals(true);
-      const token = await AsyncStorage.getItem("userToken");
+      setLoadingDeals(true)
+      const token = await AsyncStorage.getItem("userToken")
 
       if (token) {
         const response = await api.get("/api/deals", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
+        })
 
-        setDeals(response.data.deals || []);
+        setDeals(response.data.deals || [])
       }
     } catch (error) {
-      console.error("Error fetching deals:", error);
-      Alert.alert("Error", "Failed to load deals");
+      console.error("Error fetching deals:", error)
+      Alert.alert("Error", "Failed to load deals")
     } finally {
-      setLoadingDeals(false);
+      setLoadingDeals(false)
     }
-  };
+  }
 
   // Refresh deals when returning from AddDeal screen
   useFocusEffect(
     useCallback(() => {
-      fetchUserProfile();
-      fetchDeals();
-    }, [])
-  );
+      fetchUserProfile()
+      fetchDeals()
+    }, []),
+  )
 
   // Fetch a specific deal by ID
   const fetchDealById = async (dealId) => {
     try {
-      setLoadingDeals(true);
-      const token = await AsyncStorage.getItem("userToken");
+      setLoadingDeals(true)
+      const token = await AsyncStorage.getItem("userToken")
 
       if (token) {
         const response = await api.get(`/addDeal/${dealId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
+        })
 
-        setSelectedDeal(response.data.deal);
-        setDealDetailsVisible(true);
+        setSelectedDeal(response.data.deal)
+        setDealDetailsVisible(true)
       }
     } catch (error) {
-      console.error("Error fetching deal details:", error);
-      Alert.alert("Error", "Failed to load deal details");
+      console.error("Error fetching deal details:", error)
+      Alert.alert("Error", "Failed to load deal details")
     } finally {
-      setLoadingDeals(false);
+      setLoadingDeals(false)
     }
-  };
-
-  // Refetch profile whenever the screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchUserProfile();
-      fetchDeals();
-    }, [])
-  );
+  }
 
   // Navigate to edit profile screen
   const handleEditProfile = () => {
     if (userProfile) {
-      navigation.navigate("EditProfile", { userId: userProfile.id });
+      navigation.navigate("EditProfileContent", { userId: userProfile.id })
     } else {
-      Alert.alert("Error", "Unable to edit profile. Please try again later.");
+      Alert.alert("Error", "Unable to edit profile. Please try again later.")
     }
-  };
+  }
 
-  // Handle social media edit
-  const handleSocialMediaEdit = (platform, data = {}) => {
-    setCurrentPlatform(platform);
-    setSocialMediaData({
-      audience: data.audience?.toString() || "",
-      views: data.views?.toString() || "",
-      likes: data.likes?.toString() || "",
-      followers: data.followers?.toString() || "",
-    });
-    setEditModalVisible(true);
-  };
-
-  // Handle social media update
-  const handleSocialMediaUpdate = async () => {
-    try {
-      const token = await AsyncStorage.getItem("userToken");
-      const response = await api.put(
-        `/user/${userProfile.id}/social-media`,
-        {
-          platform: currentPlatform,
-          audience: Number.parseInt(socialMediaData.audience),
-          views: Number.parseInt(socialMediaData.views),
-          likes: Number.parseInt(socialMediaData.likes),
-          followers: Number.parseInt(socialMediaData.followers),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      // Update local state
-      const updatedProfile = { ...userProfile };
-      const platformIndex = updatedProfile.profile.ProfilePicture.findIndex(
-        (item) => item.platform === currentPlatform
-      );
-
-      if (platformIndex !== -1) {
-        updatedProfile.profile.ProfilePicture[platformIndex] = {
-          ...updatedProfile.profile.ProfilePicture[platformIndex],
-          ...response.data.media,
-        };
-      } else {
-        updatedProfile.profile.ProfilePicture.push(response.data.media);
-      }
-
-      setUserProfile(updatedProfile);
-      setEditModalVisible(false);
-      Alert.alert("Success", "Social media data updated successfully!");
-    } catch (error) {
-      console.error("Error updating social media:", error);
-      Alert.alert("Error", "Failed to update social media data");
-    }
-  };
+  // Handle platform selection
+  const handleSelectPlatform = () => {
+    navigation.navigate("PlatformSelection")
+  }
 
   // Handle image picker for profile picture
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Denied",
-        "Please allow access to your photo library."
-      );
-      return;
+      Alert.alert("Permission Denied", "Please allow access to your photo library.")
+      return
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -217,65 +228,62 @@ const ProfileContent = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
-    });
+    })
 
     if (!result.canceled) {
-      const token = await AsyncStorage.getItem("userToken");
+      const token = await AsyncStorage.getItem("userToken")
       if (!token) {
-        Alert.alert(
-          "Error",
-          "You need to be logged in to update your profile."
-        );
-        return;
+        Alert.alert("Error", "You need to be logged in to update your profile.")
+        return
       }
 
       const file = {
         uri: result.assets[0].uri,
         name: `profile-${Date.now()}.jpg`,
         type: "image/jpeg",
-      };
+      }
 
-      const formData = new FormData();
-      formData.append("media", file);
+      const formData = new FormData()
+      formData.append("media", file)
 
       try {
-        setLoading(true);
+        setLoading(true)
         const response = await api.put(`/user/profile`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
           },
-        });
+        })
 
-        fetchUserProfile();
+        fetchUserProfile()
 
-        Alert.alert("Success", "Profile picture updated successfully!");
+        Alert.alert("Success", "Profile picture updated successfully!")
       } catch (error) {
-        console.error("Error updating profile picture:", error);
-        Alert.alert("Error", "Failed to update profile picture.");
+        console.error("Error updating profile picture:", error)
+        Alert.alert("Error", "Failed to update profile picture.")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
-  };
+  }
 
   // Handle opening the deals modal
   const handleViewDeals = () => {
-    fetchDeals();
-    setDealsModalVisible(true);
-  };
+    fetchDeals()
+    setDealsModalVisible(true)
+  }
 
   // Handle viewing a specific deal
   const handleViewDealDetails = (dealId) => {
-    fetchDealById(dealId);
-  };
+    fetchDealById(dealId)
+  }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#8A2BE2" />
       </View>
-    );
+    )
   }
 
   if (!userProfile) {
@@ -283,18 +291,33 @@ const ProfileContent = () => {
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Failed to load profile data.</Text>
       </View>
-    );
+    )
   }
-
-  console.loglog("API_URL ❤️❤️",API_URL)
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#121212" />
 
+      {/* Sidebar */}
+      {sidebarVisible && (
+        <Animated.View
+          style={[
+            styles.sidebar,
+            {
+              transform: [{ translateX: sidebarOffset }],
+            },
+          ]}
+        >
+          <SideBarContent onProfileClick={navigateToCreatorInfo} />
+        </Animated.View>
+      )}
+
+      {/* Overlay to close sidebar when clicking outside */}
+      {sidebarVisible && <TouchableOpacity style={styles.overlay} onPress={closeSidebar} activeOpacity={1} />}
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={toggleSidebar}>
           <Feather name="menu" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sponsofy</Text>
@@ -302,16 +325,10 @@ const ProfileContent = () => {
           <TouchableOpacity style={styles.headerIcon} onPress={handleViewDeals}>
             <FontAwesome5 name="handshake" size={20} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={() => navigation.navigate("Notifications")}
-          >
+          <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.navigate("Notifications")}>
             <Feather name="bell" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={() => navigation.navigate("ChatList")}
-          >
+          <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.navigate("ChatList")}>
             <Feather name="send" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -325,10 +342,7 @@ const ProfileContent = () => {
             <TouchableOpacity onPress={pickImage}>
               <View style={styles.avatarContainer}>
                 {profilePictureUrl ? (
-                  <Image
-                    source={{ uri: profilePictureUrl }}
-                    style={styles.avatar}
-                  />
+                  <Image source={{ uri: profilePictureUrl }} style={styles.avatar} />
                 ) : (
                   <View style={[styles.avatar, styles.avatarPlaceholder]}>
                     <Feather name="user" size={30} color="#666" />
@@ -342,132 +356,64 @@ const ProfileContent = () => {
               <Text style={styles.username}>
                 {userProfile.profile.first_name} {userProfile.profile.last_name}
               </Text>
-              <Text style={styles.premiumBadge}>
-                {userProfile.isPremium ? "Premium Member" : "Regular Member"}
-              </Text>
+              <Text style={styles.premiumBadge}>{userProfile.isPremium ? "Premium Member" : "Regular Member"}</Text>
 
               {/* Edit Profile Button */}
-              <TouchableOpacity
-                style={styles.editProfileButton}
-                onPress={handleEditProfile}
-              >
+              <TouchableOpacity style={styles.editProfileButton} onPress={handleEditProfile}>
                 <Text style={styles.editProfileText}>Edit Profile</Text>
               </TouchableOpacity>
-              {/* Inside the profileInfo View, after the editProfileButton: */}
+
+              {/* Platform Selection Button */}
+              <TouchableOpacity
+                style={[styles.editProfileButton, styles.platformButton]}
+                onPress={handleSelectPlatform}
+              >
+                <Text style={styles.editProfileText}>Select Platform</Text>
+              </TouchableOpacity>
+
+              {/* View Info Button */}
               <TouchableOpacity
                 style={[styles.editProfileButton, styles.viewInfoButton]}
-                onPress={() => setCreatorInfoVisible(true)}
+                onPress={() => setCreatorInfoVisible(!creatorInfoVisible)}
               >
-                <Text style={styles.editProfileText}>View Info</Text>
+                <Text style={styles.editProfileText}>{creatorInfoVisible ? "Hide Info" : "View Info"}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Bio */}
-          <Text style={styles.bio}>
-            {userProfile?.profile?.bio || "No bio available"}
-          </Text>
+          {/* Content Creator Info Section - Only Bio and Portfolio Links */}
+          {creatorInfoVisible && (
+            <View style={styles.creatorInfoContainer}>
+              <Text style={styles.creatorInfoTitle}>Creator Information</Text>
 
-          {/* Social Media Icons */}
-          <View style={styles.socialIcons}>
-            {["instagram", "facebook", "tiktok", "youtube"].map((platform) => {
-              // Fetch social media data from the correct field
-              const platformData =
-                userProfile.profile.Media?.find(
-                  (item) => item.platform === platform
-                ) || {};
+              {/* Bio */}
+              <Text style={styles.creatorInfoLabel}>Bio:</Text>
+              <Text style={styles.creatorInfoText}>{userProfile.profile.bio || "No bio available"}</Text>
 
-              return (
-                <TouchableOpacity
-                  key={platform}
-                  style={styles.socialIcon}
-                  onPress={() => handleSocialMediaEdit(platform, platformData)}
-                >
-                  <FontAwesome
-                    name={platform === "tiktok" ? "tiktok" : platform}
-                    size={24}
-                    color="white"
-                  />
-                  {platformData.followers && (
-                    <Text style={styles.socialStats}>
-                      {platformData.followers} followers
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Edit Modal */}
-          <Modal
-            visible={editModalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setEditModalVisible(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
-                  Edit {currentPlatform} Statistics
-                </Text>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Audience"
-                  value={socialMediaData.audience}
-                  onChangeText={(text) =>
-                    setSocialMediaData((prev) => ({ ...prev, audience: text }))
-                  }
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Views"
-                  value={socialMediaData.views}
-                  onChangeText={(text) =>
-                    setSocialMediaData((prev) => ({ ...prev, views: text }))
-                  }
-                  keyboardType="numeric"
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Likes"
-                  value={socialMediaData.likes}
-                  onChangeText={(text) =>
-                    setSocialMediaData((prev) => ({ ...prev, likes: text }))
-                  }
-                  keyboardType="numeric"
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Followers"
-                  value={socialMediaData.followers}
-                  onChangeText={(text) =>
-                    setSocialMediaData((prev) => ({ ...prev, followers: text }))
-                  }
-                  keyboardType="numeric"
-                />
-
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={() => setEditModalVisible(false)}
-                  >
-                    <Text style={styles.modalButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.saveButton]}
-                    onPress={handleSocialMediaUpdate}
-                  >
-                    <Text style={styles.modalButtonText}>Save</Text>
-                  </TouchableOpacity>
+              {/* Portfolio Links */}
+              <Text style={styles.creatorInfoLabel}>Portfolio Links:</Text>
+              {portfolioLinks.length > 0 ? (
+                <View style={styles.linksContainer}>
+                  {portfolioLinks.map((link, index) => (
+                    <TouchableOpacity key={index} style={styles.linkButton} onPress={() => openUrl(link)}>
+                      <Feather name="link" size={16} color="white" style={styles.linkIcon} />
+                      <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="tail">
+                        {link}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              </View>
+              ) : (
+                <Text style={styles.creatorInfoText}>No portfolio links available</Text>
+              )}
+
+              {/* View Full Profile Button */}
+              <TouchableOpacity style={styles.viewFullProfileButton} onPress={navigateToCreatorInfo}>
+                <Text style={styles.viewFullProfileText}>View Full Profile</Text>
+                <Feather name="arrow-right" size={16} color="white" />
+              </TouchableOpacity>
             </View>
-          </Modal>
+          )}
 
           {/* Deals Modal */}
           <Modal
@@ -492,24 +438,19 @@ const ProfileContent = () => {
                     data={deals}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.dealItem}
-                        onPress={() => handleViewDealDetails(item.id)}
-                      >
+                      <TouchableOpacity style={styles.dealItem} onPress={() => handleViewDealDetails(item.id)}>
                         <View style={styles.dealHeader}>
-                          <Text style={styles.dealTitle}>
-                            {item.Contract?.title || `Deal #${item.id}`}
-                          </Text>
+                          <Text style={styles.dealTitle}>{item.Contract?.title || `Deal #${item.id}`}</Text>
                           <View
                             style={[
                               styles.statusBadge,
                               item.status === "pending"
                                 ? styles.pendingBadge
                                 : item.status === "accepted"
-                                ? styles.acceptedBadge
-                                : item.status === "rejected"
-                                ? styles.rejectedBadge
-                                : styles.completedBadge,
+                                  ? styles.acceptedBadge
+                                  : item.status === "rejected"
+                                    ? styles.rejectedBadge
+                                    : styles.completedBadge,
                             ]}
                           >
                             <Text style={styles.statusText}>{item.status}</Text>
@@ -518,38 +459,25 @@ const ProfileContent = () => {
 
                         <Text style={styles.dealPrice}>${item.price}</Text>
 
-                        {item.Contract?.Company && (
-                          <Text style={styles.dealCompany}>
-                            {item.Contract.Company.name}
-                          </Text>
-                        )}
+                        {item.Contract?.Company && <Text style={styles.dealCompany}>{item.Contract.Company.name}</Text>}
 
-                        <Text style={styles.dealDate}>
-                          Created:{" "}
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </Text>
+                        <Text style={styles.dealDate}>Created: {new Date(item.createdAt).toLocaleDateString()}</Text>
                       </TouchableOpacity>
                     )}
                     contentContainerStyle={styles.dealsList}
                   />
                 ) : (
                   <View style={styles.noDealsContainer}>
-                    <FontAwesome5
-                      name="handshake-slash"
-                      size={50}
-                      color="#666"
-                    />
+                    <FontAwesome5 name="handshake-slash" size={50} color="#666" />
                     <Text style={styles.noDealsText}>No deals found</Text>
                     <TouchableOpacity
                       style={styles.createDealButton}
                       onPress={() => {
-                        setDealsModalVisible(false);
-                        navigation.navigate("AddDeal");
+                        setDealsModalVisible(false)
+                        navigation.navigate("PlatformSelectionMedia")
                       }}
                     >
-                      <Text style={styles.createDealButtonText}>
-                        Create a Deal
-                      </Text>
+                      <Text style={styles.createDealButtonText}>Create a Deal</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -565,14 +493,10 @@ const ProfileContent = () => {
             onRequestClose={() => setDealDetailsVisible(false)}
           >
             <View style={styles.modalContainer}>
-              <View
-                style={[styles.modalContent, styles.dealDetailsModalContent]}
-              >
+              <View style={[styles.modalContent, styles.dealDetailsModalContent]}>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Deal Details</Text>
-                  <TouchableOpacity
-                    onPress={() => setDealDetailsVisible(false)}
-                  >
+                  <TouchableOpacity onPress={() => setDealDetailsVisible(false)}>
                     <Feather name="x" size={24} color="white" />
                   </TouchableOpacity>
                 </View>
@@ -580,87 +504,25 @@ const ProfileContent = () => {
                 {loadingDeals ? (
                   <ActivityIndicator size="large" color="#8A2BE2" />
                 ) : selectedDeal ? (
-                  <ScrollView style={styles.dealDetailsScroll}>
-                    {/* Deal details content */}
-                  </ScrollView>
+                  <ScrollView style={styles.dealDetailsScroll}>{/* Deal details content */}</ScrollView>
                 ) : (
                   <View style={styles.noDealsContainer}>
-                    <Text style={styles.noDealsText}>
-                      Failed to load deal details
-                    </Text>
+                    <Text style={styles.noDealsText}>Failed to load deal details</Text>
                   </View>
                 )}
               </View>
             </View>
           </Modal>
-
-          {/* Content Creator Info Modal */}
-          <Modal
-            visible={creatorInfoVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setCreatorInfoVisible(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View
-                style={[styles.modalContent, styles.creatorInfoModalContent]}
-              >
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Creator Information</Text>
-                  <TouchableOpacity
-                    onPress={() => setCreatorInfoVisible(false)}
-                  >
-                    <Feather name="x" size={24} color="white" />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView style={styles.creatorInfoScroll}>
-                  {/* Creator info content */}
-                </ScrollView>
-              </View>
-            </View>
-          </Modal>
-
-          {/* Portfolio Section */}
-          {userProfile.profile.Media &&
-            userProfile.profile.Media.length > 0 && (
-              <View style={styles.portfolioContainer}>
-                <Text style={styles.portfolioTitle}>Portfolio</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.portfolioScroll}
-                >
-                  {userProfile.profile.Media.map((item, index) => (
-                    <View key={index} style={styles.portfolioItem}>
-                      <Image
-                        source={{
-                          uri: `${API_URL}/uploads/images/${item.file_name}`,
-                        }}
-                        style={styles.portfolioImage}
-                        resizeMode="cover"
-                        onError={(error) =>
-                          console.error("Image failed to load:", error)
-                        }
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
         </ScrollView>
 
         {/* Floating Action Button */}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate("AddDeal")}
-        >
+        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("PlatformSelectionMedia")}>
           <Entypo name="plus" size={24} color="white" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -744,6 +606,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  platformButton: {
+    backgroundColor: "#9370DB",
+    marginLeft: 10,
+  },
   editProfileText: {
     color: "white",
     fontSize: 14,
@@ -753,22 +619,6 @@ const styles = StyleSheet.create({
     color: "#888",
     paddingHorizontal: 20,
     lineHeight: 20,
-  },
-  socialIcons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#222",
-  },
-  socialIcon: {
-    alignItems: "center",
-  },
-  socialStats: {
-    color: "white",
-    fontSize: 12,
-    marginTop: 5,
   },
   modalContainer: {
     flex: 1,
@@ -814,31 +664,6 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: "white",
     fontWeight: "bold",
-  },
-  portfolioContainer: {
-    margin: 20,
-    marginTop: 10,
-  },
-  portfolioTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  portfolioScroll: {
-    flexDirection: "row",
-    marginBottom: 15,
-  },
-  portfolioItem: {
-    width: 120,
-    height: 120,
-    marginRight: 10,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  portfolioImage: {
-    width: "100%",
-    height: "100%",
   },
   fab: {
     position: "absolute",
@@ -964,114 +789,86 @@ const styles = StyleSheet.create({
   dealDetailsScroll: {
     width: "100%",
   },
-  dealDetailSection: {
-    marginBottom: 20,
+  creatorInfoContainer: {
+    padding: 20,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 10,
+    margin: 20,
   },
-  dealDetailLabel: {
-    color: "#888",
-    fontSize: 14,
+  creatorInfoTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+  creatorInfoLabel: {
+    color: "#8A2BE2",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 10,
     marginBottom: 5,
   },
-  dealDetailValue: {
+  creatorInfoText: {
     color: "white",
-    fontSize: 16,
-  },
-  termItem: {
-    backgroundColor: "#2A2A2A",
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 10,
-  },
-  termHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  termTitle: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "bold",
-  },
-  termDescription: {
-    color: "#bbb",
     fontSize: 14,
-  },
-  dealActionsContainer: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  dealActionRow: {
-    marginTop: 10,
-  },
-  dealActionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  messageButton: {
-    backgroundColor: "#8A2BE2",
-  },
-  cancelButton: {
-    backgroundColor: "#e74c3c",
-  },
-  dealActionButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    marginLeft: 8,
+    marginBottom: 15,
+    lineHeight: 20,
   },
   viewInfoButton: {
     backgroundColor: "#6A5ACD",
     marginLeft: 10,
   },
-  creatorInfoModalContent: {
-    maxHeight: "80%",
-    width: "95%",
+  sidebar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 233,
+    backgroundColor: "#000",
+    zIndex: 1000, // Ensure it's above other content
   },
-  creatorInfoScroll: {
-    width: "100%",
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 999, // Ensure it's below the sidebar but above other content
   },
-  creatorInfoSection: {
-    marginBottom: 20,
+  linksContainer: {
+    marginBottom: 15,
   },
-  creatorInfoLabel: {
-    color: "#888",
-    fontSize: 14,
-    marginBottom: 5,
+  linkButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#333",
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 5,
   },
-  creatorInfoValue: {
+  linkIcon: {
+    marginRight: 10,
+  },
+  linkText: {
     color: "white",
-    fontSize: 16,
+    flex: 1,
   },
-  verificationBadge: {
-    backgroundColor: "#2ecc71",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    alignSelf: "flex-start",
+  viewFullProfileButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#8A2BE2",
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
   },
-  verificationText: {
+  viewFullProfileText: {
     color: "white",
-    fontSize: 12,
     fontWeight: "bold",
+    marginRight: 8,
   },
-  membershipBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-  },
-  regularBadge: {
-    backgroundColor: "#3498db",
-  },
-  membershipText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-});
+})
 
-export default ProfileContent;
+export default ProfileContent
+

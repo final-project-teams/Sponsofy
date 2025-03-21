@@ -1,15 +1,13 @@
-const { Sequelize, DataTypes } = require('sequelize');
-require('dotenv').config();
-const config = require('./config');
-const media = require('./models/media');
-const term = require('./models/term');
-const company = require('./models/company');
-const userRoom = require('./models/userRoom');
+
+// Import the sequelize module
+const { Sequelize, DataTypes } = require("sequelize")
+require("dotenv").config()
+const config = require("./config")
 
 const sequelize = new Sequelize(config.development.database, config.development.username, config.development.password, {
-    host: config.development.host,
-    dialect: config.development.dialect, 
-  });
+  host: config.development.host,
+  dialect: config.development.dialect,
+})
 
 // Import models
 const User = require('./models/user')(sequelize, DataTypes);
@@ -33,58 +31,65 @@ const Payment = require('./models/payment')(sequelize, DataTypes);
 const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
 const pre_Term = require('./models/pre_terms')(sequelize, DataTypes);
 const UserRoom = require('./models/userRoom')(sequelize, DataTypes);
+const ContentCreatorSubCriteria = require('./models/contentCreatorSubCriteria')(sequelize, DataTypes);
+
 
 // Create associations here
-Contract.hasMany(pre_Term);
-pre_Term.belongsTo(Contract);
-// User -> ContentCreator (One-to-One)
-User.hasOne(ContentCreator, { foreignKey: 'userId', as: 'contentCreator' });
-ContentCreator.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-// User -> Company (One-to-One)
-User.hasOne(Company, { foreignKey: 'userId', as: 'company' });
-Company.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Contract.hasMany(pre_Term)
+pre_Term.belongsTo(Contract)
 
-// ContentCreator -> Media (Profile Picture, One-to-One)
-ContentCreator.belongsTo(Media, { as: 'ProfilePicture', foreignKey: 'profilePictureId' });
-Media.hasMany(ContentCreator, { foreignKey: 'profilePictureId' });
-// ContentCreator -> DealReques  (Many-to-Many)
-ContentCreator.belongsToMany(Deal,{through:DealRequest,as:'DealRequests'});
-Deal.belongsToMany(ContentCreator,{through:DealRequest,as:'ContentCreators'});
+// User -> ContentCreator (One-to-One)
+User.hasOne(ContentCreator, { foreignKey: "userId", as: "contentCreator" })
+ContentCreator.belongsTo(User, { foreignKey: "userId", as: "user" })
+
+// User -> Company (One-to-One)
+User.hasOne(Company, { foreignKey: "userId", as: "company" })
+Company.belongsTo(User, { foreignKey: "userId", as: "user" })
+
+// ContentCreator and Media relationship for social media stats
+ContentCreator.hasMany(Media, { foreignKey: "contentCreatorId", as: "media" })
+Media.belongsTo(ContentCreator, { foreignKey: "contentCreatorId", as: "contentCreator" })
+
+// ContentCreator and Media relationship for profile picture
+ContentCreator.belongsTo(Media, { as: "ProfilePicture", foreignKey: "profilePictureId" })
+Media.hasMany(ContentCreator, { foreignKey: "profilePictureId" })
+
+// ContentCreator -> DealRequest (Many-to-Many)
+ContentCreator.belongsToMany(Deal, { through: DealRequest, as: "DealRequests" })
+Deal.belongsToMany(ContentCreator, { through: DealRequest, as: "ContentCreators" })
 
 // ContentCreator -> Deal (One-to-Many)
-ContentCreator.hasMany(Deal,{as:'ContentCreatorDeals',foreignKey:'contentCreatorId'});
-Deal.belongsTo(ContentCreator,{as:'ContentCreatorDeals',foreignKey:'contentCreatorId'});
+ContentCreator.hasMany(Deal, { as: "ContentCreatorDeals", foreignKey: "contentCreatorId" })
+Deal.belongsTo(ContentCreator, { as: "ContentCreatorDeals", foreignKey: "contentCreatorId" })
 
 // Company -> Deal (One-to-Many)
-Company.hasMany(Contract);
-Contract.belongsTo(Company);
+Company.hasMany(Contract)
+Contract.belongsTo(Company)
 
-
-Contract.hasMany(Deal);
-Deal.belongsTo(Contract);
+Contract.hasMany(Deal)
+Deal.belongsTo(Contract)
 
 Contract.belongsToMany(Criteria, {
-  through: ContractCriteria, // Use the join table
-  foreignKey: 'contractId', // Foreign key in the join table
-  as: 'criteria', // Alias for the association
-});
+  through: ContractCriteria,
+  foreignKey: "contractId",
+  as: "criteria",
+})
 
-// Criteria belongs to many Contracts (through ContractCriteria)
 Criteria.belongsToMany(Contract, {
-  through: ContractCriteria, // Use the join table
-  foreignKey: 'criteriaId', // Foreign key in the join table
-  as: 'contracts', // Alias for the association
-});
+  through: ContractCriteria,
+  foreignKey: "criteriaId",
+  as: "contracts",
+})
 
 // Company -> Media (One-to-Many)
-Company.hasMany(Media);
-Media.belongsTo(Company);
+Company.hasMany(Media)
+Media.belongsTo(Company)
 
-Term.hasMany(Media);
-Media.belongsTo(Term);
+Term.hasMany(Media)
+Media.belongsTo(Term)
 
-Term.hasMany(Post);
-Post.belongsTo(Term);
+Term.hasMany(Post)
+Post.belongsTo(Term)
 
 Message.hasMany(Media, { foreignKey: 'MessageId' });
 Media.belongsTo(Message, { foreignKey: 'MessageId' });
@@ -164,19 +169,40 @@ User.belongsToMany(Room, {
 
 // ContentCreator has many Accounts
 ContentCreator.hasMany(Account, {
-  foreignKey: 'contentCreatorId',
-  as: 'accounts',
-});
+  foreignKey: "contentCreatorId",
+  as: "accounts",
+})
 
-// Account belongs to a ContentCreator
 Account.belongsTo(ContentCreator, {
-  foreignKey: 'contentCreatorId',
-  as: 'contentCreator',
+  foreignKey: "contentCreatorId",
+  as: "content_creators",
+})
+
+// Many-to-Many relationship between ContentCreator and SubCriteria - UPDATED
+ContentCreator.hasMany(ContentCreatorSubCriteria, {
+  foreignKey: "contentCreatorId",
+  as: "creator_sub",
+  onDelete: "CASCADE",
+  onUpdate: "CASCADE",
 });
 
-// Make sure this association exists and is properly defined
-// Message.hasOne(Media, { foreignKey: 'messageId' });
-// Media.belongsTo(Message, { foreignKey: 'messageId' });
+ContentCreatorSubCriteria.belongsTo(ContentCreator, {
+  foreignKey: "contentCreatorId",
+  as: "content_creators",
+});
+
+// Sub Criteria and Creator Sub associations
+SubCriteria.hasMany(ContentCreatorSubCriteria, {
+  foreignKey: "subCriteriaId",
+  as: "creator_sub",
+  onDelete: "CASCADE",
+  onUpdate: "CASCADE",
+});
+
+ContentCreatorSubCriteria.belongsTo(SubCriteria, {
+  foreignKey: "subCriteriaId",
+  as: "sub_criterias",
+});
 
 
 // User -> Signature (One-to-Many, since a user can sign multiple contracts)
@@ -189,13 +215,14 @@ Signature.belongsTo(User, {
     as: 'signer'
 });
 
-sequelize.authenticate()
+sequelize
+  .authenticate()
   .then(() => {
-    console.log('Connection to the database has been established successfully.');
+    console.log("Connection to the database has been established successfully.")
   })
   .catch((error) => {
-    console.error('Unable to connect to the database:', error);
-  });
+    console.error("Unable to connect to the database:", error)
+  })
 
 // Sync models with the database
 // sequelize.sync({ force:true }).then(() => {
@@ -205,7 +232,6 @@ sequelize.authenticate()
 // });
 
 // Export models and sequelize instance
-
 module.exports = {
   DealRequest,
   Payment,
@@ -228,5 +254,6 @@ module.exports = {
     Room,
     Message,
     pre_Term,
-    UserRoom
+    UserRoom,
+    ContentCreatorSubCriteria
 };
