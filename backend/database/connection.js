@@ -1,3 +1,5 @@
+
+// Import the sequelize module
 const { Sequelize, DataTypes } = require("sequelize")
 require("dotenv").config()
 const config = require("./config")
@@ -8,27 +10,29 @@ const sequelize = new Sequelize(config.development.database, config.development.
 })
 
 // Import models
-const User = require("./models/user")(sequelize, DataTypes)
-const ContentCreator = require("./models/contentCreator")(sequelize, DataTypes)
-const Media = require("./models/media")(sequelize, DataTypes)
-const Deal = require("./models/deal")(sequelize, DataTypes)
-const Company = require("./models/company")(sequelize, DataTypes)
-const Account = require("./models/account")(sequelize, DataTypes)
-const Post = require("./models/post")(sequelize, DataTypes)
-const Contract = require("./models/contract")(sequelize, DataTypes)
-const Term = require("./models/term")(sequelize, DataTypes)
-const Negotiation = require("./models/negotiation")(sequelize, DataTypes)
-const Criteria = require("./models/criteria")(sequelize, DataTypes)
-const SubCriteria = require("./models/subCriteria")(sequelize, DataTypes)
-const ContractCriteria = require("./models/contract_criteria")(sequelize, DataTypes)
-const Signature = require("./models/signature")(sequelize, DataTypes)
-const Notification = require("./models/notification")(sequelize, DataTypes)
-const Room = require("./models/room")(sequelize, DataTypes)
-const Message = require("./models/message")(sequelize, DataTypes)
-const Payment = require("./models/payment")(sequelize, DataTypes)
-const DealRequest = require("./models/dealRequest")(sequelize, DataTypes)
-const pre_Term = require("./models/pre_terms")(sequelize, DataTypes)
-const ContentCreatorSubCriteria = require("./models/ContentCreatorSubCriteria")(sequelize, DataTypes)
+const User = require('./models/user')(sequelize, DataTypes);
+const ContentCreator = require('./models/contentCreator')(sequelize, DataTypes);
+const Media = require('./models/media')(sequelize, DataTypes);
+const Deal = require('./models/deal')(sequelize, DataTypes);
+const Company = require('./models/company')(sequelize, DataTypes);
+const Account = require('./models/account')(sequelize, DataTypes);
+const Post = require('./models/post')(sequelize, DataTypes);
+const Contract = require('./models/contract')(sequelize, DataTypes);
+const Term = require('./models/term')(sequelize, DataTypes);
+const Negotiation = require('./models/negotiation')(sequelize, DataTypes);
+const Criteria = require('./models/criteria')(sequelize, DataTypes);
+const SubCriteria = require('./models/subCriteria')(sequelize, DataTypes);
+const ContractCriteria = require('./models/contract_criteria')(sequelize, DataTypes);
+const Signature = require('./models/signature')(sequelize, DataTypes);
+const Notification = require('./models/notification')(sequelize, DataTypes);
+const Room = require('./models/room')(sequelize, DataTypes);
+const Message = require('./models/message')(sequelize, DataTypes);
+const Payment = require('./models/payment')(sequelize, DataTypes);
+const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
+const pre_Term = require('./models/pre_terms')(sequelize, DataTypes);
+const UserRoom = require('./models/userRoom')(sequelize, DataTypes);
+const ContentCreatorSubCriteria = require('./models/contentCreatorSubCriteria')(sequelize, DataTypes);
+
 
 // Create associations here
 Contract.hasMany(pre_Term)
@@ -87,8 +91,8 @@ Media.belongsTo(Term)
 Term.hasMany(Post)
 Post.belongsTo(Term)
 
-Message.hasMany(Media)
-Media.belongsTo(Message)
+Message.hasMany(Media, { foreignKey: 'MessageId' });
+Media.belongsTo(Message, { foreignKey: 'MessageId' });
 
 Deal.hasMany(Media, { as: "AttachedMedia", foreignKey: "dealId" })
 Media.belongsTo(Deal, { foreignKey: "dealId" })
@@ -117,11 +121,11 @@ Signature.belongsTo(User)
 User.hasMany(Notification)
 Notification.belongsTo(User)
 
-Room.hasMany(Message)
-Message.belongsTo(Room)
+// Room.hasMany(Message)
+// Message.belongsTo(Room)
 
-User.hasMany(Message)
-Message.belongsTo(User)
+// User.hasMany(Message)
+// Message.belongsTo(User)
 ////////////////////////////////////////
 
 Criteria.hasMany(SubCriteria,{
@@ -136,6 +140,40 @@ SubCriteria.belongsTo(Criteria,{
 
 /////////////////////////////////////////
 
+// A room has many messages
+Room.hasMany(Message, {
+  foreignKey: 'roomId',
+  as: 'messages'
+});
+Message.belongsTo(Room, {
+  foreignKey: 'roomId',
+  as: 'room'
+});
+
+// A message belongs to a user
+User.hasMany(Message, {
+  foreignKey: 'userId',
+  as: 'userMessages'
+});
+Message.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'sender'
+});
+
+// Room associations
+Room.belongsToMany(User, {
+  through: UserRoom,
+  as: 'participants',
+  foreignKey: 'roomId'
+});
+
+User.belongsToMany(Room, {
+  through: UserRoom,
+  as: 'rooms',
+  foreignKey: 'userId'
+});
+
+// ContentCreator has many Accounts
 ContentCreator.hasMany(Account, {
   foreignKey: "contentCreatorId",
   as: "accounts",
@@ -203,16 +241,16 @@ module.exports = {
   Account,
   Post,
   Contract,
-  Term,
-  Negotiation,
-  Criteria,
-  SubCriteria,
-  ContractCriteria,
-  Notification,
-  Signature,
-  Room,
-  Message,
-  pre_Term,
-  ContentCreatorSubCriteria,
-}
-
+    Term,
+    Negotiation,
+    Criteria,
+    SubCriteria,
+    ContractCriteria,
+    Notification,
+    Signature,
+    Room,
+    Message,
+    pre_Term,
+    UserRoom,
+    ContentCreatorSubCriteria
+};
