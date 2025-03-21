@@ -1,4 +1,3 @@
-
 // Import the sequelize module
 const { Sequelize, DataTypes } = require("sequelize")
 require("dotenv").config()
@@ -69,17 +68,24 @@ Contract.belongsTo(Company)
 Contract.hasMany(Deal)
 Deal.belongsTo(Contract)
 
+// Direct one-to-many relationship
+Contract.belongsTo(Criteria, { foreignKey: 'criterionId' })
+Criteria.hasMany(Contract, { foreignKey: 'criterionId' })
+
+// Many-to-many relationship through ContractCriteria
 Contract.belongsToMany(Criteria, {
   through: ContractCriteria,
-  foreignKey: "contractId",
-  as: "criteria",
-})
+  foreignKey: 'contractId',
+  otherKey: 'criterionId',
+  as: 'criteria'
+});
 
 Criteria.belongsToMany(Contract, {
   through: ContractCriteria,
-  foreignKey: "criteriaId",
-  as: "contracts",
-})
+  foreignKey: 'criterionId',
+  otherKey: 'contractId',
+  as: 'contracts'
+});
 
 // Company -> Media (One-to-Many)
 Company.hasMany(Media)

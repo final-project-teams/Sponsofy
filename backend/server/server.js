@@ -37,7 +37,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 async function initializeDatabase() {
   try {
-    await sequelize.sync({ alter: true }); // Sync database with models
+    // Comment out this line since synchronization is now handled in database/connection.js
+    // await sequelize.sync({ alter: true }); // Sync database with models
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Add a small delay before seeding
     await seedDatabase(); // Seed the database
     console.log('Database initialized successfully');
@@ -48,13 +49,20 @@ async function initializeDatabase() {
 
 app.use(
   cors({
-    origin:"*", // Allowed origins
+    origin: "*", // Allow all origins - for development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   })
-); 
+);
+
+// Log all incoming requests for debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} | ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Use the search routes
 app.use('/api/search', searchRoutes);
 app.use('/api/contract', contractRoutes);

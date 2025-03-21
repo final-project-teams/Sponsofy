@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { addContract, getContractsForCurrentCompany, getContractsByCompanyId, getDealsByContractId, getContractById } = require("../controller/contract.controller");
+const { addContract, getContractsForCurrentCompany, getContractsByCompanyId, getDealsByContractId, getContractById, getContractWithDeals } = require("../controller/contract.controller");
 const authenticateJWT = require("../auth/refreshToken");
 const { isCompany } = require("../middleware/roleMiddleware");
 
@@ -10,7 +10,13 @@ router.get("/company/:id", authenticateJWT, getContractsByCompanyId);
 // Add this new route for getting contract details
 router.get("/detail/:contractId", authenticateJWT, getContractById);
 
-// Add this new route
+// Route to get a contract with its deals in a single request
+router.get("/:id/with-deals", authenticateJWT, getContractWithDeals);
+
+// Route to get a single contract by ID
+router.get("/:id", authenticateJWT, getContractById);
+
+// Route to get deals for a contract
 router.get("/:contractId", authenticateJWT, getDealsByContractId);
 
 module.exports = router;
