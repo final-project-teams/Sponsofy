@@ -17,11 +17,19 @@ import { Ionicons } from '@expo/vector-icons';
       status: string;
       Company: {
         name: string;
-        userId: number;
+        user: {
+          id: number;
+          username: string;
+        }
       };
-      ContentCreator: {
-        userId: number;
-      };
+      Deals: [{
+        ContentCreatorDeals: {
+          user: {
+            id: number;
+            username: string;
+          }
+        }
+      }];
         createdAt: string;
 }
 
@@ -168,29 +176,23 @@ const ContractPreview = ({ route }) => {
       setLoading(true);
       setError(null);
 
-      const contractRes = await api.get(`${API_URL}/contract/detail/${contractId}`);
+      console.log('Fetching contract:', contractId);
+      const response = await api.get(`${API_URL}/contract/detail/${contractId}`);
+      console.log('Contract response:', response.data);
 
-      if (!contractRes.data.success) {
-        throw new Error(contractRes.data.message || 'Failed to fetch contract');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch contract');
       }
 
-      const contractData = contractRes.data.contract;
+      const contractData = response.data.contract;
       setContract(contractData);
 
-      if (contractData.Company?.userId && contractData.ContentCreator?.userId) {
-        const signaturesRes = await api.get(`${API_URL}/signature/contract-parties`, {
-          params: {
-            companyUserId: contractData.Company.userId,
-            creatorUserId: contractData.ContentCreator.userId
-          }
-        });
-
-        if (signaturesRes.data.success) {
-          const { companySignature, creatorSignature } = signaturesRes.data.signatures;
-          setCompanySignature(companySignature);
-          setCreatorSignature(creatorSignature);
-        }
+      // Signatures are now included in the contract response
+      if (contractData.signatures) {
+        setCompanySignature(contractData.signatures.companySignature);
+        setCreatorSignature(contractData.signatures.creatorSignature);
       }
+
     } catch (err) {
       console.error('Error fetching contract details:', err);
       setError(err.message || 'Failed to load contract details');

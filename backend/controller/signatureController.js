@@ -185,36 +185,23 @@ module.exports = {
     getContractPartySignatures: async (req, res) => {
         try {
             const { companyUserId, creatorUserId } = req.query;
-            
-            // Get latest signatures for both parties
+            console.log('Fetching signatures for:', { companyUserId, creatorUserId });
+
             const [companySignature, creatorSignature] = await Promise.all([
-                // Get company's latest signature
-                Signature.findOne({
+                companyUserId ? Signature.findOne({
                     where: { userId: companyUserId },
-                    order: [['created_at', 'DESC']],
-                    include: [{
-                        model: User,
-                        as: 'signer',
-                        include: [{
-                            model: Company,
-                            as: 'company'
-                        }]
-                    }]
-                }),
-                // Get creator's latest signature
-                Signature.findOne({
+                    order: [['created_at', 'DESC']]
+                }) : null,
+                creatorUserId ? Signature.findOne({
                     where: { userId: creatorUserId },
-                    order: [['created_at', 'DESC']],
-                    include: [{
-                        model: User,
-                        as: 'signer',
-                        include: [{
-                            model: ContentCreator,
-                            as: 'contentCreator'
-                        }]
-                    }]
-                })
+                    order: [['created_at', 'DESC']]
+                }) : null
             ]);
+
+            console.log('Found signatures:', {
+                hasCompanySignature: !!companySignature,
+                hasCreatorSignature: !!creatorSignature
+            });
 
             res.status(200).json({
                 success: true,
@@ -225,7 +212,7 @@ module.exports = {
             });
 
         } catch (error) {
-            console.error('Error fetching signatures:', error);
+            console.error("Error fetching signatures:", error);
             res.status(500).json({
                 success: false,
                 message: 'Error fetching signatures',

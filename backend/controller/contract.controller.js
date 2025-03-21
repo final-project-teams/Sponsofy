@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria, Term, Deal, Media, Post, ContentCreator, Account, pre_terms, pre_Term, SubCriteria , User} = require("../database/connection");
+const { Contract, Company, Criteria, Term, Deal, Media, Post, ContentCreator, Account, pre_terms, pre_Term, SubCriteria , User, Signature} = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -337,25 +337,20 @@ module.exports = {
   getContractById: async (req, res) => {
     try {
       const { contractId } = req.params;
-      const decoded = req.user;
+      console.log('Fetching contract:', contractId);
 
-      console.log(`Fetching contract with ID: ${contractId}`);
-      console.log(`User ID from token: ${decoded.userId}`);
-
-      // Find the contract with its associated data
+      // First, get the contract with company info
       const contract = await Contract.findOne({
         where: { id: contractId },
         include: [
-          { 
+          {
             model: Company,
-            include: [{ model: User, as: 'user' }]
-          },
-          {
-            model: Criteria,
-            include: [{ model: SubCriteria }]
-          },
-          {
-            model: pre_Term // Include pre-terms if needed
+            required: false, // Make this optional
+            include: [{
+              model: User,
+              as: 'user',
+              attributes: ['id', 'username']
+            }]
           }
         ]
       });
@@ -367,10 +362,50 @@ module.exports = {
         });
       }
 
-      // Return the contract data
+      // Separately fetch the deal to avoid null issues
+      const deal = await Deal.findOne({
+        where: { ContractId: contractId },
+        include: [{
+          model: ContentCreator,
+          as: 'ContentCreatorDeals',
+          required: false, // Make this optional
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username']
+          }]
+        }]
+      });
+
+      // Get user IDs safely using optional chaining
+      const companyUserId = contract?.Company?.user?.id;
+      const creatorUserId = deal?.ContentCreatorDeals?.user?.id;
+
+      console.log('User IDs found:', { companyUserId, creatorUserId });
+
+      // Get signatures if we have user IDs
+      const [companySignature, creatorSignature] = await Promise.all([
+        companyUserId ? Signature.findOne({
+          where: { userId: companyUserId },
+          order: [['created_at', 'DESC']]
+        }) : null,
+        creatorUserId ? Signature.findOne({
+          where: { userId: creatorUserId },
+          order: [['created_at', 'DESC']]
+        }) : null
+      ]);
+
+      // Combine everything into a response
+      const contractData = contract.toJSON();
+      contractData.Deal = deal; // Add deal info to contract
+      contractData.signatures = {
+        companySignature,
+        creatorSignature
+      };
+
       res.status(200).json({
         success: true,
-        contract
+        contract: contractData
       });
 
     } catch (error) {
