@@ -4,6 +4,7 @@ const config = require('./config');
 const media = require('./models/media');
 const term = require('./models/term');
 const company = require('./models/company');
+const userRoom = require('./models/userRoom');
 
 const sequelize = new Sequelize(config.development.database, config.development.username, config.development.password, {
     host: config.development.host,
@@ -31,6 +32,7 @@ const Message = require('./models/message')(sequelize, DataTypes);
 const Payment = require('./models/payment')(sequelize, DataTypes);
 const DealRequest = require('./models/dealRequest')(sequelize, DataTypes);
 const pre_Term = require('./models/pre_terms')(sequelize, DataTypes);
+const UserRoom = require('./models/userRoom')(sequelize, DataTypes);
 
 // Create associations here
 Contract.hasMany(pre_Term);
@@ -87,8 +89,8 @@ Media.belongsTo(Term);
 Term.hasMany(Post);
 Post.belongsTo(Term);
 
-Message.hasMany(Media);
-Media.belongsTo(Message);
+Message.hasMany(Media, { foreignKey: 'MessageId' });
+Media.belongsTo(Message, { foreignKey: 'MessageId' });
 
 // ContentCreator -> Media (Many-to-One, Portfolio)
 // ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
@@ -135,24 +137,37 @@ User.hasMany(Notification);
 Notification.belongsTo(User);
 
 // A room has many messages
-Room.hasMany(Message);
-Message.belongsTo(Room);
+Room.hasMany(Message, {
+  foreignKey: 'roomId',
+  as: 'messages'
+});
+Message.belongsTo(Room, {
+  foreignKey: 'roomId',
+  as: 'room'
+});
 
-// A message belongs to a user (either content creator or company)
-User.hasMany(Message);
-Message.belongsTo(User);
+// A message belongs to a user
+User.hasMany(Message, {
+  foreignKey: 'userId',
+  as: 'userMessages'
+});
+Message.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'sender'
+});
 
+// Room associations
+Room.belongsToMany(User, {
+  through: UserRoom,
+  as: 'participants',
+  foreignKey: 'roomId'
+});
 
-// ContentCreator can participate in many rooms (many-to-many relationship with room)
-// ContentCreator.belongsToMany(Company, {as:"ContentCreatorRoom", through: Room });
-// Company.belongsToMany(ContentCreator, {as:"CompanyRoom", through: Room });
-
-
-// Company can participate in many rooms (many-to-many relationship with room)
-
-
-Criteria.hasMany(SubCriteria);
-SubCriteria.belongsTo(Criteria);
+User.belongsToMany(Room, {
+  through: UserRoom,
+  as: 'rooms',
+  foreignKey: 'userId'
+});
 
 // ContentCreator has many Accounts
 ContentCreator.hasMany(Account, {
@@ -165,6 +180,11 @@ Account.belongsTo(ContentCreator, {
   foreignKey: 'contentCreatorId',
   as: 'contentCreator',
 });
+
+// Make sure this association exists and is properly defined
+// Message.hasOne(Media, { foreignKey: 'messageId' });
+// Media.belongsTo(Message, { foreignKey: 'messageId' });
+
 
 // Add Term associations
 Contract.hasMany(Term);
@@ -208,5 +228,6 @@ module.exports = {
     Signature,
     Room,
     Message,
-    pre_Term
+    pre_Term,
+    UserRoom
 };
