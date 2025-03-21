@@ -1,4 +1,4 @@
-const { User, ContentCreator, Company, Media } = require("../database/connection");
+const { User, ContentCreator, Company, Media, SubCriteria,ContentCreatorSubCriteria, Criteria } = require("../database/connection");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
@@ -506,6 +506,290 @@ module.exports = {
       res.status(500).json({ message: "Failed to update profile", error: error.message });
     }
   },
+
+   // Add these new controller functions to your existing userController.js
+
+// Get all criteria regardless of platform
+ getAllCriteria : async (req, res) => {
+  try {
+    const criteria = await Criteria.findAll({
+      attributes: ['id', 'name', 'description', 'platform'],
+    });
+    
+    res.status(200).json({ criteria });
+  } catch (error) {
+    console.error("Error fetching all criteria:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+},
+
+// Associate a platform with a criteria
+// Modified associatePlatformWithCriteria function
+associatePlatformWithCriteria: async (req, res) => {
+  // Get criteriaId from params
+  const criteriaId = req.params.criteriaId;
+  const { platform } = req.body;
+  
+  console.log("Request params:", req.params);
+  console.log("Request body:", req.body);
+  
+  if (!criteriaId || !platform) {
+    return res.status(400).json({ error: "criteriaId and platform are required" });
+  }
+  
+  try {
+    console.log("Associating platform:", platform, "with criteria:", criteriaId);
+    
+    // Changed from findByPk to findOne with where clause
+    const criteria = await Criteria.findOne({
+      where: { id: criteriaId }
+    });
+    
+    if (!criteria) {
+      console.log("Criteria not found with id:", criteriaId);
+      return res.status(404).json({ error: "Criteria not found" });
+    }
+    
+    console.log("Found criteria:", criteria.name, "with platform:", criteria.platform);
+    
+    // Check if this criteria already has this platform
+    if (criteria.platform === platform) {
+      console.log("Platform already associated with this criteria");
+      return res.status(200).json({ 
+        message: "Platform already associated with this criteria",
+        criteria
+      });
+    }
+    
+    // Check if a criteria with the same name and platform already exists
+    const existingCriteria = await Criteria.findOne({
+      where: {
+        name: criteria.name,
+        platform: platform
+      }
+    });
+    
+    if (existingCriteria) {
+      console.log("Criteria with this platform already exists:", existingCriteria.id);
+      return res.status(200).json({ 
+        message: "Criteria with this platform already exists",
+        criteria: existingCriteria
+      });
+    }
+    
+    console.log("Creating new criteria with platform:", platform);
+    // Create a new criteria with the same name and description but different platform
+    const newCriteria = await Criteria.create({
+      name: criteria.name,
+      description: criteria.description,
+      platform: platform
+    });
+    
+    console.log("Created new criteria:", newCriteria.id);
+    res.status(201).json({ 
+      message: "Platform associated with criteria successfully",
+      criteria: newCriteria
+    });
+  } catch (error) {
+    console.error("Error associating platform with criteria:", error);
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
+  }
+},
+
+// Modified associateSubCriteria to work with the authenticated user
+// Modified associateSubCriteria to work with the authenticated user
+associateSubCriteria: async (req, res) => {
+  const { subCriteriaId, value, notes } = req.body;
+  
+  // Get the current user's content creator profile
+  const userId = req.user.userId; // Changed from req.user.id to req.user.userId
+  
+  try {
+    console.log("Associating subcriteria for user:", userId);
+    
+    // Find the content creator associated with the current user
+    const contentCreator = await ContentCreator.findOne({
+      where: { userId }
+    });
+    
+    if (!contentCreator) {
+      console.log("Content Creator not found for userId:", userId);
+      return res.status(404).json({ error: 'Content Creator profile not found for this user' });
+    }
+    
+    const contentCreatorId = contentCreator.id;
+    console.log("Found contentCreatorId:", contentCreatorId);
+    
+    // Check if the sub-criteria exists
+    const subCriteria = await SubCriteria.findByPk(subCriteriaId);
+    if (!subCriteria) {
+      console.log("SubCriteria not found:", subCriteriaId);
+      return res.status(404).json({ error: 'Sub-Criteria not found' });
+    }
+    
+    // Check if the association already exists
+    const existingAssociation = await ContentCreatorSubCriteria.findOne({
+      where: {
+        contentCreatorId,
+        subCriteriaId,
+      },
+    });
+    
+    if (existingAssociation) {
+      console.log("Updating existing association");
+      // Update the existing association
+      await existingAssociation.update({
+        value,
+        notes,
+      });
+      
+      return res.status(200).json(existingAssociation);
+    }
+    
+    console.log("Creating new association");
+    // Create the association
+    const association = await ContentCreatorSubCriteria.create({
+      contentCreatorId,
+      subCriteriaId,
+      value,
+      notes,
+    });
+    
+    return res.status(201).json(association);
+  } catch (error) {
+    console.error("Error in associateSubCriteria:", error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+},
+
+getSubCriteriaByCriteriaId: async (req, res) => {
+  const { criteriaId } = req.query;
+  
+  if (!criteriaId) {
+    return res.status(400).json({ error: "criteriaId parameter is required" });
+  }
+  
+  try {
+    console.log("Fetching subcriteria for criteriaId:", criteriaId);
+    
+    const subCriteria = await SubCriteria.findAll({
+      where: { criteriaId },
+      attributes: ['id', 'name', 'description']
+    });
+    
+    console.log("Found subcriteria:", subCriteria.length);
+    res.status(200).json({ subCriteria });
+  } catch (error) {
+    console.error("Error fetching sub-criteria:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}, 
+
+getContentCreatorMedia: async (req, res) => {
+  try {
+    const { contentCreatorId } = req.params
+
+    const media = await Media.findAll({
+      where: { contentCreatorId },
+      order: [["createdAt", "DESC"]],
+    })
+
+    // Format media URLs
+    const formattedMedia = media.map((item) => {
+      const mediaItem = item.toJSON()
+      if (mediaItem.file_url) {
+        mediaItem.file_url = createMediaUrl(mediaItem.file_url)
+      }
+      return mediaItem
+    })
+
+    res.status(200).json({
+      message: "Media fetched successfully",
+      media: formattedMedia,
+    })
+  } catch (error) {
+    console.error("Error fetching media:", error)
+    res.status(500).json({ message: "Failed to fetch media", error: error.message })
+  }
+},
+
+// Upload new media
+uploadMedia: async (req, res) => {
+  try {
+    const { contentCreatorId, description } = req.body
+    const file = req.file
+
+    if (!file) {
+      return res.status(400).json({ message: "No file uploaded" })
+    }
+
+    if (!contentCreatorId) {
+      return res.status(400).json({ message: "Content creator ID is required" })
+    }
+
+    const relativeFilePath = path.join("images", file.filename)
+
+    const media = await Media.create({
+      media_type: file.mimetype.startsWith("image/")
+        ? "image"
+        : file.mimetype.startsWith("video/")
+          ? "video"
+          : file.mimetype.startsWith("audio/")
+            ? "audio"
+            : "document",
+      file_url: relativeFilePath,
+      file_name: file.filename,
+      file_size: file.size,
+      file_format: file.mimetype,
+      description: description || "Content creator media",
+      contentCreatorId,
+    })
+
+    const mediaWithUrl = media.toJSON()
+    if (mediaWithUrl.file_url) {
+      mediaWithUrl.file_url = createMediaUrl(mediaWithUrl.file_url)
+    }
+
+    res.status(201).json({
+      message: "Media uploaded successfully",
+      media: mediaWithUrl,
+    })
+  } catch (error) {
+    console.error("Error uploading media:", error)
+    res.status(500).json({ message: "Failed to upload media", error: error.message })
+  }
+},
+
+ // Delete media
+ deleteMedia: async (req, res) => {
+  try {
+    const { mediaId } = req.params
+
+    const media = await Media.findByPk(mediaId)
+
+    if (!media) {
+      return res.status(404).json({ message: "Media not found" })
+    }
+
+    // Delete the file from the filesystem
+    if (media.file_url) {
+      const filePath = path.join(__dirname, "..", "uploads", media.file_url)
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath)
+      }
+    }
+
+    // Delete the media record from the database
+    await media.destroy()
+
+    res.status(200).json({
+      message: "Media deleted successfully",
+    })
+  } catch (error) {
+    console.error("Error deleting media:", error)
+    res.status(500).json({ message: "Failed to delete media", error: error.message })
+  }
+},
 
 
   // updateProfile: async (req, res) => {
