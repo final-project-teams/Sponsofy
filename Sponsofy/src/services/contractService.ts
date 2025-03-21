@@ -51,16 +51,23 @@ export const contractService = {
 
   getContractById: async (id: string): Promise<Contract> => {
     try {
-      // Since there's no specific endpoint for getting a contract by ID in the backend,
-      // we'll fetch all contracts and find the one we need
+      console.log(`Fetching contract with ID: ${id}`);
+      
+      // Fetch all contracts and find the one with matching ID
       const response = await api.get('/contract/current');
       
       if (response.data && response.data.success) {
-        const contract = response.data.contracts.find((c: Contract) => c.id === id);
-        if (contract) return contract;
+        const contracts = response.data.contracts || [];
+        const contract = contracts.find((c: Contract) => c.id === id);
+        
+        if (contract) {
+          console.log('Successfully found contract by ID in contracts list');
+          return contract;
+        }
+        
         throw new Error(`Contract with ID ${id} not found`);
       } else {
-        throw new Error(response.data?.message || 'Failed to fetch contract');
+        throw new Error(response.data?.message || 'Failed to fetch contracts');
       }
     } catch (error) {
       console.error('Error fetching contract:', error);

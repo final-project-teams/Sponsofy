@@ -17,8 +17,13 @@ const api = axios.create({
 const getAuthToken = async () => {
   try {
     const token = await AsyncStorage.getItem('userToken');
-    console.log('Token:', token);
-    return token;
+    if (token) {
+      console.log('Auth token found in storage');
+      return token;
+    } else {
+      console.log('No auth token found in storage');
+      return null;
+    }
   } catch (error) {
     console.error('Error getting auth token:', error);
     return null;
@@ -30,11 +35,15 @@ api.interceptors.request.use(
   async (config) => {
     const token = await getAuthToken(); // Await the token retrieval
     if (token) {
+      console.log(`Setting Authorization header for request to ${config.url}`);
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn(`No Authorization token for request to ${config.url}`);
     }
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );

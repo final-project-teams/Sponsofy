@@ -20,6 +20,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const [notificationSocket, setNotificationSocket] = useState<Socket | null>(null);
     const [dealSocket, setDealSocket] = useState<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
     useEffect(() => {
         console.log('Connecting to socket server at:', `${SOCKET_URL}/chat`);
@@ -29,37 +30,47 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
-            transports: ['websocket', 'polling']
+            transports: ['websocket'],
+            timeout: 10000 // 10 seconds timeout
         });
 
         const notificationIO = io(`${SOCKET_URL}/contract`, {
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
-            transports: ['websocket', 'polling']
+            transports: ['websocket'],
+            timeout: 10000 // 10 seconds timeout
         });
 
         const dealIO = io(`${SOCKET_URL}/deal`, {
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
-            transports: ['websocket', 'polling']
+            transports: ['websocket'],
+            timeout: 10000 // 10 seconds timeout
         });
 
         // Set up event listeners for chat socket
         chatIO.on('connect', () => {
             console.log('Chat socket connected');
             setIsConnected(true);
+            setConnectionStatus('connected');
         });
 
         chatIO.on('disconnect', () => {
             console.log('Chat socket disconnected');
             setIsConnected(false);
+            setConnectionStatus('disconnected');
         });
 
         chatIO.on('connect_error', (error) => {
             console.error('Chat socket connection error:', error);
             setIsConnected(false);
+            setConnectionStatus('error');
+            // Try to reconnect after 5 seconds
+            setTimeout(() => {
+                chatIO.connect();
+            }, 5000);
         });
 
         // Set the sockets in state
@@ -73,6 +84,9 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             if (chatIO) chatIO.disconnect();
             if (notificationIO) notificationIO.disconnect();
             if (dealIO) dealIO.disconnect();
+            setChatSocket(null);
+            setNotificationSocket(null);
+            setDealSocket(null);
         };
     }, []);
 
