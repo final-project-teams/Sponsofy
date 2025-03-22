@@ -1,5 +1,7 @@
 import api from '../config/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../config/source';
 
 export const chatService = {
   getMessages: async (roomId: string) => {

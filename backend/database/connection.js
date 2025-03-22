@@ -1,4 +1,3 @@
-
 // Import the sequelize module
 const { Sequelize, DataTypes } = require("sequelize")
 require("dotenv").config()
@@ -43,7 +42,7 @@ User.hasOne(ContentCreator, { foreignKey: "userId", as: "contentCreator" })
 ContentCreator.belongsTo(User, { foreignKey: "userId", as: "user" })
 
 // User -> Company (One-to-One)
-User.hasOne(Company, { foreignKey: "userId", as: "companyrs" })
+User.hasOne(Company, { foreignKey: "userId", as: "company" })
 Company.belongsTo(User, { foreignKey: "userId", as: "user" })
 
 // ContentCreator and Media relationship for social media stats
@@ -75,17 +74,24 @@ Deal.belongsTo(Contract);
 Contract.hasMany(Deal)
 Deal.belongsTo(Contract)
 
+// Direct one-to-many relationship
+Contract.belongsTo(Criteria, { foreignKey: 'criteriaId' })
+Criteria.hasMany(Contract, { foreignKey: 'criteriaId' })
+
+// Many-to-many relationship through ContractCriteria
 Contract.belongsToMany(Criteria, {
   through: ContractCriteria,
-  foreignKey: "contractId",
-  as: "criteria",
-})
+  foreignKey: 'contractId',
+  otherKey: 'criteriaId',
+  as: 'criteria'
+});
 
 Criteria.belongsToMany(Contract, {
   through: ContractCriteria,
-  foreignKey: "criteriaId",
-  as: "contracts",
-})
+  foreignKey: 'criteriaId',
+  otherKey: 'contractId',
+  as: 'contracts'
+});
 
 // Company -> Media (One-to-Many)
 Company.hasMany(Media)
@@ -288,6 +294,7 @@ sequelize
 //   .catch((error) => {
 //     console.error('Error syncing database:', error);
 //   });
+
 
 // Export models and sequelize instance
 module.exports = {
