@@ -198,6 +198,71 @@ async function seedDatabase() {
       throw error;
     }
 
+    // After creating contracts, add terms
+    console.log('Creating terms for contracts...');
+    const terms = [];
+    const defaultTerms = [
+      {
+        title: 'Content Creation Schedule',
+        description: 'Create and post content 3 times per week'
+      },
+      {
+        title: 'Platform Requirements',
+        description: 'Content must be posted on Instagram, TikTok, and YouTube'
+      },
+      {
+        title: 'Performance Metrics',
+        description: 'Achieve minimum 10,000 views per post'
+      },
+      {
+        title: 'Brand Guidelines',
+        description: 'Follow provided brand guidelines for all sponsored content'
+      },
+      {
+        title: 'Exclusivity',
+        description: 'No promotion of competing brands during contract period'
+      }
+    ];
+
+    // Get all contracts
+    const createdContracts = await models.Contract.findAll();
+
+    // Create terms for each contract
+    for (const contract of createdContracts) {
+      // Add 3-5 random terms for each contract
+      const numTerms = faker.number.int({ min: 3, max: 5 });
+      const shuffledTerms = faker.helpers.shuffle([...defaultTerms]);
+      const selectedTerms = shuffledTerms.slice(0, numTerms);
+
+      for (const term of selectedTerms) {
+        terms.push({
+          title: term.title,
+          description: term.description,
+          companyAccepted: faker.datatype.boolean(),
+          influencerAccepted: faker.datatype.boolean(),
+          status: faker.helpers.arrayElement(['pending', 'accepted', 'rejected']),
+          ContractId: contract.id,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+    }
+
+    try {
+      const createdTerms = await models.Term.bulkCreate(terms, {
+        validate: true
+      });
+      console.log(`Created ${createdTerms.length} terms`);
+      
+      // Log a sample term to verify data
+      if (createdTerms.length > 0) {
+        console.log('Sample term created:', createdTerms[0].toJSON());
+      }
+    } catch (error) {
+      console.error('Error creating terms:', error);
+      throw error;
+    }
+
     // Create Rooms and Messages
     const rooms = [];
     const messages = [];

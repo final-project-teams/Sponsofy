@@ -9,14 +9,14 @@ const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
 const app = express();
-const server = http.createServer(app);
 const seedDatabase = require('../database/seeders/seed');
-
+const server = http.createServer(app);
 const io = socketIo(server);
-const { setupContract } = require('../socket/contractSetup');
+const { setupContractSocket } = require('../socket/contractSetup');
 const { setupNotifications } = require('../socket/notificationSetup');
 const { setupDealSocket } = require('../socket/dealSetUp'); // Import the deal socket setup
 const { setupChat } = require('../socket/chatSetup'); // Import the chat socket setup
+
 
 const contractRoutes = require('../router/contract.router');
 const searchRoutes = require('../router/searchrouter');
@@ -111,16 +111,41 @@ app.get('/test-image', (req, res) => {
   `);
 });
 
+// Add this to your server.js file
+// const express = require('express');
+// const path = require('path');
+// const cors = require('cors');
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Create a dedicated route for serving static files
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Add a test endpoint to check if images are accessible
+app.get('/test-image', (req, res) => {
+  res.send(`
+    <html>
+      <body>
+        <h1>Image Test</h1>
+        <p>If you can see an image below, your static file server is working:</p>
+        <img src="/uploads/images/file-1741623016694-545084615.jpg" alt="Test Image" style="max-width: 300px;" />
+      </body>
+    </html>
+  `);
+});
+
 
 // sockettttttttttttttttt
 const contractIo = io.of("/contract");
 const chatIo = io.of("/chat");
 
 
-setupContract(contractIo);
+setupContractSocket(contractIo);
 setupNotifications(io);
 setupDealSocket(io); // Set up the deal socket
 setupChat(io); // Set up the chat socket
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -133,4 +158,5 @@ server.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}/`);
 });
 
+module.exports = { app, server };
 module.exports = {io, app, server };
