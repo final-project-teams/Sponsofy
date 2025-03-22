@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,9 @@ import {
   Animated,
   Share,
   Platform,
-  Alert
+  Alert,
+  Image,
+  ImageURISource
 } from 'react-native';
 import { Avatar, Card } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -24,6 +26,9 @@ import Sidebar from '../components/Sidebar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { companyService } from '../services/api';
 import { contractService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { dealService } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -39,11 +44,16 @@ type RootStackParamList = {
 
 type CompanyProfileScreenRouteProp = RouteProp<RootStackParamList, 'CompanyProfile'>;
 
+// Add this after the imports
+// Fallback image as base64 string (small gray avatar icon)
+const FALLBACK_IMAGE_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFEmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjAtMDEtMzFUMTI6NDI6MDUiIHhtcDpNb2RpZnlEYXRlPSIyMDIwLTAxLTMxVDEyOjQzOjA1KzAxOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDIwLTAxLTMxVDEyOjQzOjA1KzAxOjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQ5MGJjZWUyLTU3MGQtNDI0ZC04MjRlLTgyMjc5YTEwY2JkZCIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDo0OTBiY2VlMi01NzBkLTQyNGQtODI0ZS04MjI3OWExMGNiZGQiIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo0OTBiY2VlMi01NzBkLTQyNGQtODI0ZS04MjI3OWExMGNiZGQiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjQ5MGJjZWUyLTU3MGQtNDI0ZC04MjRlLTgyMjc5YTEwY2JkZCIgc3RFdnQ6d2hlbj0iMjAyMC0wMS0zMVQxMjo0MjowNSIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTkgKE1hY2ludG9zaCkiLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+FQzIQAAAAMRJREFUeNrt3MENgCAQRFEasgWtxFqsxVq0EnuxhVlDiCbGKO78l7BwdgPZbEYAAAAAAADwy3ZSDLDlsFq9bPd/0zQT8tUhHWKywu+QmpS7C1tl3j8p3KS82yHcpMylcHf9LIWblLkUuD6hpVRdiE+lOCFtKeVPpSrF/WqslyY3KX0pdsgs0nYpvg+JKW4pDyUmJUqpLcY3dhZSXILFSPHRPELKJemilBrSfDyTYuNXLcXhFQAAAAAAAIA5HHwsJBGBbvRpAAAAAElFTkSuQmCC';
+
 const CompanyProfile = () => {
   const { currentTheme, isDarkMode } = useTheme();
   const route = useRoute<CompanyProfileScreenRouteProp>();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  
+  const { user } = useAuth();
+  console.log('User from AuthContext:', user);
   // Add default company and safely access route.params
   const defaultCompany = {
     id: '',
@@ -67,101 +77,66 @@ const CompanyProfile = () => {
   const [contracts, setContracts] = useState([]);
   const [contractsLoading, setContractsLoading] = useState(false);
   const [contractsError, setContractsError] = useState(null);
+  const [dealsCount, setDealsCount] = useState(0);
+  const [profileViews, setProfileViews] = useState(0);
+  const [companyPhoto, setCompanyPhoto] = useState<string | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [isUsingLocalImage, setIsUsingLocalImage] = useState(false);
+  const [lastPhotoUpdate, setLastPhotoUpdate] = useState(Date.now());
 
-  // Load company data from AsyncStorage or API
+  // Declare the function reference
+  let loadCompanyContracts: () => Promise<void>;
+
+  // Load company data using AuthContext
   useEffect(() => {
     const loadCompanyData = async () => {
       try {
         setLoading(true);
         console.log('Starting company data load process...');
         
-        // Try to get user ID and token first
-        const userId = await AsyncStorage.getItem('userId');
-        const token = await AsyncStorage.getItem('userToken');
-        const companyId = await AsyncStorage.getItem('companyId');
+        // First try to load local image - do this before anything else
+        await loadProfileImageFromStorage();
         
-        console.log('Stored IDs:', { userId, companyId });
+        // Check if we have a user from AuthContext
+        if (!user) {
+          console.log('No authenticated user found');
+          setLoading(false);
+          return;
+        }
         
-        // First priority: Try to fetch company by user ID if we have a userId
-        if (userId && token) {
-          console.log('Trying to find company by user ID:', userId);
-          
-          try {
-            // Use the direct API endpoint to get company by user ID
+        // Get the user ID (handle both id and Id formats)
+        const userId = user.id || user.Id;
+        
+        console.log('User from AuthContext:', userId);
+        
+        // Check if user is a company
+        if (user.role !== 'company') {
+          console.log('User is not a company:', user.role);
+          setError('You need a company account to view this profile.');
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch company by user ID
+        try {
             const userCompany = await companyService.getCompanyByUserId(userId);
             
             if (userCompany) {
               console.log('Found user company in backend:', userCompany);
               setCompany(userCompany);
+            // Store in AsyncStorage for offline access
               await AsyncStorage.setItem('companyData', JSON.stringify(userCompany));
-              if (userCompany.id) {
-                // Convert ID to string before storing
-                await AsyncStorage.setItem('companyId', String(userCompany.id));
-              }
               setLoading(false);
               return;
             } else {
               console.log('No company found with UserId:', userId);
+            setError('No company profile found for your account.');
             }
           } catch (apiError) {
             console.error('Error fetching company by user ID:', apiError);
-          }
+          setError('Failed to load company profile. Please try again.');
         }
         
-        // Second priority: Try by company ID if we have it
-        if (companyId) {
-          console.log('Trying to fetch company by ID:', companyId);
-          try {
-            const companyById = await companyService.getCompanyById(companyId);
-            if (companyById) {
-              console.log('Found company by ID:', companyById);
-              setCompany(companyById);
-              await AsyncStorage.setItem('companyData', JSON.stringify(companyById));
-              setLoading(false);
-              return;
-            }
-          } catch (companyIdError) {
-            console.error('Error fetching company by ID:', companyIdError);
-          }
-        }
-        
-        // Third priority: Try to get from AsyncStorage
-        try {
-          const storedCompanyData = await AsyncStorage.getItem('companyData');
-          if (storedCompanyData) {
-            const parsedCompany = JSON.parse(storedCompanyData);
-            console.log('Using company from AsyncStorage:', parsedCompany);
-            setCompany(parsedCompany);
-            setLoading(false);
-            return;
-          }
-        } catch (storageError) {
-          console.error('Error reading from AsyncStorage:', storageError);
-        }
-        
-        // Last resort: Fetch all companies and use the first one
-        try {
-          console.log('Fetching ALL companies as last resort...');
-          const allCompanies = await companyService.getAllCompanies();
-          
-          if (Array.isArray(allCompanies) && allCompanies.length > 0) {
-            const firstCompany = allCompanies[0];
-            console.log('Using first company from API:', firstCompany);
-            setCompany(firstCompany);
-            await AsyncStorage.setItem('companyData', JSON.stringify(firstCompany));
-            if (firstCompany.id) {
-              await AsyncStorage.setItem('companyId', String(firstCompany.id));
-            }
-            setLoading(false);
-            return;
-          }
-        } catch (directError) {
-          console.error('Error in direct company fetch:', directError);
-        }
-        
-        // If all else fails, use the default company
-        console.log('All fetch attempts failed, using default company');
-        setCompany(defaultCompany);
         setLoading(false);
       } catch (err) {
         console.error('Error loading company data:', err);
@@ -171,20 +146,18 @@ const CompanyProfile = () => {
     };
 
     loadCompanyData();
-    
-    // Set up a refresh interval to periodically check for company updates
-    const refreshInterval = setInterval(() => {
-      if (!refreshing) {
-        loadCompanyData();
-      }
-    }, 300000); // Check every 5 minutes
-    
-    return () => clearInterval(refreshInterval);
-  }, [refreshing]); // Only re-run if refreshing state changes
+  }, [user, refreshing]);
   
-  // Load contracts for the company
+  // Load contracts for the company when it changes
   useEffect(() => {
-    const loadCompanyContracts = async () => {
+    if (company && company.id) {
+      loadCompanyContracts();
+      fetchCompanyDeals();
+    }
+  }, [company]);
+
+  // Define the function to load contracts for the company
+  loadCompanyContracts = async () => {
       if (!company || !company.id) return;
       
       try {
@@ -192,38 +165,161 @@ const CompanyProfile = () => {
         setContractsError(null);
         console.log('Fetching contracts for company ID:', company.id);
         
-        const companyContracts = await contractService.getContractsByCompanyId(company.id);
-        console.log(`Loaded ${companyContracts.length} contracts for company`);
-        setContracts(companyContracts);
+      // Get the authentication token (if needed)
+      const token = await AsyncStorage.getItem('userToken');
+      console.log('Using token for contract fetch:', token ? 'Token exists' : 'No token');
+      
+      const response = await contractService.getContractsByCompanyId(company.id);
+      console.log('Contract response:', response);
+      
+      // Check if response has the expected format with contracts array
+      if (response && response.success && Array.isArray(response.contracts)) {
+        console.log(`Loaded ${response.contracts.length} contracts for company`);
+        setContracts(response.contracts);
+      } else {
+        console.error('Invalid contract response format:', response);
+        setContracts([]);
+      }
       } catch (error) {
         console.error('Error loading company contracts:', error);
-        setContractsError(error.message);
+      setContractsError(error.message || 'Failed to load contracts');
+      setContracts([]);
       } finally {
         setContractsLoading(false);
       }
     };
     
-    loadCompanyContracts();
-  }, [company]);
+  // Add a function to fetch company deals
+  const fetchCompanyDeals = async () => {
+    try {
+      // Check if we have the dealService
+      if (typeof dealService !== 'undefined') {
+        const response = await dealService.getCompanyDeals();
+        if (response && response.success && Array.isArray(response.deals)) {
+          console.log(`Found ${response.deals.length} deals for company`);
+          setDealsCount(response.deals.length);
+        }
+      } else {
+        // If dealService is not available, count the deals related to contracts
+        console.log('Deal service not available, estimating deals from contracts');
+        let dealCount = 0;
+        if (Array.isArray(contracts)) {
+          // Count deals related to contracts if available
+          contracts.forEach(contract => {
+            if (contract.deals && Array.isArray(contract.deals)) {
+              dealCount += contract.deals.length;
+            }
+          });
+          setDealsCount(dealCount);
+        }
+      }
+      
+      // For demonstration, simulate fetching profile views
+      // In a real app, this would come from an analytics API
+      const randomViews = Math.floor(Math.random() * 100) + 5;
+      setProfileViews(randomViews);
+      
+    } catch (error) {
+      console.error('Error fetching company deals:', error);
+    }
+  };
 
-  // Function to reload contracts
-  const loadCompanyContracts = async () => {
-    if (!company || !company.id) return;
+  // Load profile image from AsyncStorage
+  const loadProfileImageFromStorage = async () => {
+    try {
+      // First check for locally saved image
+      const localImageUri = await AsyncStorage.getItem('localProfileImage');
+      if (localImageUri) {
+        console.log('Found local image in storage:', localImageUri.substring(0, 50) + '...');
+        setCompanyPhoto(localImageUri);
+        setIsUsingLocalImage(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error loading profile image from storage:', error);
+      return false;
+    }
+  };
+
+  // Try to load server image, with fallback to local
+  const tryLoadServerImage = async (imageUrl: string) => {
+    if (!imageUrl || imageUrl.trim() === '') return false;
     
     try {
-      setContractsLoading(true);
-      setContractsError(null);
-      console.log('Reloading contracts for company ID:', company.id);
+      console.log('Attempting to load server image:', imageUrl.substring(0, 50) + '...');
       
-      const companyContracts = await contractService.getContractsByCompanyId(company.id);
-      console.log(`Reloaded ${companyContracts.length} contracts for company`);
-      setContracts(companyContracts);
+      // First ensure local image is loaded as backup
+      await loadProfileImageFromStorage();
+      
+      // Add cache busting parameters
+      const cacheBustedUrl = `${imageUrl}?t=${Date.now()}&nocache=${Math.random()}`;
+      
+      // Just set the image URL and let the Image component handle loading/errors
+      setCompanyPhoto(cacheBustedUrl);
+      setImageLoadError(false);
+      
+      // Let the Image component's onError handler take care of fallbacks
+      console.log('Set image URL, will display with fallback if needed');
+      return true;
     } catch (error) {
-      console.error('Error reloading company contracts:', error);
-      setContractsError(error.message);
-    } finally {
-      setContractsLoading(false);
+      console.error('Error setting server image:', error);
+      // Fall back to local image
+      setImageLoadError(true);
+      return false;
     }
+  };
+
+  // Use effect to refresh the profile photo when company object changes
+  useEffect(() => {
+    if (company && company.profilePhoto && company.profilePhoto.trim() !== '') {
+      // Try to load server image, with fallback to local
+      tryLoadServerImage(company.profilePhoto);
+    } else {
+      // If no company photo, try to load from local storage
+      loadProfileImageFromStorage();
+    }
+  }, [company, lastPhotoUpdate]);
+
+  // Render profile image with proper fallbacks
+  const renderProfileImage = () => {
+    if (!companyPhoto && !isUsingLocalImage) {
+      // No image available at all - show placeholder
+      return (
+        <View style={[styles.profilePhoto, { 
+          backgroundColor: isDarkMode ? '#333' : '#ddd',
+          justifyContent: 'center',
+          alignItems: 'center' 
+        }]}>
+          <Icon name="account" size={50} color={isDarkMode ? '#666' : '#999'} />
+        </View>
+      );
+    }
+
+    // Show image with error handling
+    return (
+      <Image
+        source={{ 
+          uri: companyPhoto || FALLBACK_IMAGE_BASE64,
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        }}
+        style={styles.profilePhoto}
+        key={`profile-image-${lastPhotoUpdate}`}
+        onLoadStart={() => console.log('Image loading started...')}
+        onLoad={() => {
+          console.log('Image loaded successfully');
+          setImageLoadError(false);
+        }}
+        onLoadEnd={() => console.log('Image loading completed')}
+        onError={(error) => {
+          console.error('Image loading error:', error.nativeEvent?.error || 'Unknown error');
+          setImageLoadError(true);
+          loadProfileImageFromStorage();
+        }}
+      />
+    );
   };
 
   const handleEditProfile = () => {
@@ -265,58 +361,42 @@ const CompanyProfile = () => {
     setRefreshing(true);
     
     try {
-      // Always try to refresh from API first
-      const userId = await AsyncStorage.getItem('userId');
+      // Use the user ID from AuthContext
+      if (user) {
+        // Get the user ID (handle both id and Id formats)
+        const userId = user.id || user.Id;
       
       if (userId) {
         try {
-          // Try to find company by user ID first (most reliable)
-          const companies = await companyService.getAllCompanies();
-          if (Array.isArray(companies) && companies.length > 0) {
-            const userCompany = companies.find(company => company.UserId === userId);
+            // Fetch company by user ID
+            const userCompany = await companyService.getCompanyByUserId(userId);
             if (userCompany) {
               console.log('Found user company on refresh:', userCompany);
               setCompany(userCompany);
               await AsyncStorage.setItem('companyData', JSON.stringify(userCompany));
-              if (userCompany.id) {
-                await AsyncStorage.setItem('companyId', String(userCompany.id));
-              }
-              setRefreshing(false);
-              return;
-            }
+            } else {
+              console.log('No company found on refresh');
+              setError('No company profile found for your account.');
           }
         } catch (apiError) {
-          console.error('Error fetching companies on refresh:', apiError);
-        }
-      }
-      
-      // If we couldn't find by user ID, try by company ID
-      const companyId = await AsyncStorage.getItem('companyId');
-      if (companyId) {
-        try {
-          // Fetch the company by ID
-          const refreshedCompany = await companyService.getCompanyById(companyId);
-          console.log('Refreshed company data from API by ID:', refreshedCompany);
-          setCompany(refreshedCompany);
-          // Update local storage
-          await AsyncStorage.setItem('companyData', JSON.stringify(refreshedCompany));
-        } catch (apiError) {
-          console.error('Error refreshing company from API by ID:', apiError);
-          
-          // Fall back to stored data
-          const storedCompanyData = await AsyncStorage.getItem('companyData');
-          if (storedCompanyData) {
-            const parsedData = JSON.parse(storedCompanyData);
-            setCompany(parsedData);
+            console.error('Error fetching company by user ID on refresh:', apiError);
+            setError('Failed to refresh company profile. Please try again.');
           }
+        } else {
+          console.log('No user ID found for refresh');
+          setError('User ID not found. Please log in again.');
         }
+      } else {
+        console.log('No user found for refresh');
+        setError('Please log in to view your company profile.');
       }
     } catch (error) {
       console.error('Error refreshing company data:', error);
+      setError('An error occurred while refreshing. Please try again.');
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   // Get status color for contract cards
   const getStatusColor = (status) => {
@@ -341,6 +421,9 @@ const CompanyProfile = () => {
   
   // Render contracts section
   const renderContractsSection = () => {
+    // Ensure contracts is always an array, even if null or undefined
+    const contractsArray = Array.isArray(contracts) ? contracts : [];
+    
     if (contractsLoading) {
       return (
         <View style={[styles.centerContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF' }]}>
@@ -371,52 +454,153 @@ const CompanyProfile = () => {
       );
     }
     
-    if (!contracts || contracts.length === 0) {
       return (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
-            Previous Contracts
+          Previous Contracts ({contractsArray.length})
           </Text>
+        
+        {contractsArray.length === 0 ? (
           <View style={styles.contractsGrid}>
             <View style={[styles.emptyContractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
-              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Title...</Text>
-              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>1 month ago</Text>
-              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>Description...</Text>
+              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>No contracts yet</Text>
+              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>-</Text>
+              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                Create your first contract to see it here.
+              </Text>
             </View>
             <View style={[styles.emptyContractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
-              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Title...</Text>
-              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>3 month ago</Text>
-              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>Description...</Text>
+              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Need help?</Text>
+              <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>-</Text>
+              <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
+                Use the + button to add a new contract.
+              </Text>
             </View>
           </View>
-        </View>
-      );
-    }
-    
-    return (
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
-          Previous Contracts ({contracts.length})
-        </Text>
+        ) : (
         <View style={styles.contractsGrid}>
-          {contracts.map((contract) => (
+            {contractsArray.map((contract) => (
             <TouchableOpacity 
-              key={contract.id} 
+                key={contract.id || Math.random().toString()} 
               style={[styles.contractCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}
               onPress={() => handleContractPress(contract.id)}
             >
-              <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>{contract.title}</Text>
+                <Text style={[styles.contractTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
+                  {contract.title || 'Untitled Contract'}
+                </Text>
               <Text style={[styles.contractTime, { color: isDarkMode ? '#AAAAAA' : '#666666' }]}>
-                {new Date(contract.createdAt).toLocaleDateString()} ago
+                  {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'No date'} 
               </Text>
               <Text style={[styles.contractDescription, { color: isDarkMode ? '#AAAAAA' : '#666666' }]} numberOfLines={1}>
-                {contract.description || 'Description...'}
+                  {contract.description || 'No description available'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+        )}
       </View>
     );
+  };
+
+  const handlePhotoUpload = async () => {
+    try {
+      // Check and request permissions based on platform
+      if (Platform.OS !== 'web') {
+        if (Platform.OS === 'android') {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert(
+              'Permission Required',
+              'Please grant access to your photo library to upload photos.',
+              [{ text: 'OK', onPress: () => console.log('Permission denied') }]
+            );
+            return;
+          }
+        }
+      }
+
+      setLoading(true);
+      console.log('Launching image picker...');
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      console.log('Image picker result:', result);
+
+      if (result.canceled) {
+        console.log('User cancelled image picker');
+        setLoading(false);
+        return;
+      }
+
+      const selectedImage = result.assets[0];
+      if (!selectedImage.uri) {
+        throw new Error('No image selected');
+      }
+
+      // Save and display local image immediately
+      await AsyncStorage.setItem('localProfileImage', selectedImage.uri);
+      setCompanyPhoto(selectedImage.uri);
+      setIsUsingLocalImage(true);
+      setImageLoadError(false);
+      setLastPhotoUpdate(Date.now());
+
+      // Create form data for upload
+      const formData = new FormData();
+      const fileType = selectedImage.uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = fileType === 'jpg' || fileType === 'jpeg' ? 'image/jpeg' : `image/${fileType}`;
+      
+      const fileToUpload = {
+        uri: Platform.OS === 'ios' ? selectedImage.uri.replace('file://', '') : selectedImage.uri,
+        type: mimeType,
+        name: `photo_${Date.now()}.${fileType}`,
+      };
+
+      console.log('Uploading file:', fileToUpload);
+      formData.append('image', fileToUpload as any);
+
+      try {
+        const response = await companyService.uploadCompanyMedia(company.id, formData);
+        
+        if (response.success && response.media && response.media.file_url) {
+          console.log('Upload successful, new URL:', response.media.file_url);
+          
+          // Update company object
+          const updatedCompany = {
+            ...company,
+            profilePhoto: response.media.file_url
+          };
+          
+          await AsyncStorage.setItem('companyData', JSON.stringify(updatedCompany));
+          setCompany(updatedCompany);
+          
+          // We will continue using the local image until we can verify the server image loads
+          tryLoadServerImage(response.media.file_url);
+          
+          Alert.alert('Success', 'Profile photo updated successfully');
+        } else {
+          throw new Error('Upload response invalid');
+        }
+      } catch (uploadError) {
+        console.error('Upload error:', uploadError);
+        Alert.alert(
+          'Warning',
+          'Using local image as fallback. Server upload failed.'
+        );
+      }
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to upload photo'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -431,13 +615,29 @@ const CompanyProfile = () => {
     return (
       <View style={[styles.centerContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF' }]}>
         <Icon name="alert-circle-outline" size={48} color="#FF5252" />
-        <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: currentTheme.colors.error || '#FF5252' }]}>{error}</Text>
+        <View style={styles.errorButtonsContainer}>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: '#8A2BE2' }]}
           onPress={() => onRefresh()}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.homeButton, { backgroundColor: '#333333' }]}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={styles.homeButtonText}>Go to Home</Text>
+        </TouchableOpacity>
+        </View>
+        
+        {user && user.role !== 'company' && (
+          <Text style={styles.helpText}>
+            Note: You are currently logged in as a {user.role}. 
+            You need a company account to view and manage a company profile.
+          </Text>
+        )}
       </View>
     );
   }
@@ -446,21 +646,18 @@ const CompanyProfile = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF' }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF' }]}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)}>
+        <TouchableOpacity 
+          style={styles.headerButton} 
+          onPress={() => setSidebarVisible(true)}
+        >
           <Icon name="menu" size={24} color={isDarkMode ? '#FFFFFF' : '#000000'} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Sponsofy</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Icon name="home" size={24} color={isDarkMode ? '#FFFFFF' : '#000000'} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.headerButton}>
             <Icon name="bell-outline" size={24} color={isDarkMode ? '#FFFFFF' : '#000000'} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.headerButton}>
             <Icon name="cog-outline" size={24} color={isDarkMode ? '#FFFFFF' : '#000000'} />
           </TouchableOpacity>
         </View>
@@ -485,13 +682,29 @@ const CompanyProfile = () => {
       ) : error ? (
         <View style={[styles.centerContainer, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF' }]}>
           <Icon name="alert-circle-outline" size={48} color="#FF5252" />
-          <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{error}</Text>
+          <Text style={[styles.errorText, { color: currentTheme.colors.error || '#FF5252' }]}>{error}</Text>
+          <View style={styles.errorButtonsContainer}>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: '#8A2BE2' }]}
             onPress={() => onRefresh()}
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.homeButton, { backgroundColor: '#333333' }]}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <Text style={styles.homeButtonText}>Go to Home</Text>
+          </TouchableOpacity>
+          </View>
+          
+          {user && user.role !== 'company' && (
+            <Text style={styles.helpText}>
+              Note: You are currently logged in as a {user.role}. 
+              You need a company account to view and manage a company profile.
+            </Text>
+          )}
         </View>
       ) : (
         <ScrollView
@@ -508,11 +721,12 @@ const CompanyProfile = () => {
         >
           {/* Profile Header */}
           <View style={styles.profileHeader}>
-            <Avatar.Text 
-              size={80} 
-              label={company.name.substring(0, 2).toUpperCase()}
-              style={styles.profileAvatar}
-            />
+            <TouchableOpacity onPress={handlePhotoUpload}>
+              {renderProfileImage()}
+              <View style={styles.editPhotoButton}>
+                <Icon name="camera" size={20} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
             {company.verified && (
               <View style={styles.verifiedBadge}>
                 <View style={styles.verifiedDot} />
@@ -548,18 +762,26 @@ const CompanyProfile = () => {
             </TouchableOpacity>
           </View>
 
+          
+
+         
+
           {/* Analytics Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>Analytics</Text>
             
             <View style={[styles.analyticsItem, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
               <Icon name="eye-outline" size={20} color={isDarkMode ? '#FFFFFF' : '#000000'} />
-              <Text style={[styles.analyticsText, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>0 Profile Views</Text>
+              <Text style={[styles.analyticsText, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
+                {profileViews} Profile Views
+              </Text>
             </View>
 
             <View style={[styles.analyticsItem, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5' }]}>
               <Icon name="file-document-outline" size={20} color={isDarkMode ? '#FFFFFF' : '#000000'} />
-              <Text style={[styles.analyticsText, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>0 Deals posted</Text>
+              <Text style={[styles.analyticsText, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
+                {dealsCount} Deals posted
+              </Text>
             </View>
           </View>
 
@@ -621,21 +843,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    height: 60,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(138, 43, 226, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
   },
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconButton: {
-    marginLeft: 16,
-    padding: 4,
+  headerButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   scrollContent: {
     paddingBottom: 80,
@@ -644,6 +877,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   loadingText: {
     marginTop: 16,
@@ -653,26 +887,65 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 16,
+    marginVertical: 16,
     color: '#FF5252',
+    maxWidth: '80%',
+  },
+  errorButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    width: '100%',
   },
   retryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 4,
     backgroundColor: '#8A2BE2',
+    marginHorizontal: 8,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  homeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4,
+    backgroundColor: '#333333',
+    marginHorizontal: 8,
+  },
+  homeButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  helpText: {
+    marginTop: 24,
+    color: '#AAAAAA',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: '90%',
   },
   profileHeader: {
     alignItems: 'center',
     marginTop: 16,
     position: 'relative',
   },
-  profileAvatar: {
-    backgroundColor: '#666666',
+  profilePhoto: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  editPhotoButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#8A2BE2',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   verifiedBadge: {
     position: 'absolute',
@@ -751,13 +1024,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   section: {
-    marginTop: 24,
+    marginTop: 16,
     paddingHorizontal: 16,
+    width: '100%',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginBottom: 16,
   },
   analyticsItem: {
@@ -842,6 +1115,27 @@ const styles = StyleSheet.create({
   errorContainer: {
     padding: 20,
     alignItems: 'center',
+  },
+  galleryContainer: {
+    marginTop: 8,
+    height: 350,
+    width: '100%',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  infoLabel: {
+    fontWeight: 'bold',
+    width: 100,
+  },
+  infoValue: {
+    flex: 1,
+  },
+  statsContainer: {
+    marginTop: 24,
+    padding: 16,
   },
 });
 

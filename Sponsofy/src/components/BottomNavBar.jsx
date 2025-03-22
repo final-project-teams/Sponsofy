@@ -61,4 +61,4 @@ const styles = {
   },
 };
 
-export default BottomNavBar; 
+export default BottomNavBar;

@@ -1,4 +1,3 @@
-
 // Import the sequelize module
 const { Sequelize, DataTypes } = require("sequelize")
 require("dotenv").config()
@@ -43,7 +42,7 @@ User.hasOne(ContentCreator, { foreignKey: "userId", as: "contentCreator" })
 ContentCreator.belongsTo(User, { foreignKey: "userId", as: "user" })
 
 // User -> Company (One-to-One)
-User.hasOne(Company, { foreignKey: "userId", as: "companyrs" })
+User.hasOne(Company, { foreignKey: "userId", as: "company" })
 Company.belongsTo(User, { foreignKey: "userId", as: "user" })
 
 // ContentCreator and Media relationship for social media stats
@@ -69,17 +68,24 @@ Contract.belongsTo(Company)
 Contract.hasMany(Deal)
 Deal.belongsTo(Contract)
 
+// Direct one-to-many relationship
+Contract.belongsTo(Criteria, { foreignKey: 'criteriaId' })
+Criteria.hasMany(Contract, { foreignKey: 'criteriaId' })
+
+// Many-to-many relationship through ContractCriteria
 Contract.belongsToMany(Criteria, {
   through: ContractCriteria,
-  foreignKey: "contractId",
-  as: "criteria",
-})
+  foreignKey: 'contractId',
+  otherKey: 'criteriaId',
+  as: 'criteria'
+});
 
 Criteria.belongsToMany(Contract, {
   through: ContractCriteria,
-  foreignKey: "criteriaId",
-  as: "contracts",
-})
+  foreignKey: 'criteriaId',
+  otherKey: 'contractId',
+  as: 'contracts'
+});
 
 // Company -> Media (One-to-Many)
 Company.hasMany(Media)
@@ -108,9 +114,6 @@ Term.belongsTo(Deal)
 
 Term.hasMany(Negotiation)
 Negotiation.belongsTo(Term)
-
-Contract.belongsTo(Criteria, { through: ContractCriteria })
-Criteria.belongsTo(Contract, { through: ContractCriteria })
 
 Criteria.hasMany(SubCriteria)
 SubCriteria.belongsTo(Criteria)
@@ -220,13 +223,54 @@ sequelize
   })
 
 // Sync models with the database
-//  sequelize.sync({ force: true }) // Use `force: true` only in development
+// Modify the sync process to handle dependencies correctly
+async function syncDatabase() {
+  try {
+    // First, synchronize the Criteria model
+    await Criteria.sync({ alter: true });
+    console.log('Criteria table synchronized');
+    
+    // Then synchronize SubCriteria which depends on Criteria
+    await SubCriteria.sync({ alter: true });
+    console.log('SubCriteria table synchronized');
+    
+    // Then synchronize Contract which depends on Criteria
+    await Contract.sync({ alter: true });
+    console.log('Contract table synchronized');
+    
+    // Then synchronize ContractCriteria which depends on both Contract and Criteria
+    // Force: true will drop and recreate the table to fix the primary key issue
+    await ContractCriteria.sync({ force: true });
+    console.log('ContractCriteria table synchronized');
+    
+    // Then synchronize all remaining models
+    const remainingModels = [
+      User, ContentCreator, Media, Deal, Company, Account, Post, 
+      Term, Negotiation, Signature, Notification, 
+      Room, Message, Payment, DealRequest, pre_Term, UserRoom, ContentCreatorSubCriteria
+    ];
+    
+    for (const model of remainingModels) {
+      await model.sync({ alter: true });
+    }
+    
+    console.log('All database tables have been synchronized!');
+  } catch (error) {
+    console.error('Error syncing database:', error);
+  }
+}
+
+// Execute the sync function
+// syncDatabase();
+
+// sequelize.sync({ force: true }) // Use `force: true` only in development
 //   .then(() => {
 //     console.log('Database & tables have been synchronized!');
 //   })
 //   .catch((error) => {
 //     console.error('Error syncing database:', error);
 //   });
+
 
 // Export models and sequelize instance
 module.exports = {

@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const { dealSocket, chatSocket } = useSocket();
+  const { dealSocket } = useSocket();
 
   useEffect(() => {
     const loadStoredData = async () => {
@@ -48,16 +48,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchCurrentUser = async () => {
     try {
       const response = await api.get('/user/me');
-      setUser(response.data.user);
       
-      // Join deal room when user is fetched
-      if (dealSocket && response.data.user) {
-        console.log("Joining deal room with user ID:", response.data.user.id);
-        dealSocket.emit("join_deal_room", response.data.user.id);
-      }
-      if (chatSocket && response.data.user) {
-        console.log("Joining chat room with user ID:", response.data.user.id);
-        chatSocket.emit("init_user", response.data.user);
+      // Ensure we have a consistent user object with an id field
+      const userData = response.data.user;
+      
+      // Make sure we have a consistent id field (some APIs use Id, some use id)
+      if (userData) {
+        if (userData.Id && !userData.id) {
+          userData.id = userData.Id;
+        } else if (userData.id && !userData.Id) {
+          userData.Id = userData.id;
+        }
+        
+        setUser(userData);
+        
+        // Join deal room when user is fetched
+        if (dealSocket && userData) {
+          console.log("Joining deal room with user ID:", userData.id);
+          dealSocket.emit("join_deal_room", userData.id);
+        }
       }
     } catch (error) {
       console.error('Error fetching current user:', error);
