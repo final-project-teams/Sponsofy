@@ -2,6 +2,51 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // Ensure you h
 const { Payment } = require('../database/connection')
 
 const paymentController = {
+  createPaymentIntent: async (req, res) => {
+    try {
+      const { contractId, amount, userId, currency = 'usd', escrowHoldPeriod = 14 } = req.body;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency,
+        payment_method_types: ['card'],
+        capture_method: 'manual', // For escrow functionality
+        metadata: { 
+          contractId,
+          userId,
+          type: 'escrow',
+          escrowHoldPeriod
+        }
+      });
+
+      // Create payment record with escrow hold period
+      const payment = await Payment.create({
+        paymentId: paymentIntent.id,
+        amount: Math.round(amount * 100),
+        currency,
+        status: 'escrow_pending',
+        userId,
+        contractId,
+        escrowHoldPeriod, // Add this field
+        escrowReleaseDate: new Date(Date.now() + (escrowHoldPeriod * 24 * 60 * 60 * 1000)) // Set release date
+      });
+
+      res.json({
+        success: true,
+        clientSecret: paymentIntent.client_secret,
+        paymentId: payment.id,
+        escrowHoldPeriod: payment.escrowHoldPeriod,
+        escrowReleaseDate: payment.escrowReleaseDate
+      });
+
+    } catch (error) {
+      console.error('Payment intent creation error:', error);
+      res.status(400).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  },
   // Step 1: Create Escrow Payment Intent
   createEscrowPayment: async (req, res) => {
     try {
@@ -45,18 +90,39 @@ const paymentController = {
   confirmEscrowPayment: async (req, res) => {
     try {
       const { paymentId } = req.body;
-
+      console.log('Received confirmation request for paymentId:', paymentId);
+      
+      // Log all payments to see what's in the database
+      const allPayments = await Payment.findAll();
+      console.log('All payments in database:', JSON.stringify(allPayments, null, 2));
+  
       const payment = await Payment.findOne({
         where: { paymentId }
       });
-
+      
+      console.log('Found payment:', payment);
+  
       if (!payment) {
+        // Try finding by ID instead
+        const paymentById = await Payment.findByPk(paymentId);
+        console.log('Found payment by ID:', paymentById);
+        
+        if (paymentById) {
+          // If we find it by ID, use that
+          await paymentById.update({ status: 'escrow_held' });
+          return res.json({
+            success: true,
+            message: 'Payment held in escrow',
+            status: paymentById.status
+          });
+        }
+        
         throw new Error('Payment not found');
       }
-
+  
       // Update payment status to held in escrow
       await payment.update({ status: 'escrow_held' });
-
+  
       res.json({
         success: true,
         message: 'Payment held in escrow',
@@ -148,30 +214,35 @@ const paymentController = {
   // Get payment status and details
   getPaymentStatus: async (req, res) => {
     try {
-      const { paymentId } = req.params;
-
+      const { contractId } = req.params;
+      
+      // Find the most recent payment for this contract
       const payment = await Payment.findOne({
-        where: { paymentId }
+        where: { contractId },
+        order: [['createdAt', 'DESC']]
       });
 
       if (!payment) {
-        throw new Error('Payment not found');
+        return res.json({
+          status: 'pending',
+          message: 'No payment found for this contract'
+        });
       }
 
-      res.json({
-        success: true,
-        payment: {
-          id: payment.id,
-          status: payment.status,
-          amount: payment.amount,
-          currency: payment.currency,
-          createdAt: payment.createdAt,
-          releasedAt: payment.releasedAt
-        }
+      return res.json({
+        status: payment.status,
+        amount: payment.amount,
+        currency: payment.currency,
+        escrowHoldPeriod: payment.escrowHoldPeriod,
+        escrowReleaseDate: payment.escrowReleaseDate
       });
+
     } catch (error) {
-      console.error('Payment status error:', error);
-      res.status(400).json({ success: false, error: error.message });
+      console.error('Error getting payment status:', error);
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
     }
   }
 };

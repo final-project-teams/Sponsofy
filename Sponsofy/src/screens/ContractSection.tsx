@@ -10,13 +10,18 @@ import {
   Alert,
   TextInput,
   Image,
-  Modal
+  Modal,
+  ActivityIndicator
 } from 'react-native';
 import { contractService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSocket } from '../context/socketContext'; // Import the useSocket hook
+import { paymentService } from '../services/api';
+import { CardField, useStripe } from '@stripe/stripe-react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import { useNavigation } from '@react-navigation/native';
 
 interface CustomJwtPayload {
   userId: number;
@@ -60,23 +65,24 @@ interface TermHistory {
   timestamp: Date;
 }
 
-interface PaymentModalProps {
-  visible: boolean;
-  onClose: () => void;
-  paymentMethod: string;
-  onSubmit: (paymentDetails: PaymentDetails) => void;
+interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string;
+  icon: 'credit-card' | 'payment' | 'account-balance';
+  isAvailable: boolean;
+  comingSoon?: boolean;
 }
 
-interface PaymentDetails {
-  accountNumber?: string;
-  routingNumber?: string;
-  amount?: string;
-  cardNumber?: string;
-  cardHolder?: string;
-  expiryDate?: string;
-  cvv?: string;
-  email?: string;
-}
+// Add this helper function after the imports
+const formatAmount = (amount: number | string): string => {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(numAmount);
+};
 
 const SponsorshipTerms = () => {
   const [currentStep, setCurrentStep] = useState(2);
@@ -91,14 +97,28 @@ const SponsorshipTerms = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [termHistory, setTermHistory] = useState<Record<number, TermHistory[]>>({});
   const [showHistory, setShowHistory] = useState<number | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const navigation = useNavigation();
 
   // Use the contractSocket from the useSocket hook
   const { contractSocket} = useSocket();
 
+  // Add this check for Stripe availability
+  const stripe = useStripe();
+  const [stripeReady, setStripeReady] = useState(false);
+
+  // Add this useEffect to check Stripe initialization
+  useEffect(() => {
+    if (stripe) {
+      setStripeReady(true);
+    }
+  }, [stripe]);
 
   useEffect(() => {
     fetchUserAndContract();
@@ -333,40 +353,6 @@ const SponsorshipTerms = () => {
     }
   };
 
-  const handleProcessPayment = (paymentDetails: PaymentDetails) => {
-    try {
-      // Here you would integrate with your payment processing API
-      Alert.alert(
-        'Processing Payment',
-        'Please wait while we process your payment...',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Simulate successful payment
-              Alert.alert(
-                'Payment Successful',
-                'Your payment has been processed successfully!',
-                [
-                  {
-                    text: 'Continue',
-                    onPress: () => {
-                      setShowPaymentModal(false);
-                      setCurrentStep(currentStep + 1);
-                      handleContractCompletion();
-                    }
-                  }
-                ]
-              );
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Payment processing failed. Please try again.');
-    }
-  };
-
   const isTermAccepted = (term: ContractTerm, party: string) => {
     return party === 'company' ? term.negotiation?.confirmation_company : term.negotiation?.confirmation_Influencer;
   };
@@ -378,6 +364,11 @@ const SponsorshipTerms = () => {
   const steps = [1, 2, 3, 4, 5];
   
   const handleContinue = () => {
+    if (currentStep === 5) {
+      // Don't proceed beyond payment step
+      return;
+    }
+    
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
@@ -536,80 +527,185 @@ const SponsorshipTerms = () => {
     );
   };
 
+  const PaymentIntent = async () => {
+    try {
+      const amount = Number(1000); // Default to 1000 if payment_terms is invalid
+      
+      const response = await paymentService.createEscrowPayment({
+        contractId: contract!.id,
+        amount: 1000,
+        userId: (jwtDecode<CustomJwtPayload>(await AsyncStorage.getItem('userToken') || '')).userId,
+        currency: 'usd',
+        escrowHoldPeriod: 14
+      });
+      
+      console.log('Escrow payment response:', response);
+      
+      if (response.success && response.clientSecret) {
+        await AsyncStorage.setItem('currentPaymentId', response.paymentId);
+        return response.clientSecret;
+      } else {
+        throw new Error('Failed to create payment intent');
+      }
+    } catch (error) {
+      console.error('Error creating escrow payment:', error);
+      throw error;
+    }
+  };
+  
+  const handlePayment = async () => {
+    setLoading(true);
+    try {
+      const clientSecret = await PaymentIntent();
+      
+      if (!clientSecret) {
+        Alert.alert('Error', 'Could not obtain payment credentials');
+        setLoading(false);
+        return;
+      }
+      
+      const { error } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        style: 'alwaysLight',
+        merchantDisplayName: 'Your Company Name',
+      });
+      
+      if (!error) {
+        const { error: paymentError } = await presentPaymentSheet();
+        
+        if (!paymentError) {
+          try {
+            // Get the stored payment ID
+            const paymentId = await AsyncStorage.getItem('currentPaymentId');
+            if (!paymentId) {
+              throw new Error('Payment ID not found');
+            }
+
+            // Confirm the escrow payment
+            const confirmResponse = await paymentService.confirmEscrowPayment(paymentId);
+            
+            if (confirmResponse.success) {
+              // Emit socket event for escrow confirmation
+              if (contractSocket && contract?.id) {
+                contractSocket.emit('escrow_payment_confirmed', {
+                  contractId: contract.id,
+                  confirmedBy: userRole,
+                  paymentId: paymentId
+                });
+              }
+              setShowSuccessModal(true);
+            } else {
+              throw new Error(confirmResponse.message || 'Failed to confirm payment');
+            }
+          } catch (confirmError) {
+            console.error('Confirmation error:', confirmError);
+            Alert.alert('Warning', 'Payment processed but confirmation failed');
+          }
+        } else {
+          Alert.alert('Payment Failed', paymentError.message);
+        }
+      } else {
+        Alert.alert('Setup Error', error.message);
+      }
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'An unexpected error occurred during payment processing'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const PAYMENT_METHODS: PaymentMethod[] = [
+    {
+      id: 'card',
+      name: 'Credit Card',
+      description: 'Pay securely with your credit card',
+      icon: 'credit-card',
+      isAvailable: true
+    },
+    {
+      id: 'paypal',
+      name: 'PayPal',
+      description: 'Pay with your PayPal account',
+      icon: 'payment',
+      isAvailable: false,
+      comingSoon: true
+    },
+    {
+      id: 'bank',
+      name: 'Bank Transfer',
+      description: 'Direct bank transfer',
+      icon: 'account-balance',
+      isAvailable: false,
+      comingSoon: true
+    }
+  ];
+
   const renderContent = () => {
     // Check if all terms are accepted at the start of renderContent
     const allTermsAccepted = areAllTermsAccepted();
 
     switch (currentStep) {
-      // Payment step case
       case 5:
-        return (
+        return userRole === 'company' ? (
           <View style={styles.paymentContainer}>
-            <Text style={styles.sectionTitle}>Select Payment Method</Text>
+            <Text style={styles.sectionTitle}>Payment Details</Text>
             
-            <View style={styles.paymentMethodsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.paymentMethodCard,
-                  selectedPaymentMethod === 'credit_card' && styles.selectedPaymentMethod
-                ]}
-                onPress={() => {
-                  setSelectedPaymentMethod('credit_card');
-                  setShowPaymentModal(true);
-                }}
-              >
-                <MaterialIcons 
-                  name="credit-card" 
-                  size={32} 
-                  color={selectedPaymentMethod === 'credit_card' ? "#10B981" : "#9CA3AF"} 
-                />
-                <Text style={styles.paymentMethodText}>Credit Card</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.paymentMethodCard,
-                  selectedPaymentMethod === 'paypal' && styles.selectedPaymentMethod
-                ]}
-                onPress={() => {
-                  setSelectedPaymentMethod('paypal');
-                  setShowPaymentModal(true);
-                }}
-              >
-                <MaterialIcons 
-                  name="account-balance-wallet" 
-                  size={32} 
-                  color={selectedPaymentMethod === 'paypal' ? "#10B981" : "#9CA3AF"} 
-                />
-                <Text style={styles.paymentMethodText}>PayPal</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.paymentMethodCard,
-                  selectedPaymentMethod === 'bank_transfer' && styles.selectedPaymentMethod
-                ]}
-                onPress={() => {
-                  setSelectedPaymentMethod('bank_transfer');
-                  setShowPaymentModal(true);
-                }}
-              >
-                <MaterialIcons 
-                  name="account-balance" 
-                  size={32} 
-                  color={selectedPaymentMethod === 'bank_transfer' ? "#10B981" : "#9CA3AF"} 
-                />
-                <Text style={styles.paymentMethodText}>Bank Transfer</Text>
-              </TouchableOpacity>
+            {/* Payment Summary */}
+            <View style={styles.paymentSummary}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Contract Value</Text>
+                <Text style={styles.summaryValue}>
+                  {formatAmount(Number(contract?.payment_terms) || 1000)}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Escrow Period</Text>
+                <Text style={styles.summaryValue}>14 days</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryTotal}>Total to Pay</Text>
+                <Text style={styles.summaryTotalValue}>
+                  {formatAmount(Number(contract?.payment_terms) || 1000)}
+                </Text>
+              </View>
             </View>
 
-            <PaymentModal
-              visible={showPaymentModal}
-              onClose={() => setShowPaymentModal(false)}
-              paymentMethod={selectedPaymentMethod || ''}
-              onSubmit={handleProcessPayment}
-            />
+            {/* Payment Methods */}
+            <Text style={styles.sectionSubtitle}>Select Payment Method</Text>
+            <View style={styles.paymentMethodsGrid}>
+              {PAYMENT_METHODS.map(method => (
+                <PaymentMethodCard
+                  key={method.id}
+                  method={method}
+                  selected={selectedPaymentMethod === method.id}
+                  onSelect={() => {
+                    setSelectedPaymentMethod(method.id);
+                    if (method.id === 'card') {
+                      handlePayment();
+                    }
+                  }}
+                />
+              ))}
+            </View>
+
+            {/* Security Notice */}
+            <View style={styles.securityNotice}>
+              <MaterialIcons name="security" size={24} color="#10B981" />
+              <View style={styles.securityTextContainer}>
+                <Text style={styles.securityTitle}>Secure Escrow Payment</Text>
+                <Text style={styles.securityDescription}>
+                  Your payment will be held securely in escrow until the contract terms are fulfilled
+                </Text>
+              </View>
+            </View>
           </View>
+        ) : (
+          <PaymentStatusView contract={contract!} />
         );
       case 3:
   return (
@@ -859,147 +955,186 @@ const SponsorshipTerms = () => {
     );
   };
 
-  const PaymentModal = ({ visible, onClose, paymentMethod, onSubmit }: PaymentModalProps) => {
-    const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
-
-    const handleConfirm = () => {
-      // Validate based on payment method
-      if (paymentMethod === 'credit_card') {
-        if (!paymentDetails.cardNumber || !paymentDetails.cardHolder || 
-            !paymentDetails.expiryDate || !paymentDetails.cvv) {
-          Alert.alert('Error', 'Please fill in all card details');
-          return;
-        }
-      } else if (paymentMethod === 'bank_transfer') {
-        if (!paymentDetails.accountNumber || !paymentDetails.routingNumber) {
-          Alert.alert('Error', 'Please fill in all bank details');
-          return;
-        }
-      } else if (paymentMethod === 'paypal') {
-        if (!paymentDetails.email) {
-          Alert.alert('Error', 'Please enter PayPal email');
-          return;
-        }
-      }
-
-      onSubmit(paymentDetails);
-    };
-
-    const renderPaymentForm = () => {
-      switch (paymentMethod) {
-        case 'credit_card':
-          return (
-            <View style={styles.paymentForm}>
-              <TextInput
-                style={styles.input}
-                placeholder="Card Number"
-                value={paymentDetails.cardNumber}
-                onChangeText={(text) => setPaymentDetails({...paymentDetails, cardNumber: text})}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Cardholder Name"
-                value={paymentDetails.cardHolder}
-                onChangeText={(text) => setPaymentDetails({...paymentDetails, cardHolder: text})}
-                placeholderTextColor="#9CA3AF"
-              />
-              <View style={styles.rowInputs}>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="MM/YY"
-                  value={paymentDetails.expiryDate}
-                  onChangeText={(text) => setPaymentDetails({...paymentDetails, expiryDate: text})}
-                  keyboardType="numeric"
-                  placeholderTextColor="#9CA3AF"
-                />
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="CVV"
-                  value={paymentDetails.cvv}
-                  onChangeText={(text) => setPaymentDetails({...paymentDetails, cvv: text})}
-                  keyboardType="numeric"
-                  secureTextEntry
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-          );
-
-        case 'bank_transfer':
-          return (
-            <View style={styles.paymentForm}>
-              <TextInput
-                style={styles.input}
-                placeholder="Account Number"
-                value={paymentDetails.accountNumber}
-                onChangeText={(text) => setPaymentDetails({...paymentDetails, accountNumber: text})}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Routing Number"
-                value={paymentDetails.routingNumber}
-                onChangeText={(text) => setPaymentDetails({...paymentDetails, routingNumber: text})}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-          );
-
-        case 'paypal':
-          return (
-            <View style={styles.paymentForm}>
-              <TextInput
-                style={styles.input}
-                placeholder="PayPal Email"
-                value={paymentDetails.email}
-                onChangeText={(text) => setPaymentDetails({...paymentDetails, email: text})}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-          );
-
-        default:
-          return null;
-      }
-    };
-
-    return (
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={onClose}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Complete Payment</Text>
-            
-            {renderPaymentForm()}
-
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={onClose}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]} 
-                onPress={handleConfirm}
-              >
-                <MaterialIcons name="lock" size={20} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Confirm Payment</Text>
-              </TouchableOpacity>
-            </View>
+  const SuccessModal = () => (
+    <Modal
+      visible={showSuccessModal}
+      transparent
+      animationType="fade"
+    >
+      <View style={styles.successModalContainer}>
+        <ConfettiCannon
+          count={200}
+          origin={{x: -10, y: 0}}
+          autoStart={true}
+          fadeOut={true}
+        />
+        <View style={styles.successModalContent}>
+          <MaterialIcons name="check-circle" size={80} color="#10B981" />
+          <Text style={styles.successModalTitle}>Payment Successful!</Text>
+          <Text style={styles.successModalText}>
+            Your payment has been securely held in escrow
+          </Text>
+          <View style={styles.successModalButtons}>
+            <TouchableOpacity
+              style={[styles.successModalButton, styles.successModalButtonPrimary]}
+              onPress={() => {
+                setShowSuccessModal(false);
+                navigation.navigate('Home');
+              }}
+            >
+              <Text style={styles.successModalButtonText}>Go to Home</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.successModalButton}
+              onPress={() => setShowSuccessModal(false)}
+            >
+              <Text style={styles.successModalButtonTextSecondary}>Stay Here</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </View>
+    </Modal>
+  );
+
+  // Add this component for the history badge
+  const HistoryBadge = ({ count }: { count: number }) => (
+    count > 0 ? (
+      <View style={styles.historyBadge}>
+        <Text style={styles.historyBadgeText}>{count}</Text>
+      </View>
+    ) : null
+  );
+
+  // Add this helper function to format dates
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Update the TermHistoryModal component
+  const TermHistoryModal = ({ visible, onClose, termHistory }: { 
+    visible: boolean;
+    onClose: () => void;
+    termHistory: Record<number, TermHistory[]>;
+  }) => (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.historyModalContainer}>
+        <View style={styles.historyModalContent}>
+          <View style={styles.historyModalHeader}>
+            <Text style={styles.historyModalTitle}>Terms Change History</Text>
+            <TouchableOpacity onPress={onClose}>
+              <MaterialIcons name="close" size={24} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.historyModalScroll}>
+            {Object.entries(termHistory).map(([termId, changes]) => (
+              <View key={termId} style={styles.historyTermSection}>
+                <Text style={styles.historyTermTitle}>Term #{termId}</Text>
+                {changes.map((change, index) => (
+                  <View key={index} style={styles.historyChangeItem}>
+                    <View style={styles.historyChangeHeader}>
+                      <MaterialIcons name="history" size={20} color="#8B5CF6" />
+                      <View style={styles.historyChangeInfo}>
+                        <Text style={styles.historyChangeAuthor}>
+                          Updated by {change.updatedBy}
+                        </Text>
+                        <Text style={styles.historyChangeDate}>
+                          {formatTimeAgo(new Date(change.timestamp))}
+                        </Text>
+                      </View>
+                      <Text style={styles.historyChangeExactTime}>
+                        {new Date(change.timestamp).toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={styles.historyChangeContent}>
+                      <Text style={styles.historyChangeLabel}>Previous Title:</Text>
+                      <Text style={styles.historyChangeValue}>{change.previousTitle}</Text>
+                      <Text style={styles.historyChangeLabel}>Previous Description:</Text>
+                      <Text style={styles.historyChangeValue}>{change.previousDescription}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Add this component for the influencer's payment status view
+  const PaymentStatusView = ({ contract }: { contract: Contract }) => {
+    const [paymentStatus, setPaymentStatus] = useState<string>('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchPaymentStatus = async () => {
+        try {
+          const response = await paymentService.getPaymentStatus(contract.id.toString());
+          setPaymentStatus(response.status);
+        } catch (error) {
+          console.error('Error fetching payment status:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchPaymentStatus();
+    }, [contract.id]);
+
+    return (
+      <View style={styles.paymentStatusContainer}>
+        <Text style={styles.sectionTitle}>Payment Status</Text>
+        
+        {loading ? (
+          <ActivityIndicator size="large" color="#10B981" />
+        ) : (
+          <View style={styles.statusCard}>
+            <View style={styles.statusHeader}>
+              <MaterialIcons 
+                name={paymentStatus === 'escrow_held' ? 'lock' : 'lock-open'} 
+                size={24} 
+                color="#10B981" 
+              />
+              <Text style={styles.statusAmount}>
+                {formatAmount(Number(1000))}
+              </Text>
+            </View>
+
+            <View style={styles.statusInfo}>
+              <Text style={styles.statusLabel}>Status:</Text>
+              <View style={[
+                styles.statusBadge,
+                styles[`status${paymentStatus}`]
+              ]}>
+                <Text style={styles.statusText}>
+                  {paymentStatus === 'escrow_held' ? 'Held in Escrow' : 
+                   paymentStatus === 'escrow_released' ? 'Released' :
+                   paymentStatus === 'pending' ? 'Pending' : 'Processing'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.statusDescription}>
+              {paymentStatus === 'escrow_held' ? 
+                'Payment is securely held in escrow until contract completion' :
+                paymentStatus === 'escrow_released' ?
+                'Payment has been released to your account' :
+                'Awaiting payment confirmation'}
+            </Text>
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -1010,7 +1145,7 @@ const SponsorshipTerms = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Contract Details</Text>
         <View style={styles.headerActions}>
-          {currentStep === 3 && ( // Only show for step 3
+          {currentStep === 3 && (
             <TouchableOpacity
               style={styles.previewButton}
               onPress={() => setShowPreview(!showPreview)}
@@ -1038,25 +1173,35 @@ const SponsorshipTerms = () => {
       </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Progress Bar */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
             {steps.map((step, index) => (
               <React.Fragment key={step}>
                 <View style={styles.stepWrapper}>
-                  <View 
+                  <TouchableOpacity 
                     style={[
                       styles.stepCircle,
                       step < currentStep && styles.completedStep,
                       step === currentStep && styles.activeStep,
                     ]}
+                    onPress={() => {
+                      if (step === 3 && Object.keys(termHistory).length > 0) {
+                        setShowHistoryModal(true);
+                      }
+                    }}
+                    disabled={step === 3 ? false : true}
                   >
                     {step < currentStep ? (
                       <MaterialIcons name="check" size={20} color="#FFFFFF" />
                     ) : (
                       <Text style={styles.stepText}>{step}</Text>
                     )}
-                  </View>
+                    {step === 3 && (
+                      <HistoryBadge 
+                        count={Object.values(termHistory).reduce((acc, curr) => acc + curr.length, 0)} 
+                      />
+                    )}
+                  </TouchableOpacity>
                   <Text 
                     style={[
                       styles.stepLabel,
@@ -1081,7 +1226,6 @@ const SponsorshipTerms = () => {
           </View>
         </View>
         
-        {/* Dynamic Content Section */}
         <View style={styles.termsContainer}>
           {loading ? (
             <Text style={{ color: 'white' }}>Loading...</Text>
@@ -1104,7 +1248,6 @@ const SponsorshipTerms = () => {
         <View style={styles.bottomPadding} />
       </ScrollView>
       
-      {/* Continue Button */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           onPress={handleContinue}
@@ -1113,9 +1256,62 @@ const SponsorshipTerms = () => {
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
       </View>
+      <SuccessModal />
+      <TermHistoryModal 
+        visible={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        termHistory={termHistory}
+      />
     </SafeAreaView>
   );
 };
+
+const PaymentMethodCard = ({ 
+  method, 
+  selected, 
+  onSelect 
+}: { 
+  method: PaymentMethod;
+  selected: boolean;
+  onSelect: () => void;
+}) => (
+  <TouchableOpacity 
+    style={[
+      styles.paymentMethodCard,
+      selected && styles.selectedPaymentMethod,
+      method.comingSoon && styles.comingSoonCard
+    ]}
+    onPress={onSelect}
+    disabled={method.comingSoon}
+  >
+    <MaterialIcons 
+      name={method.icon} 
+      size={32} 
+      color={method.comingSoon ? '#6B7280' : '#10B981'} 
+    />
+    <View style={styles.paymentMethodContent}>
+      <Text style={[
+        styles.paymentMethodName,
+        method.comingSoon && styles.comingSoonText
+      ]}>
+        {method.name}
+      </Text>
+      <Text style={styles.paymentMethodDesc}>
+        {method.description}
+      </Text>
+      {!method.comingSoon && (
+        <Text style={styles.paymentMethodAmount}>
+          {formatAmount(Number(1000))}
+        </Text>
+      )}
+    </View>
+    {method.comingSoon && (
+      <View style={styles.comingSoonBadge}>
+        <Text style={styles.comingSoonBadgeText}>Coming Soon</Text>
+      </View>
+    )}
+  </TouchableOpacity>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -1204,6 +1400,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#3D3D3D',
     zIndex: 1,
+    position: 'relative',
   },
   activeStep: {
     backgroundColor: '#7C3AED',
@@ -1319,7 +1516,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 24,
-    backgroundColor: '#000000', // Match container background
+    backgroundColor: '#000000',
   },
   continueButton: {
     backgroundColor: '#8B5CF6',
@@ -1392,7 +1589,6 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 40,
   },
-  // Status styles
   statusactive: {
     borderLeftColor: '#10B981',
     borderLeftWidth: 4,
@@ -1405,8 +1601,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#EF4444',
     borderLeftWidth: 4,
   },
-
-  // Rank styles
   rankplat: {
     borderLeftColor: '#8B5CF6',
     borderLeftWidth: 4,
@@ -1727,152 +1921,348 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   paymentContainer: {
-    flex: 1,
     padding: 20,
   },
-  paymentSection: {
-    backgroundColor: '#171717',
+  paymentSummary: {
+    backgroundColor: '#1F2937',
+    borderRadius: 16,
     padding: 20,
-    borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  paymentLabel: {
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    color: '#9CA3AF',
+    fontSize: 14,
+  },
+  summaryValue: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'monospace',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#374151',
+    marginVertical: 12,
+  },
+  summaryTotal: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2D2D2D',
-    borderRadius: 8,
-    padding: 12,
-  },
-  currencySymbol: {
-    color: '#9CA3AF',
+  summaryTotalValue: {
+    color: '#10B981',
     fontSize: 20,
-    marginRight: 8,
+    fontWeight: '700',
+    fontFamily: 'monospace',
   },
-  paymentInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 18,
-    padding: 0,
-  },
-  paymentMethodTitle: {
+  sectionSubtitle: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    marginTop: 24,
   },
-  paymentMethodsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  paymentMethodsGrid: {
     gap: 12,
     marginBottom: 24,
   },
   paymentMethodCard: {
-    flex: 1,
-    backgroundColor: '#171717',
+    backgroundColor: '#1F2937',
     padding: 16,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#2D2D2D',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   selectedPaymentMethod: {
     borderColor: '#10B981',
     backgroundColor: '#064E3B',
   },
-  paymentMethodText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-    marginTop: 8,
+  comingSoonCard: {
+    opacity: 0.5,
   },
-  processPaymentButton: {
-    backgroundColor: '#10B981',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  disabledButton: {
-    backgroundColor: '#374151',
-    opacity: 0.7,
-  },
-  processPaymentText: {
+  paymentMethodName: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 12,
+    flex: 1,
   },
-  paymentInfoContainer: {
+  paymentMethodDesc: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginLeft: 12,
+  },
+  comingSoonText: {
+    color: '#6B7280',
+  },
+  comingSoonBadge: {
+    backgroundColor: '#374151',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  comingSoonBadgeText: {
+    color: '#9CA3AF',
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  securityNotice: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#171717',
+    backgroundColor: '#1F2937',
     padding: 16,
     borderRadius: 12,
-    marginTop: 24,
+    alignItems: 'flex-start',
     gap: 12,
   },
-  paymentInfoText: {
+  securityTextContainer: {
     flex: 1,
+  },
+  securityTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  securityDescription: {
     color: '#9CA3AF',
     fontSize: 14,
     lineHeight: 20,
   },
-  modalContainer: {
+  paymentMethodContent: {
     flex: 1,
+    marginLeft: 12,
+  },
+  paymentMethodAmount: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  successModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
   },
-  modalContent: {
+  successModalContent: {
+    backgroundColor: '#1F2937',
+    padding: 24,
+    borderRadius: 20,
+    alignItems: 'center',
     width: '90%',
     maxWidth: 400,
-    backgroundColor: '#171717',
-    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  successModalTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  successModalText: {
+    color: '#9CA3AF',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  successModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  successModalButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#374151',
+  },
+  successModalButtonPrimary: {
+    backgroundColor: '#10B981',
+  },
+  successModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  successModalButtonTextSecondary: {
+    color: '#9CA3AF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  historyBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#EF4444',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#0A0A0A',
+  },
+  historyBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  historyModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
-  modalTitle: {
+  historyModalContent: {
+    backgroundColor: '#1F2937',
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: 20,
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  historyModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#374151',
+  },
+  historyModalTitle: {
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
   },
-  paymentForm: {
-    gap: 16,
-    marginVertical: 20,
+  historyModalScroll: {
+    padding: 20,
   },
-  input: {
-    height: 50,
-    backgroundColor: '#2D2D2D',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    color: '#FFFFFF',
-    fontSize: 16,
+  historyTermSection: {
+    marginBottom: 24,
+  },
+  historyTermTitle: {
+    color: '#8B5CF6',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  historyChangeItem: {
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#3D3D3D',
+    borderColor: '#374151',
   },
-  rowInputs: {
+  historyChangeHeader: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'row',
+    marginBottom: 12,
     gap: 8,
   },
-  confirmButton: {
-    backgroundColor: '#10B981',
+  historyChangeInfo: {
+    flex: 1,
   },
+  historyChangeAuthor: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  historyChangeDate: {
+    color: '#9CA3AF',
+    fontSize: 12,
+  },
+  historyChangeExactTime: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  historyChangeContent: {
+    gap: 8,
+  },
+  historyChangeLabel: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  historyChangeValue: {
+    color: '#E5E5E5',
+    fontSize: 14,
+    backgroundColor: '#1F2937',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  paymentStatusContainer: {
+    padding: 20,
+  },
+  statusCard: {
+    backgroundColor: '#1F2937',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statusAmount: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'monospace',
+  },
+  statusInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  statusLabel: {
+    color: '#9CA3AF',
+    fontSize: 14,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusescrow_held: {
+    backgroundColor: '#065F46',
+  },
+  statusescrow_released: {
+    backgroundColor: '#1D4ED8',
+  },
+  statuspending: {
+    backgroundColor: '#92400E',
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusDescription: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 12,
+  }
 });
 
 export default SponsorshipTerms;

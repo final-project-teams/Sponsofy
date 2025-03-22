@@ -18,7 +18,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  
   const { dealSocket, notificationSocket,contractSocket,chatSocket } = useSocket();
 
   useEffect(() => {
@@ -52,7 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (user && contractSocket) {
       console.log("Joining contract room with user ID:", user.id);
       contractSocket.emit("subscribe_contract", user.id);
-    }
+      }
     if (user && chatSocket) {
       console.log("Joining chat room with user ID:", user.id);
       chatSocket.emit("init_user", user);
@@ -76,14 +75,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Joining deal room with user ID:", response.data.user.id);
         dealSocket.emit("join_deal_room", response.data.user.id);
       }
-      if (chatSocket && response.data.user) {
-        console.log("Joining chat room with user ID:", response.data.user.id);
-        chatSocket.emit("init_user", response.data.user);
-      }
       if (contractSocket && response.data.user) {
         console.log("Joining contract room with user ID:", response.data.user.id);
         contractSocket.emit("subscribe_contract", response.data.user.id);
       }
+
     } catch (error) {
       console.error('Error fetching current user:', error);
       if (error.response && error.response.status === 401) {
@@ -112,7 +108,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Leaving chat room for user ID:", user.id);
         chatSocket.emit("leave_chat_room", user.id);
       }
-      
 
       
 

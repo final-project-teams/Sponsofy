@@ -78,6 +78,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         setChatSocket(chatIO);
         setNotificationSocket(notificationIO);
         setDealSocket(dealIO);
+        setContractSocket(contractIo);
 
         // Cleanup function
         return () => {
@@ -92,6 +93,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         chatSocket,
         notificationSocket,
         dealSocket,
+        contractSocket,
         isConnected
     };
 

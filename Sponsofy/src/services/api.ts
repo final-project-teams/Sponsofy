@@ -167,6 +167,14 @@ acceptTerm: async (contractId: number | string, termId: number | string, userRol
     throw error;
   }
 },
+getContractPaymentDetails: async (contractId: number) => {
+  try {
+    const response = await api.get(`/contract/${contractId}/payment-details`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 };
 
 
@@ -222,30 +230,104 @@ export const contentCreatorService = {
   
 };
 export const paymentService = {
-  async createPaymentIntent(amount: number, tokenToUse: string) {
+  createPaymentIntent: async (paymentData: {
+    contractId: number;
+    amount: number;
+    userId: number;
+    currency?: string;
+  }) => {
     try {
-      const response = await api.post(
-        '/payment/create-payment-intent',
-        { amount }, 
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': tokenToUse
-          }
-        }
-      );
-      
-      console.log('Payment intent created successfully:', response.data);
+      const response = await api.post('/payment/create-payment-intent', paymentData);
       return response.data;
-    } catch (error: any) {
-      console.error('Payment service error:', error);
+    } catch (error) {
+      throw error;
+    }
+  },
+  createEscrowPayment: async (paymentData: {
+    contractId: number;
+    amount: number;
+    userId: number;
+    currency?: string;
+    escrowHoldPeriod?: number;
+  }) => {
+    try {
+      const dataWithHoldPeriod = {
+        ...paymentData,
+        escrowHoldPeriod: paymentData.escrowHoldPeriod || 7
+      };
       
-      // Check if it's an auth issue and handle appropriately
-      if (error.response?.data?.error === 'jwt malformed') {
-        console.error('Authentication token is malformed. User might need to login again.');
-        // Handle re-authentication logic here if needed
+      console.log('Sending payment data:', JSON.stringify(dataWithHoldPeriod));
+      const response = await api.post('/payment/create-escrow-payment', dataWithHoldPeriod);
+
+      // Convert paymentId to string before returning
+      if (response.data.success && response.data.paymentId) {
+        response.data.paymentId = response.data.paymentId.toString();
+      }
+
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Server error response:', error.response.data);
+      }
+      throw error;
+    }
+  },
+  confirmEscrowPayment: async (paymentId: string) => {
+    try {
+      // Log the data being sent
+      console.log('Sending confirmation request for payment ID:', paymentId);
+      
+      // Make sure paymentId is sent in the correct format
+      const response = await api.post('/payment/confirm-escrow', { 
+        paymentId: paymentId.toString() // Ensure it's a string
+      });
+      
+      console.log('Confirmation response:', response.data);
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Server error during confirmation:', error.response.data);
+      }
+      console.error('Error confirming escrow payment:', error);
+      throw error;
+    }
+  },
+  getPaymentStatus: async (contractId: string) => {
+    try {
+      console.log('Fetching payment status for contract:', contractId);
+      const response = await api.get(`/payment/status/${contractId}`);
+      
+      console.log('Payment status response:', response.data);
+      
+      if (!response.data || !response.data.status) {
+        return {
+          status: 'pending',
+          message: 'Awaiting payment',
+          amount: 1000,
+          currency: 'usd'
+        };
       }
       
+      return response.data;
+    } catch (error) {
+      console.error('Error getting payment status:', error);
+      return {
+        status: 'pending',
+        message: 'Unable to fetch payment status',
+        amount: 1000,
+        currency: 'usd'
+      };
+    }
+  },
+  refundPayment: async (paymentId: string, reason: string) => {
+    try {
+      const response = await api.post('/payment/refund-payment', { 
+        paymentId,
+        reason 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error refunding payment:', error);
       throw error;
     }
   },
@@ -265,7 +347,7 @@ export const paymentService = {
     const response = await api.post(`/terms/confirm/${termId}`);
     return response.data;
   },
-
+  
 };
 
 // Fetch contracts for a specific company

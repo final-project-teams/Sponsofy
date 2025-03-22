@@ -57,7 +57,20 @@ module.exports.setupContractSocket = (contractIo) => {
       
       console.log(`Contract ${contractId} confirmed by ${confirmedBy}`);
     });
-
+    socket.on('escrow_payment_confirmed', (data) => {
+      const { contractId, confirmedBy, paymentId } = data;
+      
+      // Broadcast to all clients in the contract room
+      contractIo.to(`contract:${contractId}`).emit('escrow_payment_confirmed', {
+        status: 'escrow_held',
+        confirmedBy,
+        paymentId,
+        timestamp: new Date()
+      });
+      
+      console.log(`Escrow payment ${paymentId} confirmed by ${confirmedBy} in contract: ${contractId}`);
+    });
+    
     // Handle room leaving when user disconnects or leaves contract
     socket.on('leave_contract_room', (contractId) => {
       socket.leave(`contract:${contractId}`);

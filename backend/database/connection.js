@@ -112,8 +112,8 @@ Deal.belongsTo(Contract)
 Deal.hasMany(Term)
 Term.belongsTo(Deal)
 
-Term.hasMany(Negotiation)
-Negotiation.belongsTo(Term)
+  Term.hasMany(Negotiation)
+  Negotiation.belongsTo(Term)
 
 Contract.belongsTo(Criteria, { through: ContractCriteria })
 Criteria.belongsTo(Contract, { through: ContractCriteria })
@@ -150,12 +150,13 @@ SubCriteria.belongsTo(Criteria,{
 // Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
-Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
-Media.belongsTo(Deal, { foreignKey: 'dealId' });
+// Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
+// Media.belongsTo(Deal, { foreignKey: 'dealId' });
 
 // Account -> Post (One-to-Many)
 Account.hasMany(Post);
 Post.belongsTo(Account);
+
 
 // Contract -> Deal (One-to-Many)
 Contract.hasMany(Deal);
@@ -166,8 +167,9 @@ Deal.hasMany(Term);
 Term.belongsTo(Deal);
 
 // Term -> Negotiation (One-to-Many)
-Term.hasOne(Negotiation, {as:'negotiation', foreignKey: 'termId'});
-Negotiation.belongsTo(Term,  );
+  Term.hasOne(Negotiation, {as:'negotiation', foreignKey: 'termId'});
+  Negotiation.belongsTo(Term);
+
 
 Term.hasMany(Contract);
 Contract.belongsTo(Term);
@@ -258,9 +260,7 @@ ContentCreatorSubCriteria.belongsTo(SubCriteria, {
   foreignKey: "subCriteriaId",
   as: "sub_criterias",
 });
-  foreignKey: 'contentCreatorId',
-  as: 'contentCreator',
-});
+
 
 // Make sure this association exists and is properly defined
 // Message.hasOne(Media, { foreignKey: 'messageId' });
@@ -281,7 +281,7 @@ sequelize
   })
 
 // Sync models with the database
-//  sequelize.sync({ force: true }) // Use `force: true` only in development
+//  sequelize.sync({ alter: true }) // Use `force: true` only in development
 //   .then(() => {
 //     console.log('Database & tables have been synchronized!');
 //   })
