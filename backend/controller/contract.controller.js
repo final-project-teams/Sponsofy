@@ -339,17 +339,31 @@ module.exports = {
       const { contractId } = req.params;
       console.log('Fetching contract:', contractId);
 
-      // First, get the contract with company info
+      // Get contract with all necessary relationships
       const contract = await Contract.findOne({
         where: { id: contractId },
         include: [
           {
             model: Company,
-            required: false, // Make this optional
+            required: false,
             include: [{
               model: User,
               as: 'user',
               attributes: ['id', 'username']
+            }]
+          },
+          {
+            model: Deal,
+            required: false,
+            include: [{
+              model: ContentCreator,
+              as: 'ContentCreatorDeals',
+              required: false,
+              include: [{
+                model: User,
+                as: 'user',
+                attributes: ['id', 'username']
+              }]
             }]
           }
         ]
@@ -362,28 +376,16 @@ module.exports = {
         });
       }
 
-      // Separately fetch the deal to avoid null issues
-      const deal = await Deal.findOne({
-        where: { ContractId: contractId },
-        include: [{
-          model: ContentCreator,
-          as: 'ContentCreatorDeals',
-          required: false, // Make this optional
-          include: [{
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username']
-          }]
-        }]
+      // Get user IDs safely
+      const companyUserId = contract?.Company?.user?.id;
+      const creatorUserId = contract?.Deals?.[0]?.ContentCreatorDeals?.user?.id;
+
+      console.log('Found users:', {
+        companyUsername: contract?.Company?.user?.username,
+        creatorUsername: contract?.Deals?.[0]?.ContentCreatorDeals?.user?.username
       });
 
-      // Get user IDs safely using optional chaining
-      const companyUserId = contract?.Company?.user?.id;
-      const creatorUserId = deal?.ContentCreatorDeals?.user?.id;
-
-      console.log('User IDs found:', { companyUserId, creatorUserId });
-
-      // Get signatures if we have user IDs
+      // Get signatures
       const [companySignature, creatorSignature] = await Promise.all([
         companyUserId ? Signature.findOne({
           where: { userId: companyUserId },
@@ -395,9 +397,7 @@ module.exports = {
         }) : null
       ]);
 
-      // Combine everything into a response
       const contractData = contract.toJSON();
-      contractData.Deal = deal; // Add deal info to contract
       contractData.signatures = {
         companySignature,
         creatorSignature

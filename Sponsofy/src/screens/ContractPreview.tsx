@@ -58,15 +58,10 @@ const ContractPreview = ({ route }) => {
       padding: 20,
     },
     contractCard: {
-      backgroundColor: currentTheme.colors.surface,
-      borderRadius: currentTheme.borderRadius.large,
-      padding: 20,
-      marginBottom: 20,
-      borderWidth: 1,
-      borderColor: currentTheme.colors.border,
+      backgroundColor: currentTheme.colors.background,
     },
     header: {
-      alignItems: 'center',
+      alignItems: 'flex-start',
       marginBottom: 30,
       borderBottomWidth: 1,
       borderBottomColor: currentTheme.colors.border,
@@ -77,6 +72,13 @@ const ContractPreview = ({ route }) => {
       fontFamily: currentTheme.fonts.semibold,
       color: currentTheme.colors.text,
       textAlign: 'center',
+      marginTop: 50,
+      marginBottom: 10,
+    },
+    contractTitle: {
+      fontSize: currentTheme.fontSizes.xlarge,
+      fontFamily: currentTheme.fonts.semibold,
+      color: currentTheme.colors.text,
       marginBottom: 10,
     },
     contractId: {
@@ -133,7 +135,7 @@ const ContractPreview = ({ route }) => {
     signatureImage: {
       width: 150,
       height: 100,
-      borderRadius: currentTheme.borderRadius.medium,
+      borderRadius: 20,
       marginBottom: 10,
     },
     signatureName: {
@@ -255,11 +257,14 @@ const ContractPreview = ({ route }) => {
       <View style={styles.content}>
         <View style={styles.contractCard}>
           <View style={styles.header}>
-            <Text style={styles.title}>{contract.title}</Text>
-            <Text style={styles.contractId}>Contract ID: {contract.id}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(contract.status) }]}>
+            <Text style={styles.title}>Contract Preview</Text>
+            <Text style={styles.label}>Contract Title</Text>
+            <Text style={styles.contractTitle}>{contract.title}</Text>
+            <Text style={styles.label}>Contract ID</Text>
+            <Text style={styles.contractTitle}>{contract.id}</Text>
+            {/* <View style={[styles.statusBadge, { backgroundColor: getStatusColor(contract.status) }]}>
               <Text style={styles.statusText}>{contract.status}</Text>
-            </View>
+            </View> */}
           </View>
 
           <View style={styles.section}>
@@ -311,7 +316,7 @@ const ContractPreview = ({ route }) => {
                       style={styles.signatureImage}
                       resizeMode="contain"
                     />
-                    <Text style={styles.signatureName}>Company Representative</Text>
+                    <Text style={styles.signatureName}>{contract.Company?.name}'s Signature</Text>
                     <Text style={styles.signatureDate}>
                       {new Date(companySignature.created_at).toLocaleDateString()}
                     </Text>
@@ -332,7 +337,9 @@ const ContractPreview = ({ route }) => {
                       style={styles.signatureImage}
                       resizeMode="contain"
                     />
-                    <Text style={styles.signatureName}>Content Creator</Text>
+                    <Text style={styles.signatureName}>
+                      {contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}'s Signature
+                    </Text>
                     <Text style={styles.signatureDate}>
                       {new Date(creatorSignature.created_at).toLocaleDateString()}
                     </Text>
@@ -341,6 +348,9 @@ const ContractPreview = ({ route }) => {
                     <View style={{ alignItems: 'center' }}>
                       <Ionicons name="pencil-outline" size={32} color={currentTheme.colors.textSecondary} />
                       <Text style={[styles.text, { marginTop: 8 }]}>Pending signature</Text>
+                      <Text style={[styles.text, { fontSize: 12, color: currentTheme.colors.textSecondary }]}>
+                        {contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}
+                      </Text>
                     </View>
                 )}
               </View>
