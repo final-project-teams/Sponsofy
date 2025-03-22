@@ -234,6 +234,9 @@ const ContractPreview = ({ route }) => {
   const generatePDF = async () => {
     if (!contract) return;
 
+    // Get theme colors from your theme context
+    const { colors } = currentTheme;
+
     // Function to render terms from backend
     const renderPreTerms = () => {
       if (!contract.pre_Terms || contract.pre_Terms.length === 0) {
@@ -261,7 +264,8 @@ const ContractPreview = ({ route }) => {
               max-width: 850px;
               margin: 0 auto;
               line-height: 1.6;
-              color: #333;
+              color: ${colors.text};
+              background-color: ${colors.background};
             }
             * {
               box-sizing: border-box;
@@ -274,22 +278,22 @@ const ContractPreview = ({ route }) => {
               text-align: center;
               margin-bottom: 40px;
               padding: 20px;
-              border-bottom: 2px solid #0066cc;
+              border-bottom: 2px solid ${colors.primary};
             }
             .logo {
               font-size: 32px;
               font-weight: bold;
-              color: #0066cc;
+              color: ${colors.primary};
               margin-bottom: 10px;
             }
             .document-title {
               font-size: 24px;
-              color: #333;
+              color: ${colors.text};
             }
             .agreement-date {
               text-align: center;
               margin-bottom: 30px;
-              color: #666;
+              color: ${colors.textSecondary};
               font-size: 16px;
             }
             .party-info {
@@ -301,17 +305,17 @@ const ContractPreview = ({ route }) => {
             .party-box {
               flex: 1;
               padding: 25px;
-              background: #f8f9fa;
+              background: ${colors.surface};
               border-radius: 8px;
-              border: 1px solid #dee2e6;
+              border: 1px solid ${colors.border};
               min-height: fit-content;
             }
             .party-box h3 {
               margin: 0 0 20px 0;
-              color: #0066cc;
+              color: ${colors.primary};
               text-align: center;
               padding-bottom: 10px;
-              border-bottom: 2px solid #dee2e6;
+              border-bottom: 2px solid ${colors.border};
             }
             .info-field {
               margin-bottom: 12px;
@@ -321,36 +325,37 @@ const ContractPreview = ({ route }) => {
             }
             .info-label {
               font-weight: bold;
-              color: #495057;
+              color: ${colors.textSecondary};
               display: inline-block;
               width: 100px;
             }
             .info-value {
-              color: #333;
+              color: ${colors.text};
             }
             .section {
               margin-bottom: 30px;
               padding: 25px;
-              background: #f8f9fa;
+              background: ${colors.surface};
               border-radius: 8px;
-              border: 1px solid #dee2e6;
+              border: 1px solid ${colors.border};
             }
             .section h2 {
-              color: #0066cc;
+              color: ${colors.primary};
               text-align: center;
               padding-bottom: 10px;
               margin-top: 0;
               margin-bottom: 20px;
-              border-bottom: 2px solid #dee2e6;
+              border-bottom: 2px solid ${colors.border};
             }
             .terms-section {
-              background: white;
+              background: ${colors.background};
               padding: 15px;
               border-radius: 6px;
               margin-bottom: 15px;
+              border: 1px solid ${colors.border};
             }
             .terms-section h3 {
-              color: #495057;
+              color: ${colors.primary};
               margin-top: 0;
               margin-bottom: 15px;
             }
@@ -368,19 +373,19 @@ const ContractPreview = ({ route }) => {
               gap: 40px;
               margin-top: 50px;
               padding: 30px;
-              background: #f8f9fa;
+              background: ${colors.surface};
               border-radius: 8px;
-              border: 1px solid #dee2e6;
+              border: 1px solid ${colors.border};
             }
             .signature-box {
               flex: 1;
               text-align: center;
               padding: 20px;
-              background: white;
+              background: ${colors.background};
               border-radius: 6px;
             }
             .signature-box h3 {
-              color: #0066cc;
+              color: ${colors.primary};
               margin-bottom: 20px;
             }
             .signature-image {
@@ -395,7 +400,7 @@ const ContractPreview = ({ route }) => {
             }
             .date-line {
               margin-top: 15px;
-              color: #666;
+              color: ${colors.textSecondary};
             }
             .term-content {
                 background: white;
@@ -406,11 +411,11 @@ const ContractPreview = ({ route }) => {
             .term-status {
                 margin-top: 10px;
                 padding: 5px 10px;
-                background: #e9ecef;
+                background: ${colors.surface};
                 border-radius: 4px;
                 display: inline-block;
                 font-size: 14px;
-                color: #495057;
+                color: ${colors.textSecondary};
             }
           </style>
         </head>
