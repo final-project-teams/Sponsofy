@@ -1,36 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { API_URL } from '../config/source';
 import api from '../config/axios';
 import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { printToFileAsync } from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
-    interface Contract {
+interface Contract {
+  id: number;
+  title: string;
+  description: string;
+  budget: number;
+  payment_terms: string;
+  start_date: string;
+  end_date: string;
+  rank: string;
+  status: string;
+  Company: {
+    name: string;
+    user: {
+      id: number;
+      username: string;
+    }
+  };
+  Deals: [{
+    ContentCreatorDeals: {
+      user: {
         id: number;
-        title: string;
-        description: string;
-      budget: number;
-      payment_terms: string;
-      start_date: string;
-      end_date: string;
-      rank: string;
-      status: string;
-      Company: {
-        name: string;
-        user: {
-          id: number;
-          username: string;
-        }
-      };
-      Deals: [{
-        ContentCreatorDeals: {
-          user: {
-            id: number;
-            username: string;
-          }
-        }
-      }];
-        createdAt: string;
+        username: string;
+      }
+    }
+  }];
+  createdAt: string;
 }
 
 interface Signature {
@@ -41,7 +43,7 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const  contractId  = 4;
+  const contractId = 4;
   const { currentTheme } = useTheme();
   const [contract, setContract] = useState<Contract | null>(null);
   const [companySignature, setCompanySignature] = useState<Signature | null>(null);
@@ -162,6 +164,18 @@ const ContractPreview = ({ route }) => {
       fontFamily: currentTheme.fonts.medium,
       color: currentTheme.colors.white,
     },
+    downloadButton: {
+      position: 'absolute',
+      bottom: 20,
+      right: 20,
+      backgroundColor: '#333',
+      borderRadius: 30,
+      padding: 15,
+      elevation: 5,
+    },
+    downloadIcon: {
+      color: '#fff',
+    },
   });
 
   const getSignatureUrl = (signature: Signature | null) => {
@@ -209,6 +223,74 @@ const ContractPreview = ({ route }) => {
     }
   }, [contractId]);
 
+  const generatePDF = async () => {
+    if (!contract) return;
+
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: ${currentTheme.colors.background};
+              color: ${currentTheme.colors.text};
+              padding: 20px;
+            }
+            h1, h2, h3 {
+              color: ${currentTheme.colors.text};
+            }
+            .section {
+              margin-bottom: 20px;
+            }
+            .contract-info, .signatures {
+              margin-bottom: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Contract Preview</h1>
+          <div class="section contract-info">
+            <h2>Contract Title: ${contract.title}</h2>
+            <p><strong>Contract ID:</strong> ${contract.id}</p>
+            <p><strong>Company:</strong> ${contract.Company?.name}</p>
+            <p><strong>Amount:</strong> $${contract.budget}</p>
+            <p><strong>Start Date:</strong> ${new Date(contract.start_date).toLocaleDateString()}</p>
+            <p><strong>End Date:</strong> ${new Date(contract.end_date).toLocaleDateString()}</p>
+            <p><strong>Rank:</strong> ${contract.rank}</p>
+            <p><strong>Description:</strong> ${contract.description}</p>
+            <p><strong>Payment Terms:</strong> ${contract.payment_terms}</p>
+          </div>
+          <div class="section signatures">
+            <h3>Signatures</h3>
+            <div>
+              <h4>Company's Signature</h4>
+              ${companySignature ? `
+                <img src="${getSignatureUrl(companySignature)}" alt="Company Signature" width="150" height="100" />
+                <p>${contract.Company?.name}'s Signature</p>
+                <p>Date: ${new Date(companySignature.created_at).toLocaleDateString()}</p>
+              ` : `<p>Pending signature</p>`}
+            </div>
+            <div>
+              <h4>Content Creator's Signature</h4>
+              ${creatorSignature ? `
+                <img src="${getSignatureUrl(creatorSignature)}" alt="Creator Signature" width="150" height="100" />
+                <p>${contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}'s Signature</p>
+                <p>Date: ${new Date(creatorSignature.created_at).toLocaleDateString()}</p>
+              ` : `<p>Pending signature</p>`}
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    try {
+      const { uri } = await printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -237,21 +319,6 @@ const ContractPreview = ({ route }) => {
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return '#4CAF50';
-      case 'pending':
-        return '#FFC107';
-      case 'completed':
-        return '#2196F3';
-      case 'terminated':
-        return '#F44336';
-      default:
-        return '#9E9E9E';
-    }
-  };
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
@@ -262,9 +329,6 @@ const ContractPreview = ({ route }) => {
             <Text style={styles.contractTitle}>{contract.title}</Text>
             <Text style={styles.label}>Contract ID</Text>
             <Text style={styles.contractTitle}>{contract.id}</Text>
-            {/* <View style={[styles.statusBadge, { backgroundColor: getStatusColor(contract.status) }]}>
-              <Text style={styles.statusText}>{contract.status}</Text>
-            </View> */}
           </View>
 
           <View style={styles.section}>
@@ -279,25 +343,12 @@ const ContractPreview = ({ route }) => {
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Start Date:</Text>
-              <Text style={styles.value}>
-                {new Date(contract.start_date).toLocaleDateString()}
-              </Text>
+              <Text style={styles.value}>{new Date(contract.start_date).toLocaleDateString()}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>End Date:</Text>
-              <Text style={styles.value}>
-                {new Date(contract.end_date).toLocaleDateString()}
-              </Text>
+              <Text style={styles.value}>{new Date(contract.end_date).toLocaleDateString()}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Rank:</Text>
-              <Text style={styles.value}>{contract.rank}</Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.text}>{contract.description}</Text>
           </View>
 
           <View style={styles.section}>
@@ -309,55 +360,41 @@ const ContractPreview = ({ route }) => {
             <Text style={styles.sectionTitle}>Signatures</Text>
             <View style={styles.signatureContainer}>
               <View style={styles.signatureBox}>
+                <Image
+                  source={{ uri: getSignatureUrl(companySignature) || '' }}
+                  style={styles.signatureImage}
+                />
+                <Text style={styles.signatureName}>Company's Signature</Text>
                 {companySignature ? (
-                  <>
-                    <Image
-                      source={{ uri: getSignatureUrl(companySignature) }}
-                      style={styles.signatureImage}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.signatureName}>{contract.Company?.name}'s Signature</Text>
-                    <Text style={styles.signatureDate}>
-                      {new Date(companySignature.created_at).toLocaleDateString()}
-                    </Text>
-                  </>
+                  <Text style={styles.signatureDate}>
+                    {new Date(companySignature.created_at).toLocaleDateString()}
+                  </Text>
                 ) : (
-                    <View style={{ alignItems: 'center' }}>
-                      <Ionicons name="pencil-outline" size={32} color={currentTheme.colors.textSecondary} />
-                      <Text style={[styles.text, { marginTop: 8 }]}>Pending signature</Text>
-                    </View>
+                  <Text style={styles.signatureDate}>Pending signature</Text>
                 )}
               </View>
-
               <View style={styles.signatureBox}>
+                <Image
+                  source={{ uri: getSignatureUrl(creatorSignature) || '' }}
+                  style={styles.signatureImage}
+                />
+                <Text style={styles.signatureName}>Content Creator's Signature</Text>
                 {creatorSignature ? (
-                  <>
-                    <Image
-                      source={{ uri: getSignatureUrl(creatorSignature) }}
-                      style={styles.signatureImage}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.signatureName}>
-                      {contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}'s Signature
-                    </Text>
-                    <Text style={styles.signatureDate}>
-                      {new Date(creatorSignature.created_at).toLocaleDateString()}
-                    </Text>
-                  </>
+                  <Text style={styles.signatureDate}>
+                    {new Date(creatorSignature.created_at).toLocaleDateString()}
+                  </Text>
                 ) : (
-                    <View style={{ alignItems: 'center' }}>
-                      <Ionicons name="pencil-outline" size={32} color={currentTheme.colors.textSecondary} />
-                      <Text style={[styles.text, { marginTop: 8 }]}>Pending signature</Text>
-                      <Text style={[styles.text, { fontSize: 12, color: currentTheme.colors.textSecondary }]}>
-                        {contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}
-                      </Text>
-                    </View>
+                  <Text style={styles.signatureDate}>Pending signature</Text>
                 )}
               </View>
             </View>
           </View>
         </View>
-    </View>
+
+        <TouchableOpacity onPress={generatePDF} style={styles.downloadButton}>
+          <Ionicons name="download-outline" size={24} style={styles.downloadIcon} />
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 };
