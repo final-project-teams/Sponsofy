@@ -22,6 +22,7 @@ interface Contract {
     user: {
       id: number;
       username: string;
+      email: string;
     }
   };
   Deals: [{
@@ -29,10 +30,17 @@ interface Contract {
       user: {
         id: number;
         username: string;
+        email: string;
       }
     }
   }];
   createdAt: string;
+  pre_Terms?: {
+    id: number;
+    title: string;
+    description: string;
+    status: string;
+  }[];
 }
 
 interface Signature {
@@ -226,65 +234,378 @@ const ContractPreview = ({ route }) => {
   const generatePDF = async () => {
     if (!contract) return;
 
+    // Function to render terms from backend
+    const renderPreTerms = () => {
+      if (!contract.pre_Terms || contract.pre_Terms.length === 0) {
+        return '<p>No specific terms defined for this contract.</p>';
+      }
+
+      return contract.pre_Terms.map((term, index) => `
+            <div class="terms-section">
+                <h3>Term ${index + 1}: ${term.title}</h3>
+                <div class="term-content">
+                    <p>${term.description}</p>
+                    <div class="term-status">Status: ${term.status}</div>
+                </div>
+            </div>
+        `).join('');
+    };
+
     const htmlContent = `
       <html>
         <head>
           <style>
             body {
               font-family: Arial, sans-serif;
-              background-color: ${currentTheme.colors.background};
-              color: ${currentTheme.colors.text};
-              padding: 20px;
+              padding: 40px;
+              max-width: 850px;
+              margin: 0 auto;
+              line-height: 1.6;
+              color: #333;
             }
-            h1, h2, h3 {
-              color: ${currentTheme.colors.text};
+            * {
+              box-sizing: border-box;
+            }
+            .container {
+              width: 100%;
+              margin: 0 auto;
+            }
+            .logo-header {
+              text-align: center;
+              margin-bottom: 40px;
+              padding: 20px;
+              border-bottom: 2px solid #0066cc;
+            }
+            .logo {
+              font-size: 32px;
+              font-weight: bold;
+              color: #0066cc;
+              margin-bottom: 10px;
+            }
+            .document-title {
+              font-size: 24px;
+              color: #333;
+            }
+            .agreement-date {
+              text-align: center;
+              margin-bottom: 30px;
+              color: #666;
+              font-size: 16px;
+            }
+            .party-info {
+              display: flex;
+              justify-content: space-between;
+              gap: 30px;
+              margin-bottom: 40px;
+            }
+            .party-box {
+              flex: 1;
+              padding: 25px;
+              background: #f8f9fa;
+              border-radius: 8px;
+              border: 1px solid #dee2e6;
+              min-height: fit-content;
+            }
+            .party-box h3 {
+              margin: 0 0 20px 0;
+              color: #0066cc;
+              text-align: center;
+              padding-bottom: 10px;
+              border-bottom: 2px solid #dee2e6;
+            }
+            .info-field {
+              margin-bottom: 12px;
+              padding: 8px;
+              background: white;
+              border-radius: 4px;
+            }
+            .info-label {
+              font-weight: bold;
+              color: #495057;
+              display: inline-block;
+              width: 100px;
+            }
+            .info-value {
+              color: #333;
             }
             .section {
+              margin-bottom: 30px;
+              padding: 25px;
+              background: #f8f9fa;
+              border-radius: 8px;
+              border: 1px solid #dee2e6;
+            }
+            .section h2 {
+              color: #0066cc;
+              text-align: center;
+              padding-bottom: 10px;
+              margin-top: 0;
+              margin-bottom: 20px;
+              border-bottom: 2px solid #dee2e6;
+            }
+            .terms-section {
+              background: white;
+              padding: 15px;
+              border-radius: 6px;
+              margin-bottom: 15px;
+            }
+            .terms-section h3 {
+              color: #495057;
+              margin-top: 0;
+              margin-bottom: 15px;
+            }
+            .terms-list {
+              padding-left: 20px;
+              margin: 0;
+            }
+            .terms-list li {
+              margin-bottom: 15px;
+              line-height: 1.6;
+            }
+            .signatures {
+              display: flex;
+              justify-content: space-between;
+              gap: 40px;
+              margin-top: 50px;
+              padding: 30px;
+              background: #f8f9fa;
+              border-radius: 8px;
+              border: 1px solid #dee2e6;
+            }
+            .signature-box {
+              flex: 1;
+              text-align: center;
+              padding: 20px;
+              background: white;
+              border-radius: 6px;
+            }
+            .signature-box h3 {
+              color: #0066cc;
               margin-bottom: 20px;
             }
-            .contract-info, .signatures {
-              margin-bottom: 20px;
+            .signature-image {
+              max-width: 200px;
+              margin: 15px auto;
+              display: block;
+            }
+            .signature-line {
+              border-top: 1px solid #000;
+              margin: 70px auto 10px;
+              width: 80%;
+            }
+            .date-line {
+              margin-top: 15px;
+              color: #666;
+            }
+            .term-content {
+                background: white;
+                padding: 15px;
+                border-radius: 6px;
+                margin-top: 10px;
+            }
+            .term-status {
+                margin-top: 10px;
+                padding: 5px 10px;
+                background: #e9ecef;
+                border-radius: 4px;
+                display: inline-block;
+                font-size: 14px;
+                color: #495057;
             }
           </style>
         </head>
         <body>
-          <h1>Contract Preview</h1>
-          <div class="section contract-info">
-            <h2>Contract Title: ${contract.title}</h2>
-            <p><strong>Contract ID:</strong> ${contract.id}</p>
-            <p><strong>Company:</strong> ${contract.Company?.name}</p>
-            <p><strong>Amount:</strong> $${contract.budget}</p>
-            <p><strong>Start Date:</strong> ${new Date(contract.start_date).toLocaleDateString()}</p>
-            <p><strong>End Date:</strong> ${new Date(contract.end_date).toLocaleDateString()}</p>
-            <p><strong>Rank:</strong> ${contract.rank}</p>
-            <p><strong>Description:</strong> ${contract.description}</p>
-            <p><strong>Payment Terms:</strong> ${contract.payment_terms}</p>
+          <div class="container">
+            <div class="logo-header">
+              <div class="logo">Sponsofy</div>
+              <div class="document-title">Sponsorship Agreement</div>
+            </div>
+
+            <div class="agreement-date">
+              Agreement Date: ${new Date().toLocaleDateString()}
+            </div>
+
+            <div class="party-info">
+              <div class="party-box">
+                <h3>Company Information</h3>
+                <div class="info-field">
+                  <span class="info-label">Name:</span>
+                  <span class="info-value">${contract.Company?.name}</span>
+                </div>
+                <div class="info-field">
+                  <span class="info-label">Username:</span>
+                  <span class="info-value">${contract.Company?.user?.username}</span>
+                </div>
+                <div class="info-field">
+                  <span class="info-label">Email:</span>
+                  <span class="info-value">${contract.Company?.user?.email || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div class="party-box">
+                <h3>Content Creator Information</h3>
+                <div class="info-field">
+                  <span class="info-label">Name:</span>
+                  <span class="info-value">${contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'N/A'}</span>
+                </div>
+                <div class="info-field">
+                  <span class="info-label">Username:</span>
+                  <span class="info-value">${contract.Deals?.[0]?.ContentCreatorDeals?.user?.username}</span>
+                </div>
+                <div class="info-field">
+                  <span class="info-label">Email:</span>
+                  <span class="info-value">${contract.Deals?.[0]?.ContentCreatorDeals?.user?.email || 'N/A'}</span>
+                </div>
+                <div class="info-field">
+                ${contract.Deals?.[0]?.ContentCreatorDeals?.accounts?.map(account => `
+                  <div class="info-field">
+                    <span class="info-label">${account.platform}:</span>
+                    <span class="info-value">${account.username}</span>
+                  </div>
+                `).join('') || ''}
+              </div>
+            </div>
           </div>
-          <div class="section signatures">
-            <h3>Signatures</h3>
-            <div>
-              <h4>Company's Signature</h4>
+
+          <div class="section">
+            <h2>1. Agreement Details</h2>
+            <div class="terms-section">
+              <div class="info-field">
+                <span class="info-label">Contract ID:</span>
+                <span class="info-value">${contract.id}</span>
+              </div>
+              <div class="info-field">
+                <span class="info-label">Start Date:</span>
+                <span class="info-value">${new Date(contract.start_date).toLocaleDateString()}</span>
+              </div>
+              <div class="info-field">
+                <span class="info-label">End Date:</span>
+                <span class="info-value">${new Date(contract.end_date).toLocaleDateString()}</span>
+              </div>
+              <div class="info-field">
+                <span class="info-label">Budget:</span>
+                <span class="info-value">$${contract.budget}</span>
+              </div>
+              <div class="info-field">
+                <span class="info-label">Rank:</span>
+                <span class="info-value">${contract.rank}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>2. Scope of Services</h2>
+            <div class="terms-section">
+              <p>${contract.description}</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>3. Payment Terms</h2>
+            <div class="terms-section">
+              <p>${contract.payment_terms}</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>4. Contract Terms</h2>
+            ${renderPreTerms()}
+          </div>
+
+          <div class="section">
+            <h2>5. Standard Terms and Conditions</h2>
+            
+            <div class="terms-section">
+              <h3>5.1 Content Requirements</h3>
+              <ul class="terms-list">
+                <li>All content must be original and created specifically for this campaign.</li>
+                <li>Content must comply with platform guidelines and applicable laws.</li>
+                <li>The Company has the right to review content before publication.</li>
+                <li>Content must be posted during peak engagement hours.</li>
+              </ul>
+            </div>
+
+            <div class="terms-section">
+              <h3>5.2 Deliverables</h3>
+              <ul class="terms-list">
+                <li>Content Creator will provide detailed analytics and engagement metrics.</li>
+                <li>Regular progress updates will be shared through the Sponsofy platform.</li>
+                <li>All agreed-upon content must be delivered according to the timeline.</li>
+              </ul>
+            </div>
+
+            <div class="terms-section">
+              <h3>5.3 Intellectual Property</h3>
+              <ul class="terms-list">
+                <li>Content Creator retains ownership of original content.</li>
+                <li>Company receives license to use content for promotional purposes.</li>
+                <li>Both parties must respect each other's intellectual property rights.</li>
+              </ul>
+            </div>
+
+            <div class="terms-section">
+              <h3>5.4 Confidentiality</h3>
+              <ul class="terms-list">
+                <li>Both parties agree to maintain confidentiality of sensitive information.</li>
+                <li>Campaign details should not be shared before official launch.</li>
+                <li>Non-disclosure agreement applies to all proprietary information.</li>
+              </ul>
+            </div>
+
+            <div class="terms-section">
+              <h3>5.5 Termination</h3>
+              <ul class="terms-list">
+                <li>30-day written notice required for early termination.</li>
+                <li>Pro-rated payment for completed work in case of early termination.</li>
+                <li>Immediate termination allowed for breach of agreement.</li>
+              </ul>
+            </div>
+
+            <div class="terms-section">
+              <h3>5.6 Dispute Resolution</h3>
+              <ul class="terms-list">
+                <li>Disputes will be resolved through mediation first.</li>
+                <li>Sponsofy platform's dispute resolution system will be used.</li>
+                <li>Legal action only as last resort.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="signatures">
+            <div class="signature-box">
+              <h3>Company Representative</h3>
               ${companySignature ? `
-                <img src="${getSignatureUrl(companySignature)}" alt="Company Signature" width="150" height="100" />
-                <p>${contract.Company?.name}'s Signature</p>
-                <p>Date: ${new Date(companySignature.created_at).toLocaleDateString()}</p>
-              ` : `<p>Pending signature</p>`}
+                <img src="${getSignatureUrl(companySignature)}" alt="Company Signature" class="signature-image" />
+                <p>${contract.Company?.name}</p>
+                <p class="date-line">Date: ${new Date(companySignature.created_at).toLocaleDateString()}</p>
+              ` : `
+                <div class="signature-line">Signature</div>
+                <p class="date-line">Date: _____________</p>
+              `}
             </div>
-            <div>
-              <h4>Content Creator's Signature</h4>
+
+            <div class="signature-box">
+              <h3>Content Creator</h3>
               ${creatorSignature ? `
-                <img src="${getSignatureUrl(creatorSignature)}" alt="Creator Signature" width="150" height="100" />
-                <p>${contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}'s Signature</p>
-                <p>Date: ${new Date(creatorSignature.created_at).toLocaleDateString()}</p>
-              ` : `<p>Pending signature</p>`}
+                <img src="${getSignatureUrl(creatorSignature)}" alt="Creator Signature" class="signature-image" />
+                <p>${contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}</p>
+                <p class="date-line">Date: ${new Date(creatorSignature.created_at).toLocaleDateString()}</p>
+              ` : `
+                <div class="signature-line">Signature</div>
+                <p class="date-line">Date: _____________</p>
+              `}
             </div>
           </div>
-        </body>
-      </html>
-    `;
+        </div>
+      </body>
+    </html>
+  `;
 
     try {
-      const { uri } = await printToFileAsync({ html: htmlContent });
+      const { uri } = await printToFileAsync({
+        html: htmlContent,
+        base64: false
+      });
       await Sharing.shareAsync(uri);
     } catch (error) {
       console.error('Error generating PDF:', error);

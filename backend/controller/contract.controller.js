@@ -345,26 +345,33 @@ module.exports = {
         include: [
           {
             model: Company,
-            required: false,
-            include: [{
-              model: User,
+            include: [{ 
+              model: User, 
               as: 'user',
-              attributes: ['id', 'username']
+              attributes: ['id', 'username', 'email']
             }]
           },
           {
             model: Deal,
-            required: false,
             include: [{
               model: ContentCreator,
               as: 'ContentCreatorDeals',
-              required: false,
-              include: [{
-                model: User,
-                as: 'user',
-                attributes: ['id', 'username']
-              }]
+              include: [
+                { 
+                  model: User, 
+                  as: 'user',
+                  attributes: ['id', 'username', 'email']
+                },
+                {
+                  model: Account,
+                  as: 'accounts'
+                }
+              ]
             }]
+          },
+          {
+            model: pre_Term, // Include pre-defined terms
+            attributes: ['id', 'title', 'description', 'status']
           }
         ]
       });
