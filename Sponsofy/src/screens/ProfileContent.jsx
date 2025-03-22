@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   StyleSheet,
   View,
@@ -16,29 +16,32 @@ import {
   FlatList,
   Animated,
   Linking,
+  Dimensions,
 } from "react-native"
 import * as ImagePicker from "expo-image-picker"
-import { Feather, FontAwesome5, Entypo } from "@expo/vector-icons"
+import { Feather, FontAwesome5, Entypo, FontAwesome, AntDesign } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import api from "../config/axios"
 import { API_URL } from "../config/source"
 import SideBarContent from "../components/SideBarContent"
 
+const { width } = Dimensions.get("window")
+
 const ProfileContent = () => {
   const navigation = useNavigation()
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [profilePictureUrl, setProfilePictureUrl] = useState(null)
-  const [dealsModalVisible, setDealsModalVisible] = useState(false)
-  const [deals, setDeals] = useState([])
-  const [loadingDeals, setLoadingDeals] = useState(false)
-  const [selectedDeal, setSelectedDeal] = useState(null)
-  const [dealDetailsVisible, setDealDetailsVisible] = useState(false)
-  const [creatorInfoVisible, setCreatorInfoVisible] = useState(false)
   const [sidebarVisible, setSidebarVisible] = useState(false)
   const sidebarOffset = useState(new Animated.Value(-233))[0]
   const [portfolioLinks, setPortfolioLinks] = useState([])
+  const [selectedPlatform, setSelectedPlatform] = useState("instagram")
+  const [socialMediaStats, setSocialMediaStats] = useState([])
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [mediaLinks, setMediaLinks] = useState([])
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imageModalVisible, setImageModalVisible] = useState(false)
 
   // Toggle sidebar with animation
   const toggleSidebar = () => {
@@ -146,60 +149,71 @@ const ProfileContent = () => {
     }
   }
 
-  // Fetch all deals
-  const fetchDeals = async () => {
+  // Fetch social media stats and media links
+  const fetchSocialMediaStats = async () => {
     try {
-      setLoadingDeals(true)
+      setLoadingStats(true)
       const token = await AsyncStorage.getItem("userToken")
 
-      if (token) {
-        const response = await api.get("/api/deals", {
+      if (token && userProfile) {
+        const response = await api.get(`/user/${userProfile.id}/social-media`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
 
-        setDeals(response.data.deals || [])
+        if (response.data && response.data.stats) {
+          setSocialMediaStats(response.data.stats)
+
+          // Filter media links for the selected platform
+          const links = response.data.stats.filter(
+            (item) => item.platform === selectedPlatform && item.file_format === "link",
+          )
+          setMediaLinks(links)
+        }
       }
     } catch (error) {
-      console.error("Error fetching deals:", error)
-      Alert.alert("Error", "Failed to load deals")
+      console.error("Error fetching social media stats:", error)
     } finally {
-      setLoadingDeals(false)
+      setLoadingStats(false)
     }
   }
 
-  // Refresh deals when returning from AddDeal screen
+  // Get stats for selected platform
+  const getStatsForPlatform = (platform) => {
+    if (!socialMediaStats || socialMediaStats.length === 0) {
+      return { followers: 0, likes: 0, views: 0 }
+    }
+
+    const platformStats = socialMediaStats.find(
+      (stat) => stat.platform && stat.platform.toLowerCase() === platform.toLowerCase() && stat.file_format !== "link",
+    )
+
+    return platformStats || { followers: 0, likes: 0, views: 0 }
+  }
+
+  // Refresh profile when returning from other screens
   useFocusEffect(
     useCallback(() => {
       fetchUserProfile()
-      fetchDeals()
     }, []),
   )
 
-  // Fetch a specific deal by ID
-  const fetchDealById = async (dealId) => {
-    try {
-      setLoadingDeals(true)
-      const token = await AsyncStorage.getItem("userToken")
-
-      if (token) {
-        const response = await api.get(`/addDeal/${dealId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        setSelectedDeal(response.data.deal)
-        setDealDetailsVisible(true)
-      }
-    } catch (error) {
-      console.error("Error fetching deal details:", error)
-      Alert.alert("Error", "Failed to load deal details")
-    } finally {
-      setLoadingDeals(false)
+  // Fetch social media stats when profile is loaded
+  useEffect(() => {
+    if (userProfile) {
+      fetchSocialMediaStats()
     }
-  }
+  }, [userProfile])
+
+  // Update media links when platform changes
+  useEffect(() => {
+    if (userProfile && socialMediaStats.length > 0) {
+      // Filter media links for the selected platform
+      const links = socialMediaStats.filter((item) => item.platform === selectedPlatform && item.file_format === "link")
+      setMediaLinks(links)
+    }
+  }, [selectedPlatform, socialMediaStats])
 
   // Navigate to edit profile screen
   const handleEditProfile = () => {
@@ -267,15 +281,29 @@ const ProfileContent = () => {
     }
   }
 
-  // Handle opening the deals modal
-  const handleViewDeals = () => {
-    fetchDeals()
-    setDealsModalVisible(true)
+  // Handle platform selection
+  const handlePlatformSelect = (platform) => {
+    setSelectedPlatform(platform)
   }
 
-  // Handle viewing a specific deal
-  const handleViewDealDetails = (dealId) => {
-    fetchDealById(dealId)
+  // Handle image selection
+  const handleImageSelect = (image) => {
+    setSelectedImage(image)
+    setImageModalVisible(true)
+  }
+
+  // Format numbers with K, M, B suffixes
+  const formatNumber = (num) => {
+    if (num >= 1000000000) {
+      return (num / 1000000000).toFixed(1) + "B"
+    }
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + "M"
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + "K"
+    }
+    return num.toString()
   }
 
   if (loading) {
@@ -293,6 +321,9 @@ const ProfileContent = () => {
       </View>
     )
   }
+
+  // Get current platform stats
+  const currentPlatformStats = getStatsForPlatform(selectedPlatform)
 
   return (
     <SafeAreaView style={styles.container}>
@@ -322,9 +353,6 @@ const ProfileContent = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sponsofy</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIcon} onPress={handleViewDeals}>
-            <FontAwesome5 name="handshake" size={20} color="white" />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.navigate("Notifications")}>
             <Feather name="bell" size={24} color="white" />
           </TouchableOpacity>
@@ -358,161 +386,171 @@ const ProfileContent = () => {
               </Text>
               <Text style={styles.premiumBadge}>{userProfile.isPremium ? "Premium Member" : "Regular Member"}</Text>
 
+              {/* Bio */}
+              <Text style={styles.bio}>{userProfile.profile.bio || "No bio available"}</Text>
+
               {/* Edit Profile Button */}
               <TouchableOpacity style={styles.editProfileButton} onPress={handleEditProfile}>
                 <Text style={styles.editProfileText}>Edit Profile</Text>
               </TouchableOpacity>
 
-              {/* Platform Selection Button */}
-              <TouchableOpacity
-                style={[styles.editProfileButton, styles.platformButton]}
-                onPress={handleSelectPlatform}
-              >
-                <Text style={styles.editProfileText}>Select Platform</Text>
-              </TouchableOpacity>
-
               {/* View Info Button */}
-              <TouchableOpacity
-                style={[styles.editProfileButton, styles.viewInfoButton]}
-                onPress={() => setCreatorInfoVisible(!creatorInfoVisible)}
-              >
-                <Text style={styles.editProfileText}>{creatorInfoVisible ? "Hide Info" : "View Info"}</Text>
+              <TouchableOpacity style={styles.editProfileButton} onPress={navigateToCreatorInfo}>
+                <Text style={styles.editProfileText}>View Info</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Content Creator Info Section - Only Bio and Portfolio Links */}
-          {creatorInfoVisible && (
-            <View style={styles.creatorInfoContainer}>
-              <Text style={styles.creatorInfoTitle}>Creator Information</Text>
+          {/* Select Platform Button */}
+          <View style={styles.selectPlatformContainer}>
+            <TouchableOpacity style={styles.platformButton} onPress={handleSelectPlatform}>
+              <Text style={styles.platformButtonText}>Select Platform</Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* Bio */}
-              <Text style={styles.creatorInfoLabel}>Bio:</Text>
-              <Text style={styles.creatorInfoText}>{userProfile.profile.bio || "No bio available"}</Text>
+          {/* Social Media Stats Section */}
+          <View style={styles.socialMediaContainer}>
+            <Text style={styles.sectionTitle}>Social Media Stats</Text>
 
-              {/* Portfolio Links */}
-              <Text style={styles.creatorInfoLabel}>Portfolio Links:</Text>
-              {portfolioLinks.length > 0 ? (
-                <View style={styles.linksContainer}>
-                  {portfolioLinks.map((link, index) => (
-                    <TouchableOpacity key={index} style={styles.linkButton} onPress={() => openUrl(link)}>
-                      <Feather name="link" size={16} color="white" style={styles.linkIcon} />
-                      <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="tail">
-                        {link}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+            {/* Platform Selection and Stats */}
+            <View style={styles.platformStatsContainer}>
+              {/* Platform Buttons Row */}
+              <View style={styles.platformsRow}>
+                <TouchableOpacity
+                  style={[styles.platformButton, selectedPlatform === "instagram" && styles.selectedPlatformButton]}
+                  onPress={() => handlePlatformSelect("instagram")}
+                >
+                  <AntDesign name="instagram" size={20} color={selectedPlatform === "instagram" ? "white" : "#888"} />
+                  <Text
+                    style={[styles.platformButtonText, selectedPlatform === "instagram" && styles.selectedPlatformText]}
+                  >
+                    Instagram
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.platformButton, selectedPlatform === "youtube" && styles.selectedPlatformButton]}
+                  onPress={() => handlePlatformSelect("youtube")}
+                >
+                  <AntDesign name="youtube" size={20} color={selectedPlatform === "youtube" ? "white" : "#888"} />
+                  <Text
+                    style={[styles.platformButtonText, selectedPlatform === "youtube" && styles.selectedPlatformText]}
+                  >
+                    YouTube
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.platformButton, selectedPlatform === "facebook" && styles.selectedPlatformButton]}
+                  onPress={() => handlePlatformSelect("facebook")}
+                >
+                  <AntDesign
+                    name="facebook-square"
+                    size={20}
+                    color={selectedPlatform === "facebook" ? "white" : "#888"}
+                  />
+                  <Text
+                    style={[styles.platformButtonText, selectedPlatform === "facebook" && styles.selectedPlatformText]}
+                  >
+                    Facebook
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.platformButton, selectedPlatform === "tiktok" && styles.selectedPlatformButton]}
+                  onPress={() => handlePlatformSelect("tiktok")}
+                >
+                  <FontAwesome5 name="tiktok" size={20} color={selectedPlatform === "tiktok" ? "white" : "#888"} />
+                  <Text
+                    style={[styles.platformButtonText, selectedPlatform === "tiktok" && styles.selectedPlatformText]}
+                  >
+                    TikTok
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Stats Display */}
+              {loadingStats ? (
+                <View style={styles.statsLoading}>
+                  <ActivityIndicator size="small" color="#8A2BE2" />
                 </View>
               ) : (
-                <Text style={styles.creatorInfoText}>No portfolio links available</Text>
-              )}
+                <View style={styles.statsContainer}>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statValue}>{formatNumber(currentPlatformStats.followers || 0)}</Text>
+                    <View style={styles.statLabelContainer}>
+                      <FontAwesome name="users" size={14} color="#8A2BE2" />
+                      <Text style={styles.statLabel}>Followers</Text>
+                    </View>
+                  </View>
 
-              {/* View Full Profile Button */}
-              <TouchableOpacity style={styles.viewFullProfileButton} onPress={navigateToCreatorInfo}>
-                <Text style={styles.viewFullProfileText}>View Full Profile</Text>
-                <Feather name="arrow-right" size={16} color="white" />
-              </TouchableOpacity>
-            </View>
-          )}
+                  <View style={styles.statCard}>
+                    <Text style={styles.statValue}>{formatNumber(currentPlatformStats.likes || 0)}</Text>
+                    <View style={styles.statLabelContainer}>
+                      <AntDesign name="heart" size={14} color="#e74c3c" />
+                      <Text style={styles.statLabel}>Likes</Text>
+                    </View>
+                  </View>
 
-          {/* Deals Modal */}
-          <Modal
-            visible={dealsModalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setDealsModalVisible(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={[styles.modalContent, styles.dealsModalContent]}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>My Deals</Text>
-                  <TouchableOpacity onPress={() => setDealsModalVisible(false)}>
-                    <Feather name="x" size={24} color="white" />
-                  </TouchableOpacity>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statValue}>{formatNumber(currentPlatformStats.views || 0)}</Text>
+                    <View style={styles.statLabelContainer}>
+                      <Feather name="eye" size={14} color="#3498db" />
+                      <Text style={styles.statLabel}>Views</Text>
+                    </View>
+                  </View>
                 </View>
+              )}
+            </View>
 
-                {loadingDeals ? (
-                  <ActivityIndicator size="large" color="#8A2BE2" />
-                ) : deals.length > 0 ? (
+            {/* Media Links/Images Section */}
+            <View style={styles.mediaLinksContainer}>
+              {loadingStats ? (
+                <ActivityIndicator size="small" color="#8A2BE2" style={{ marginTop: 15 }} />
+              ) : mediaLinks.length > 0 ? (
+                <View>
+                  <Text style={styles.mediaLinksTitle}>Media</Text>
                   <FlatList
-                    data={deals}
-                    keyExtractor={(item) => item.id.toString()}
+                    data={mediaLinks}
+                    keyExtractor={(item, index) => `${item.id || index}`}
+                    numColumns={3}
                     renderItem={({ item }) => (
-                      <TouchableOpacity style={styles.dealItem} onPress={() => handleViewDealDetails(item.id)}>
-                        <View style={styles.dealHeader}>
-                          <Text style={styles.dealTitle}>{item.Contract?.title || `Deal #${item.id}`}</Text>
-                          <View
-                            style={[
-                              styles.statusBadge,
-                              item.status === "pending"
-                                ? styles.pendingBadge
-                                : item.status === "accepted"
-                                  ? styles.acceptedBadge
-                                  : item.status === "rejected"
-                                    ? styles.rejectedBadge
-                                    : styles.completedBadge,
-                            ]}
-                          >
-                            <Text style={styles.statusText}>{item.status}</Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.dealPrice}>${item.price}</Text>
-
-                        {item.Contract?.Company && <Text style={styles.dealCompany}>{item.Contract.Company.name}</Text>}
-
-                        <Text style={styles.dealDate}>Created: {new Date(item.createdAt).toLocaleDateString()}</Text>
+                      <TouchableOpacity style={styles.mediaItem} onPress={() => handleImageSelect(item)}>
+                        <Image
+                          source={{ uri: item.url || `${API_URL}/uploads/images/${item.file_name}` }}
+                          style={styles.mediaImage}
+                          resizeMode="cover"
+                        />
                       </TouchableOpacity>
                     )}
-                    contentContainerStyle={styles.dealsList}
+                    contentContainerStyle={styles.mediaGrid}
                   />
-                ) : (
-                  <View style={styles.noDealsContainer}>
-                    <FontAwesome5 name="handshake-slash" size={50} color="#666" />
-                    <Text style={styles.noDealsText}>No deals found</Text>
-                    <TouchableOpacity
-                      style={styles.createDealButton}
-                      onPress={() => {
-                        setDealsModalVisible(false)
-                        navigation.navigate("PlatformSelectionMedia")
-                      }}
-                    >
-                      <Text style={styles.createDealButtonText}>Create a Deal</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            </View>
-          </Modal>
-
-          {/* Deal Details Modal */}
-          <Modal
-            visible={dealDetailsVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setDealDetailsVisible(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={[styles.modalContent, styles.dealDetailsModalContent]}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Deal Details</Text>
-                  <TouchableOpacity onPress={() => setDealDetailsVisible(false)}>
-                    <Feather name="x" size={24} color="white" />
-                  </TouchableOpacity>
                 </View>
+              ) : (
+                <View style={styles.noMediaContainer}>
+                  <Feather name="image" size={24} color="#666" />
+                  <Text style={styles.noMediaText}>No media found for {selectedPlatform}</Text>
+                </View>
+              )}
+            </View>
+          </View>
 
-                {loadingDeals ? (
-                  <ActivityIndicator size="large" color="#8A2BE2" />
-                ) : selectedDeal ? (
-                  <ScrollView style={styles.dealDetailsScroll}>{/* Deal details content */}</ScrollView>
-                ) : (
-                  <View style={styles.noDealsContainer}>
-                    <Text style={styles.noDealsText}>Failed to load deal details</Text>
-                  </View>
-                )}
+          {/* Portfolio Links Section */}
+          {portfolioLinks.length > 0 && (
+            <View style={styles.portfolioLinksContainer}>
+              <Text style={styles.sectionTitle}>Portfolio Links</Text>
+              <View style={styles.linksContainer}>
+                {portfolioLinks.map((link, index) => (
+                  <TouchableOpacity key={index} style={styles.linkButton} onPress={() => openUrl(link)}>
+                    <Feather name="link" size={16} color="white" style={styles.linkIcon} />
+                    <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="tail">
+                      {link}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
-          </Modal>
+          )}
         </ScrollView>
 
         {/* Floating Action Button */}
@@ -596,6 +634,12 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 14,
   },
+  bio: {
+    color: "white",
+    fontSize: 14,
+    marginTop: 10,
+    lineHeight: 20,
+  },
   editProfileButton: {
     backgroundColor: "#8A2BE2",
     paddingVertical: 8,
@@ -606,64 +650,139 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  selectPlatformContainer: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
   platformButton: {
     backgroundColor: "#9370DB",
-    marginLeft: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
   },
-  editProfileText: {
+  platformButtonText: {
     color: "white",
     fontSize: 14,
     fontWeight: "bold",
   },
-  bio: {
-    color: "#888",
-    paddingHorizontal: 20,
-    lineHeight: 20,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    width: "90%",
+  socialMediaContainer: {
+    padding: 15,
     backgroundColor: "#1E1E1E",
     borderRadius: 10,
-    padding: 20,
+    margin: 15,
   },
-  modalTitle: {
+  sectionTitle: {
     color: "white",
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 10,
   },
-  input: {
-    backgroundColor: "#333",
-    color: "white",
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 15,
+  platformStatsContainer: {
+    height: 80,
   },
-  modalButtons: {
+  platformsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    marginBottom: 10,
   },
-  modalButton: {
-    flex: 1,
-    padding: 10,
-    alignItems: "center",
-    borderRadius: 5,
-    marginHorizontal: 5,
-    backgroundColor: "#444",
-  },
-  saveButton: {
+  selectedPlatformButton: {
     backgroundColor: "#8A2BE2",
   },
-  modalButtonText: {
+  selectedPlatformText: {
     color: "white",
     fontWeight: "bold",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#222",
+    borderRadius: 8,
+    padding: 8,
+    alignItems: "center",
+    marginHorizontal: 2,
+  },
+  statLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 3,
+  },
+  statValue: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  statLabel: {
+    color: "#888",
+    fontSize: 10,
+    marginLeft: 3,
+  },
+  statsLoading: {
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  mediaLinksContainer: {
+    marginTop: 15,
+  },
+  mediaLinksTitle: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  mediaGrid: {
+    paddingBottom: 10,
+  },
+  mediaItem: {
+    width: (width - 50) / 3,
+    height: (width - 50) / 3,
+    margin: 2,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  mediaImage: {
+    width: "100%",
+    height: "100%",
+  },
+  noMediaContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  noMediaText: {
+    color: "#888",
+    fontSize: 14,
+    marginTop: 10,
+  },
+  portfolioLinksContainer: {
+    padding: 15,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 10,
+    margin: 15,
+  },
+  linksContainer: {
+    marginBottom: 15,
+  },
+  linkButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#333",
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 5,
+  },
+  linkIcon: {
+    marginRight: 10,
+  },
+  linkText: {
+    color: "white",
+    flex: 1,
   },
   fab: {
     position: "absolute",
@@ -693,131 +812,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
   },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  dealsModalContent: {
-    maxHeight: "80%",
-    width: "95%",
-  },
-  dealDetailsModalContent: {
-    maxHeight: "90%",
-    width: "95%",
-  },
-  dealsList: {
-    paddingBottom: 20,
-  },
-  dealItem: {
-    backgroundColor: "#222",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
-  },
-  dealHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  dealTitle: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  pendingBadge: {
-    backgroundColor: "#f39c12",
-  },
-  acceptedBadge: {
-    backgroundColor: "#2ecc71",
-  },
-  rejectedBadge: {
-    backgroundColor: "#e74c3c",
-  },
-  completedBadge: {
-    backgroundColor: "#3498db",
-  },
-  statusText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  dealPrice: {
-    color: "#8A2BE2",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  dealCompany: {
-    color: "#bbb",
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  dealDate: {
-    color: "#888",
-    fontSize: 12,
-  },
-  noDealsContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 30,
-  },
-  noDealsText: {
-    color: "#888",
-    fontSize: 16,
-    marginTop: 15,
-    marginBottom: 20,
-  },
-  createDealButton: {
-    backgroundColor: "#8A2BE2",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  createDealButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  dealDetailsScroll: {
-    width: "100%",
-  },
-  creatorInfoContainer: {
-    padding: 20,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 10,
-    margin: 20,
-  },
-  creatorInfoTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  creatorInfoLabel: {
-    color: "#8A2BE2",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  creatorInfoText: {
-    color: "white",
-    fontSize: 14,
-    marginBottom: 15,
-    lineHeight: 20,
-  },
-  viewInfoButton: {
-    backgroundColor: "#6A5ACD",
-    marginLeft: 10,
-  },
   sidebar: {
     position: "absolute",
     top: 0,
@@ -825,7 +819,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 233,
     backgroundColor: "#000",
-    zIndex: 1000, // Ensure it's above other content
+    zIndex: 1000,
   },
   overlay: {
     position: "absolute",
@@ -834,41 +828,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 999, // Ensure it's below the sidebar but above other content
-  },
-  linksContainer: {
-    marginBottom: 15,
-  },
-  linkButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#333",
-    borderRadius: 8,
-    padding: 10,
-    marginVertical: 5,
-  },
-  linkIcon: {
-    marginRight: 10,
-  },
-  linkText: {
-    color: "white",
-    flex: 1,
-  },
-  viewFullProfileButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#8A2BE2",
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 10,
-  },
-  viewFullProfileText: {
-    color: "white",
-    fontWeight: "bold",
-    marginRight: 8,
+    zIndex: 999,
   },
 })
 
 export default ProfileContent
-

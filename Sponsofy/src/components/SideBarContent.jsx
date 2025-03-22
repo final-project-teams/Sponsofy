@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons, MaterialIcons } from "@expo/vector-icons"
 
-const SideBarContent = ({ onProfileClick }) => {
+const SideBarContent = ({ onProfileClick,onDealsClick }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>Sponsofy</Text>
@@ -13,7 +13,7 @@ const SideBarContent = ({ onProfileClick }) => {
           <Text style={styles.menuText}>Profile</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onDealsClick}>
           <MaterialIcons name="compare-arrows" size={20} color="#fff" />
           <Text style={styles.menuText}>Accept / Deny Deals</Text>
         </TouchableOpacity>

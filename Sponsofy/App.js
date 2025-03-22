@@ -35,6 +35,7 @@ import SubCriteriaSelection from './src/screens/SubCriteriaSelection ';
 
 import SocialMediaStats from './src/screens/Social-Media-Stats-Screen';
 import PlatformSelectionMedia from './src/screens/Platfrom-Selection-Screen';
+import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 
 // import TermsScreen from './src/screens/TermsScreen';
 
@@ -123,6 +124,7 @@ const App = () => {
               
               {/* Platform Selection Screen */}
               <Stack.Screen name="PlatformSelectionMedia" component={PlatformSelectionMedia} options={{ headerShown: false }} />
+              <Stack.Screen name="ContentCreatorDeals" component={ContentCreatorDealsScreen} options={{ headerShown: false }} />
 
               {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
             </Stack.Navigator>
