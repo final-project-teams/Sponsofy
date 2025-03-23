@@ -45,6 +45,13 @@ import EditProfile from './src/screens/EditProfile';
 
 import ContentCreatorInfo from './src/components/ContentCreatorInfo';
 
+import ContentCreatorTransactionsScreen from "./src/screens/ContentCreatorTransactionsScreen ";
+import TransactionDetailsScreen from "./src/screens/TransactionDetailsScreen";
+import CardPaymentScreen from "./src/screens/CardPaymentScreen";
+
+import ContentCreatorActiveContractsScreen from './src/screens/content-creator-active-contracts-screen';
+import ContentCreatorCompletedContractsScreen from './src/screens/content-creator-completed-contracts-screen';
+
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -127,6 +134,17 @@ const App = () => {
               <Stack.Screen name="ContentCreatorDeals" component={ContentCreatorDealsScreen} options={{ headerShown: false }} />
 
               {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
+              <Stack.Screen name="ContentCreatorDealsScreen" component={ContentCreatorDealsScreen} options={{ headerShown: false }} />
+
+              <Stack.Screen name="ContentCreatorTransactions" component={ContentCreatorTransactionsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="CardPayment" component={CardPaymentScreen} options={{ headerShown: false }} />
+
+              <Stack.Screen name="ContentCreatorActiveContracts" component={ContentCreatorActiveContractsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ContentCreatorCompletedContracts" component={ContentCreatorCompletedContractsScreen} options={{ headerShown: false }} />
+
+
+              
             </Stack.Navigator>
 
             {/* Flash Message for Notifications */}

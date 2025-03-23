@@ -30,10 +30,15 @@ const companyRouter = require("../router/company.router")
 const roomRoutes = require('../router/roomRoutes');
 const messageRoutes = require('../router/messageRoutes');
 
+const transactionRouter = require('../router/transaction.router');
+const cardPaymentRoutes = require("../router/cardPaymentRoutes");
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
 console.log(path.join(__dirname, 'uploads'))
 
 
+
+app.use("/api", cardPaymentRoutes);
+app.use('/api/transactions', transactionRouter);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

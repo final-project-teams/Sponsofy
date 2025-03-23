@@ -1,16 +1,26 @@
-const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account} = require("../database/connection");
+const {
+  Contract,
+  Company,
+  Criteria,
+  Term,
+  Deal,
+  Media,
+  Post,
+  ContentCreator,
+  Account,
+} = require("../database/connection")
 
 module.exports = {
   addContract: async (req, res) => {
     try {
-      const decoded = req.user;
-      console.log("decodedaaa", decoded);
-      
-      const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList } = req.body;
+      const decoded = req.user
+      console.log("decodedaaa", decoded)
 
-      const company = await Company.findOne({ where: { userId: decoded.userId } });
-      console.log("companyaaaa", company);
-      
+      const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList } = req.body
+
+      const company = await Company.findOne({ where: { userId: decoded.userId } })
+      console.log("companyaaaa", company)
+
       const contract = await Contract.create({
         title,
         description,
@@ -20,155 +30,154 @@ module.exports = {
         end_date: new Date(end_date),
         rank,
         CompanyId: company.id,
-        status: 'active'
-      });
+        status: "active",
+      })
 
       if (criteriaList && criteriaList.length > 0) {
-        await Promise.all(criteriaList.map(criteria => {
-          return Criteria.create({
-            name: criteria.name,
-            description: criteria.description,
-            ContractId: contract.id
-          });
-        }));
+        await Promise.all(
+          criteriaList.map((criteria) => {
+            return Criteria.create({
+              name: criteria.name,
+              description: criteria.description,
+              ContractId: contract.id,
+            })
+          }),
+        )
       }
 
       res.status(201).json({
         success: true,
-        message: 'Contract created successfully',
+        message: "Contract created successfully",
         contract: {
           id: contract.id,
           title,
-          status: contract.status
-        }
-      });
-
+          status: contract.status,
+        },
+      })
     } catch (error) {
-      console.error("Error creating contract:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error creating contract',
-        error: error.message 
-      });
+      console.error("Error creating contract:", error)
+      res.status(500).json({
+        success: false,
+        message: "Error creating contract",
+        error: error.message,
+      })
     }
   },
 
   getContractsForCurrentCompany: async (req, res) => {
     try {
-      const decoded = req.user;
+      const decoded = req.user
 
       // Find the company associated with the user
-      const company = await Company.findOne({ where: { userId: decoded.userId } });
+      const company = await Company.findOne({ where: { userId: decoded.userId } })
 
       if (!company) {
         return res.status(404).json({
           success: false,
-          message: 'Company not found'
-        });
+          message: "Company not found",
+        })
       }
 
       // Retrieve all contracts associated with the company, including criteria
       const contracts = await Contract.findAll({
         where: { CompanyId: company.id },
         include: [
-          { 
+          {
             model: Criteria,
-            as: 'criteria'
-          }
+            as: "criteria",
+          },
         ],
-        order: [['createdAt', 'DESC']]
-      });
+        order: [["createdAt", "DESC"]],
+      })
 
       res.status(200).json({
         success: true,
-        contracts
-      });
-
+        contracts,
+      })
     } catch (error) {
-      console.error("Error fetching contracts:", error);
+      console.error("Error fetching contracts:", error)
       res.status(500).json({
         success: false,
-        message: 'Error fetching contracts',
-        error: error.message
-      });
+        message: "Error fetching contracts",
+        error: error.message,
+      })
     }
   },
 
   // New method to get contracts by company ID
   getContractsByCompanyId: async (req, res) => {
     try {
-      const { id } = req.params;
-      const decoded = req.user;
+      const { id } = req.params
+      const decoded = req.user
 
-      console.log(`Fetching contracts for company ID: ${id}`);
-      console.log(`User ID from token: ${decoded.userId}`);
+      console.log(`Fetching contracts for company ID: ${id}`)
+      console.log(`User ID from token: ${decoded.userId}`)
 
       // Verify if the user has access to this company's contracts
       // If the user is a company, they should only access their own contracts
-      if (decoded.role === 'company') {
-        const userCompany = await Company.findOne({ where: { userId: decoded.userId } });
-        
+      if (decoded.role === "company") {
+        const userCompany = await Company.findOne({ where: { userId: decoded.userId } })
+
         if (!userCompany) {
           return res.status(404).json({
             success: false,
-            message: 'Company not found for this user'
-          });
+            message: "Company not found for this user",
+          })
         }
 
         // Check if the requested company ID matches the user's company ID
         if (userCompany.id.toString() !== id) {
           return res.status(403).json({
             success: false,
-            message: 'You do not have permission to access these contracts'
-          });
+            message: "You do not have permission to access these contracts",
+          })
         }
       }
 
       // Find the company
-      const company = await Company.findByPk(id);
+      const company = await Company.findByPk(id)
       if (!company) {
         return res.status(404).json({
           success: false,
-          message: 'Company not found'
-        });
+          message: "Company not found",
+        })
       }
 
       // Retrieve all contracts associated with the company, including criteria
       const contracts = await Contract.findAll({
         where: { CompanyId: id },
         include: [
-          { 
+          {
             model: Criteria,
-            as: 'criteria'
-          }
+            as: "criteria",
+          },
         ],
-        order: [['createdAt', 'DESC']]
-      });
+        order: [["createdAt", "DESC"]],
+      })
 
       res.status(200).json({
         success: true,
         company: {
           id: company.id,
-          name: company.name
+          name: company.name,
         },
-        contracts
-      });
-
+        contracts,
+      })
     } catch (error) {
-      console.error("Error fetching contracts by company ID:", error);
+      console.error("Error fetching contracts by company ID:", error)
       res.status(500).json({
         success: false,
-        message: 'Error fetching contracts',
-        error: error.message
-      });
+        message: "Error fetching contracts",
+        error: error.message,
+      })
     }
   },
 
   // Add this new method to get deals by contract ID
   getDealsByContractId: async (req, res) => {
     try {
-      const { contractId } = req.params;
-      
+      const { contractId } = req.params
+
       const deals = await Deal.findAll({
         where: { ContractId: contractId },
         include: [
@@ -176,54 +185,115 @@ module.exports = {
             model: Term,
             include: [
               {
-                model: Media
+                model: Media,
               },
               {
-                model: Post
-              }
-            ]
+                model: Post,
+              },
+            ],
           },
           {
             model: ContentCreator,
-            as: 'ContentCreatorDeals',
+            as: "ContentCreatorDeals",
             include: [
               {
                 model: Media,
-                as: 'ProfilePicture'
+                as: "ProfilePicture",
               },
               {
                 model: Account,
-                as: 'accounts'
-              }
-            ]
+                as: "accounts",
+              },
+            ],
           },
           {
             model: Media,
-            as: 'AttachedMedia'
-          }
+            as: "AttachedMedia",
+          },
         ],
-        order: [['createdAt', 'DESC']]
-      });
+        order: [["createdAt", "DESC"]],
+      })
 
       if (!deals.length) {
         return res.status(404).json({
           success: false,
-          message: 'No deals found for this contract'
-        });
+          message: "No deals found for this contract",
+        })
       }
 
       res.status(200).json({
         success: true,
-        deals
-      });
-
+        deals,
+      })
     } catch (error) {
-      console.error("Error fetching deals by contract ID:", error);
+      console.error("Error fetching deals by contract ID:", error)
       res.status(500).json({
         success: false,
-        message: 'Error fetching deals',
-        error: error.message
-      });
+        message: "Error fetching deals",
+        error: error.message,
+      })
     }
-  }
-};
+  },
+
+  // Add new methods for content creator contracts by status
+  getContentCreatorContractsByStatus: async (req, res) => {
+    try {
+      const { contentCreatorId, status } = req.params
+      const decoded = req.user
+
+      console.log(`Fetching ${status} contracts for content creator ID: ${contentCreatorId}`)
+
+      // Find the content creator
+      const contentCreator = await ContentCreator.findByPk(contentCreatorId)
+      if (!contentCreator) {
+        return res.status(404).json({
+          success: false,
+          message: "Content creator not found",
+        })
+      }
+
+      // Find all deals associated with this content creator
+      const deals = await Deal.findAll({
+        where: { ContentCreatorId: contentCreatorId },
+        include: [
+          {
+            model: Contract,
+            where: { status: status },
+            include: [
+              {
+                model: Company,
+              },
+              {
+                model: Criteria,
+                as: "criteria",
+              },
+            ],
+          },
+        ],
+      })
+
+      // Extract unique contracts from deals
+      const contractsMap = new Map()
+      deals.forEach((deal) => {
+        if (deal.Contract) {
+          contractsMap.set(deal.Contract.id, deal.Contract)
+        }
+      })
+
+      const contracts = Array.from(contractsMap.values())
+
+      res.status(200).json({
+        success: true,
+        contracts,
+      })
+    } catch (error) {
+      console.error(`Error fetching ${req.params.status} contracts for content creator:`, error)
+      res.status(500).json({
+        success: false,
+        message: `Error fetching ${req.params.status} contracts`,
+        error: error.message,
+      })
+    }
+  },
+}
+

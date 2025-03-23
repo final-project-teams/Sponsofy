@@ -1,13 +1,24 @@
-const router = require("express").Router();
-const { addContract, getContractsForCurrentCompany, getContractsByCompanyId, getDealsByContractId } = require("../controller/contract.controller");
-const authenticateJWT = require("../auth/refreshToken");
-const { isCompany } = require("../middleware/roleMiddleware");
+const router = require("express").Router()
+const {
+  addContract,
+  getContractsForCurrentCompany,
+  getContractsByCompanyId,
+  getDealsByContractId,
+  getContentCreatorContractsByStatus,
+} = require("../controller/contract.controller")
+const authenticateJWT = require("../auth/refreshToken")
+const { isCompany, isContentCreator } = require("../middleware/roleMiddleware")
 
-router.post("/", authenticateJWT, isCompany, addContract);
-router.get("/current", authenticateJWT, isCompany, getContractsForCurrentCompany);
-router.get("/company/:id", authenticateJWT, getContractsByCompanyId);
+// Company routes
+router.post("/", authenticateJWT, isCompany, addContract)
+router.get("/current", authenticateJWT, isCompany, getContractsForCurrentCompany)
+router.get("/company/:id", authenticateJWT, getContractsByCompanyId)
 
-// Add this new route
-router.get("/:contractId/deals", authenticateJWT, getDealsByContractId);
+// Deal routes
+router.get("/:contractId/deals", authenticateJWT, getDealsByContractId)
 
-module.exports = router;
+// Content Creator routes - Add these new routes
+router.get("/content-creator/:contentCreatorId/status/:status", authenticateJWT, getContentCreatorContractsByStatus)
+
+module.exports = router
+

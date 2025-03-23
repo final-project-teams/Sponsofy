@@ -1,7 +1,14 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons, MaterialIcons } from "@expo/vector-icons"
 
-const SideBarContent = ({ onProfileClick,onDealsClick }) => {
+const SideBarContent = ({
+  onProfileClick,
+  onDealsClick,
+  onTransactionsClick,
+  onCardPaymentClick,
+  onActiveContractsClick,
+  onCompletedContractsClick,
+}) => {
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>Sponsofy</Text>
@@ -18,22 +25,22 @@ const SideBarContent = ({ onProfileClick,onDealsClick }) => {
           <Text style={styles.menuText}>Accept / Deny Deals</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onActiveContractsClick}>
           <Ionicons name="timer-outline" size={20} color="#fff" />
-          <Text style={styles.menuText}>Ongoing Contracts</Text>
+          <Text style={styles.menuText}>Active Contracts</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onCompletedContractsClick}>
           <MaterialIcons name="pending-actions" size={20} color="#fff" />
-          <Text style={styles.menuText}>Pending Contracts</Text>
+          <Text style={styles.menuText}>Completed Contracts</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onCardPaymentClick}>
           <Ionicons name="card-outline" size={20} color="#fff" />
           <Text style={styles.menuText}>Payment Methods</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onTransactionsClick}>
           <Ionicons name="time-outline" size={20} color="#fff" />
           <Text style={styles.menuText}>History Transactions</Text>
         </TouchableOpacity>
