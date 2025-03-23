@@ -10,18 +10,14 @@ const validateCardPaymentData = (data) => {
 };
 
 module.exports = {
-  // Create a new card payment
-  createCardPayment: async (req, res) => {
+  // Create a new card payment for a company
+  createCardPaymentForCompany: async (req, res) => {
     try {
-      const { cardNumber, cardHolderName, expirationDate, cvv, amount, companyId, contentCreatorId } = req.body;
+      const { companyId } = req.params;
+      const { cardNumber, cardHolderName, expirationDate, cvv, amount } = req.body;
 
       if (!validateCardPaymentData(req.body)) {
         return res.status(400).json({ error: true, message: "All fields are required" });
-      }
-
-      // Check if either companyId or contentCreatorId is provided
-      if (!companyId && !contentCreatorId) {
-        return res.status(400).json({ error: true, message: "Either companyId or contentCreatorId is required" });
       }
 
       const cardPayment = await CardPayment.create({
@@ -30,14 +26,39 @@ module.exports = {
         expirationDate,
         cvv,
         amount,
-        companyId,
-        contentCreatorId,
+        companyId, // Associate the payment with the company
       });
 
-      res.status(201).json({ error: false, message: "Card payment created successfully", cardPayment });
+      res.status(201).json({ error: false, message: "Card payment created successfully for company", cardPayment });
     } catch (error) {
-      console.error("Error creating card payment:", error);
-      res.status(500).json({ error: true, message: "Failed to create card payment", details: error.message });
+      console.error("Error creating card payment for company:", error);
+      res.status(500).json({ error: true, message: "Failed to create card payment for company", details: error.message });
+    }
+  },
+
+  // Create a new card payment for a content creator
+  createCardPaymentForContentCreator: async (req, res) => {
+    try {
+      const { contentCreatorId } = req.params;
+      const { cardNumber, cardHolderName, expirationDate, cvv, amount } = req.body;
+
+      if (!validateCardPaymentData(req.body)) {
+        return res.status(400).json({ error: true, message: "All fields are required" });
+      }
+
+      const cardPayment = await CardPayment.create({
+        cardNumber,
+        cardHolderName,
+        expirationDate,
+        cvv,
+        amount,
+        contentCreatorId, // Associate the payment with the content creator
+      });
+
+      res.status(201).json({ error: false, message: "Card payment created successfully for content creator", cardPayment });
+    } catch (error) {
+      console.error("Error creating card payment for content creator:", error);
+      res.status(500).json({ error: true, message: "Failed to create card payment for content creator", details: error.message });
     }
   },
 

@@ -37,8 +37,6 @@ console.log(path.join(__dirname, 'uploads'))
 
 
 
-app.use("/api", cardPaymentRoutes);
-app.use('/api/transactions', transactionRouter);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -82,6 +80,10 @@ app.get('/', (req, res) => {
 });
 
 app.use("/api/addDeal", dealRouter)
+
+app.use("/api", cardPaymentRoutes);
+app.use('/api/transactions', transactionRouter);
+
 
 
 // Add this to your server.js file
