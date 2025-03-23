@@ -47,10 +47,20 @@ import ContentCreatorInfo from './src/components/ContentCreatorInfo';
 
 import ContentCreatorTransactionsScreen from "./src/screens/ContentCreatorTransactionsScreen ";
 import TransactionDetailsScreen from "./src/screens/TransactionDetailsScreen";
-import CardPaymentScreen from "./src/screens/CardPaymentScreen";
+import MainCardScreen from "./src/screens/CardPayment";
 
 import ContentCreatorActiveContractsScreen from './src/screens/content-creator-active-contracts-screen';
 import ContentCreatorCompletedContractsScreen from './src/screens/content-creator-completed-contracts-screen';
+
+
+
+//// card s //////////
+
+import GetAllCardsScreen from './src/components/GetAllCards';
+import UpdateCardScreen from './src/components/UpdateCard';
+import PostCardScreen from './src/components/PostCard';
+import DeleteCardScreen from './src/components/DeleteCard';
+
 
 const Stack = createStackNavigator();
 
@@ -138,11 +148,16 @@ const App = () => {
 
               <Stack.Screen name="ContentCreatorTransactions" component={ContentCreatorTransactionsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="CardPayment" component={CardPaymentScreen} options={{ headerShown: false }} />
+             
 
               <Stack.Screen name="ContentCreatorActiveContracts" component={ContentCreatorActiveContractsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ContentCreatorCompletedContracts" component={ContentCreatorCompletedContractsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="CardPayment" component={MainCardScreen} options={{ headerShown: false }} />
 
+              <Stack.Screen name="GetAllCards" component={GetAllCardsScreen} options={{ headerShown: false }} />    
+              <Stack.Screen name="UpdateCard" component={UpdateCardScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="PostCard" component={PostCardScreen} options={{ headerShown: false }} />  
+              <Stack.Screen name="DeleteCard" component={DeleteCardScreen} options={{ headerShown: false }} />
 
               
             </Stack.Navigator>
