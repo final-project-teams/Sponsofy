@@ -69,20 +69,20 @@ Contract.hasMany(Deal)
 Deal.belongsTo(Contract)
 
 // Direct one-to-many relationship
-Contract.belongsTo(Criteria, { foreignKey: 'criterionId' })
-Criteria.hasMany(Contract, { foreignKey: 'criterionId' })
+Contract.belongsTo(Criteria, { foreignKey: 'criteriaId' })
+Criteria.hasMany(Contract, { foreignKey: 'criteriaId' })
 
 // Many-to-many relationship through ContractCriteria
 Contract.belongsToMany(Criteria, {
   through: ContractCriteria,
   foreignKey: 'contractId',
-  otherKey: 'criterionId',
+  otherKey: 'criteriaId',
   as: 'criteria'
 });
 
 Criteria.belongsToMany(Contract, {
   through: ContractCriteria,
-  foreignKey: 'criterionId',
+  foreignKey: 'criteriaId',
   otherKey: 'contractId',
   as: 'contracts'
 });

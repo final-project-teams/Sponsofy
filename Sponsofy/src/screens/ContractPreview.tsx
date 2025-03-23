@@ -51,7 +51,7 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const contractId = 4;
+  const contractId = 1;
   const { currentTheme } = useTheme();
   const [contract, setContract] = useState<Contract | null>(null);
   const [companySignature, setCompanySignature] = useState<Signature | null>(null);
@@ -234,67 +234,47 @@ const ContractPreview = ({ route }) => {
   const generatePDF = async () => {
     if (!contract) return;
 
-    // Get theme colors from your theme context
-    const { colors } = currentTheme;
-
-    // Function to render terms from backend
-    const renderPreTerms = () => {
-      if (!contract.pre_Terms || contract.pre_Terms.length === 0) {
-        return '<p>No specific terms defined for this contract.</p>';
-      }
-
-      return contract.pre_Terms.map((term, index) => `
-            <div class="terms-section">
-                <h3>Term ${index + 1}: ${term.title}</h3>
-                <div class="term-content">
-                    <p>${term.description}</p>
-                    <div class="term-status">Status: ${term.status}</div>
-                </div>
-            </div>
-        `).join('');
-    };
-
     const htmlContent = `
       <html>
         <head>
           <style>
+            :root {
+              --color-background: #121212;
+              --color-surface-1: #1E1E1E;
+              --color-surface-2: #2D2D2D;
+              --color-primary: #8B5CF6;
+              --color-text: #FFFFFF;
+              --color-text-secondary: #A0A0A0;
+              --color-border: #333333;
+            }
+
             body {
               font-family: Arial, sans-serif;
               padding: 40px;
-              max-width: 850px;
-              margin: 0 auto;
+              max-width: 950px;
+              margin: 0;
               line-height: 1.6;
-              color: ${colors.text};
-              background-color: ${colors.background};
-            }
-            * {
-              box-sizing: border-box;
-            }
-            .container {
-              width: 100%;
-              margin: 0 auto;
+              color: var(--color-text);
+              background-color: var(--color-background);
             }
             .logo-header {
               text-align: center;
               margin-bottom: 40px;
               padding: 20px;
-              border-bottom: 2px solid ${colors.primary};
+              border-bottom: 2px solid var(--color-primary);
             }
             .logo {
               font-size: 32px;
               font-weight: bold;
-              color: ${colors.primary};
+              color: var(--color-primary);
               margin-bottom: 10px;
             }
             .document-title {
               font-size: 24px;
-              color: ${colors.text};
+              color: var(--color-text);
             }
             .agreement-date {
-              text-align: center;
-              margin-bottom: 30px;
-              color: ${colors.textSecondary};
-              font-size: 16px;
+              color: var(--color-text-secondary);
             }
             .party-info {
               display: flex;
@@ -305,67 +285,62 @@ const ContractPreview = ({ route }) => {
             .party-box {
               flex: 1;
               padding: 25px;
-              background: ${colors.surface};
+              background: var(--color-surface-1);
               border-radius: 8px;
-              border: 1px solid ${colors.border};
-              min-height: fit-content;
+              border: 1px solid var(--color-border);
             }
             .party-box h3 {
-              margin: 0 0 20px 0;
-              color: ${colors.primary};
+              color: var(--color-primary);
               text-align: center;
               padding-bottom: 10px;
-              border-bottom: 2px solid ${colors.border};
+              border-bottom: 1px solid var(--color-border);
             }
             .info-field {
               margin-bottom: 12px;
               padding: 8px;
-              background: white;
+              background: var(--color-surface-2);
               border-radius: 4px;
             }
             .info-label {
               font-weight: bold;
-              color: ${colors.textSecondary};
+              color: var(--color-text-secondary);
               display: inline-block;
               width: 100px;
             }
             .info-value {
-              color: ${colors.text};
+              color: var(--color-text);
             }
             .section {
               margin-bottom: 30px;
               padding: 25px;
-              background: ${colors.surface};
+              background: var(--color-surface-1);
               border-radius: 8px;
-              border: 1px solid ${colors.border};
+              border: 1px solid var(--color-border);
             }
             .section h2 {
-              color: ${colors.primary};
+              color: var(--color-primary);
               text-align: center;
               padding-bottom: 10px;
               margin-top: 0;
-              margin-bottom: 20px;
-              border-bottom: 2px solid ${colors.border};
+              border-bottom: 1px solid var(--color-border);
             }
             .terms-section {
-              background: ${colors.background};
+              background: var(--color-surface-2);
               padding: 15px;
               border-radius: 6px;
               margin-bottom: 15px;
-              border: 1px solid ${colors.border};
             }
             .terms-section h3 {
-              color: ${colors.primary};
-              margin-top: 0;
+              color: var(--color-primary);
               margin-bottom: 15px;
             }
             .terms-list {
               padding-left: 20px;
               margin: 0;
+              color: var(--color-text);
             }
             .terms-list li {
               margin-bottom: 15px;
-              line-height: 1.6;
             }
             .signatures {
               display: flex;
@@ -373,49 +348,47 @@ const ContractPreview = ({ route }) => {
               gap: 40px;
               margin-top: 50px;
               padding: 30px;
-              background: ${colors.surface};
+              background: var(--color-surface-1);
               border-radius: 8px;
-              border: 1px solid ${colors.border};
+              border: 1px solid var(--color-border);
             }
             .signature-box {
               flex: 1;
               text-align: center;
               padding: 20px;
-              background: ${colors.background};
+              background: var(--color-surface-2);
               border-radius: 6px;
             }
             .signature-box h3 {
-              color: ${colors.primary};
-              margin-bottom: 20px;
+              color: var(--color-primary);
+            }
+            .signature-line {
+              border-top: 1px solid var(--color-text);
+              margin: 70px auto 10px;
+              width: 80%;
             }
             .signature-image {
               max-width: 200px;
               margin: 15px auto;
               display: block;
             }
-            .signature-line {
-              border-top: 1px solid #000;
-              margin: 70px auto 10px;
-              width: 80%;
-            }
             .date-line {
-              margin-top: 15px;
-              color: ${colors.textSecondary};
+              color: var(--color-text-secondary);
             }
             .term-content {
-                background: white;
-                padding: 15px;
-                border-radius: 6px;
-                margin-top: 10px;
+              background: var(--color-surface-2);
+              padding: 15px;
+              border-radius: 6px;
+              color: var(--color-text);
             }
             .term-status {
-                margin-top: 10px;
-                padding: 5px 10px;
-                background: ${colors.surface};
-                border-radius: 4px;
-                display: inline-block;
-                font-size: 14px;
-                color: ${colors.textSecondary};
+              margin-top: 10px;
+              padding: 5px 10px;
+              background: var(--color-surface-1);
+              border-radius: 4px;
+              display: inline-block;
+              font-size: 14px;
+              color: var(--color-text-secondary);
             }
           </style>
         </head>
@@ -514,73 +487,86 @@ const ContractPreview = ({ route }) => {
 
           <div class="section">
             <h2>4. Contract Terms</h2>
-            ${renderPreTerms()}
+            ${contract.pre_Terms?.map(term => `
+              <div class="terms-section">
+                <h3>${term.title}</h3>
+                <p>${term.description}</p>
+              </div>
+            `).join('')}
           </div>
 
           <div class="section">
-            <h2>5. Standard Terms and Conditions</h2>
-            
-            <div class="terms-section">
-              <h3>5.1 Content Requirements</h3>
-              <ul class="terms-list">
-                <li>All content must be original and created specifically for this campaign.</li>
-                <li>Content must comply with platform guidelines and applicable laws.</li>
-                <li>The Company has the right to review content before publication.</li>
-                <li>Content must be posted during peak engagement hours.</li>
-              </ul>
-            </div>
-
-            <div class="terms-section">
-              <h3>5.2 Deliverables</h3>
-              <ul class="terms-list">
-                <li>Content Creator will provide detailed analytics and engagement metrics.</li>
-                <li>Regular progress updates will be shared through the Sponsofy platform.</li>
-                <li>All agreed-upon content must be delivered according to the timeline.</li>
-              </ul>
-            </div>
-
-            <div class="terms-section">
-              <h3>5.3 Intellectual Property</h3>
-              <ul class="terms-list">
-                <li>Content Creator retains ownership of original content.</li>
-                <li>Company receives license to use content for promotional purposes.</li>
-                <li>Both parties must respect each other's intellectual property rights.</li>
-              </ul>
-            </div>
-
-            <div class="terms-section">
-              <h3>5.4 Confidentiality</h3>
-              <ul class="terms-list">
-                <li>Both parties agree to maintain confidentiality of sensitive information.</li>
-                <li>Campaign details should not be shared before official launch.</li>
-                <li>Non-disclosure agreement applies to all proprietary information.</li>
-              </ul>
-            </div>
-
-            <div class="terms-section">
-              <h3>5.5 Termination</h3>
-              <ul class="terms-list">
-                <li>30-day written notice required for early termination.</li>
-                <li>Pro-rated payment for completed work in case of early termination.</li>
-                <li>Immediate termination allowed for breach of agreement.</li>
-              </ul>
-            </div>
-
-            <div class="terms-section">
-              <h3>5.6 Dispute Resolution</h3>
-              <ul class="terms-list">
-                <li>Disputes will be resolved through mediation first.</li>
-                <li>Sponsofy platform's dispute resolution system will be used.</li>
-                <li>Legal action only as last resort.</li>
-              </ul>
-            </div>
-          </div>
+    <h2>5. Sponsofy's Terms and Conditions</h2>
+    
+    <div class="terms-section">
+        <h3>5.1 User Responsibilities</h3>
+        <ul class="terms-list">
+            <li>Users are responsible for ensuring the accuracy and legality of their content.</li>
+            <li>Sponsofy does not guarantee engagement, reach, or financial success from campaigns.</li>
+            <li>All interactions between users, including payments, are the sole responsibility of the involved parties.</li>
+        </ul>
+    </div>
+    
+    <div class="terms-section">
+        <h3>5.2 Content Ownership</h3>
+        <ul class="terms-list">
+            <li>Content creators retain ownership of their original content unless explicitly agreed otherwise.</li>
+            <li>Sponsofy reserves a limited license to display and promote listed content within the platform.</li>
+            <li>Sponsofy is not responsible for any copyright claims or disputes.</li>
+        </ul>
+    </div>
+    
+    <div class="terms-section">
+        <h3>5.3 Payment and Transactions</h3>
+        <ul class="terms-list">
+            <li>All payments and financial transactions are handled directly between users.</li>
+            <li>Sponsofy is not responsible for payment failures, disputes, or refunds.</li>
+            <li>Users must resolve financial conflicts independently or through designated third-party services.</li>
+        </ul>
+    </div>
+    
+    <div class="terms-section">
+        <h3>5.4 Liability Limitation</h3>
+        <ul class="terms-list">
+            <li>Sponsofy is not liable for any damages, losses, or claims resulting from platform use.</li>
+            <li>Users acknowledge that they use the platform at their own risk.</li>
+            <li>Sponsofy does not endorse or verify any user-provided content, services, or claims.</li>
+        </ul>
+    </div>
+    
+    <div class="terms-section">
+        <h3>5.5 Privacy and Confidentiality</h3>
+        <ul class="terms-list">
+            <li>Users must handle confidential campaign details responsibly.</li>
+            <li>Sponsofy does not monitor private communications but reserves the right to investigate misuse.</li>
+            <li>Users should take necessary precautions when sharing sensitive information.</li>
+        </ul>
+    </div>
+    
+    <div class="terms-section">
+        <h3>5.6 Termination and Account Suspension</h3>
+        <ul class="terms-list">
+            <li>Sponsofy reserves the right to suspend or terminate accounts at its discretion.</li>
+            <li>Users may deactivate accounts, but obligations under these terms remain in effect.</li>
+            <li>Violation of policies may result in immediate removal from the platform.</li>
+        </ul>
+    </div>
+    
+    <div class="terms-section">
+        <h3>5.7 Dispute Resolution</h3>
+        <ul class="terms-list">
+            <li>Disputes should first be resolved through direct negotiation.</li>
+            <li>Sponsofy provides optional mediation tools but is not responsible for dispute outcomes.</li>
+                <li>Legal action should only be taken as a last resort.</li>
+            </ul>
+        </div>
+    </div>
 
           <div class="signatures">
             <div class="signature-box">
               <h3>Company Representative</h3>
               ${companySignature ? `
-                <img src="${getSignatureUrl(companySignature)}" alt="Company Signature" class="signature-image" />
+                <img class="signature-image" src="${getSignatureUrl(companySignature)}" alt="Company Signature" class="signature-image" />
                 <p>${contract.Company?.name}</p>
                 <p class="date-line">Date: ${new Date(companySignature.created_at).toLocaleDateString()}</p>
               ` : `
@@ -592,7 +578,7 @@ const ContractPreview = ({ route }) => {
             <div class="signature-box">
               <h3>Content Creator</h3>
               ${creatorSignature ? `
-                <img src="${getSignatureUrl(creatorSignature)}" alt="Creator Signature" class="signature-image" />
+                <img class="signature-image" src="${getSignatureUrl(creatorSignature)}" alt="Creator Signature" class="signature-image" />
                 <p>${contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'Content Creator'}</p>
                 <p class="date-line">Date: ${new Date(creatorSignature.created_at).toLocaleDateString()}</p>
               ` : `
