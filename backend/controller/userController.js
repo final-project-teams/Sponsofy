@@ -611,12 +611,16 @@ module.exports = {
    // Add these new controller functions to your existing userController.js
 
 // Get all criteria regardless of platform
- getAllCriteria : async (req, res) => {
+getAllCriteria: async (req, res) => {
   try {
+    const { platform } = req.query; // Get platform from query parameters
+    const whereClause = platform ? { platform } : {}; // Filter by platform if provided
+
     const criteria = await Criteria.findAll({
       attributes: ['id', 'name', 'description', 'platform'],
+      where: whereClause,
     });
-    
+
     res.status(200).json({ criteria });
   } catch (error) {
     console.error("Error fetching all criteria:", error);

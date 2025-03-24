@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -31,6 +29,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import api from "../config/axios";
 import { API_URL } from "../config/source";
 import SideBarContent from "../components/SideBarContent";
+import BottomNavBar from "../components/BottomNavBar"; // Import the BottomNavBar component
 
 const { width } = Dimensions.get("window");
 
@@ -452,7 +451,7 @@ const ProfileContent = () => {
 
       {/* Wrap ScrollView and FAB in a parent View */}
       <View style={{ flex: 1, position: "relative" }}>
-        <ScrollView style={styles.scrollView}>
+        <ScrollView style={[styles.scrollView, { marginBottom: 60 }]}>
           {/* Profile Section */}
           <View style={styles.profileSection}>
             <TouchableOpacity onPress={pickImage}>
@@ -478,29 +477,34 @@ const ProfileContent = () => {
               <Text style={styles.premiumBadge}>
                 {userProfile.isPremium ? "Premium Member" : "Regular Member"}
               </Text>
-
-              {/* Edit Profile Button */}
-              <TouchableOpacity
-                style={styles.editProfileButton}
-                onPress={handleEditProfile}
-              >
-                <Text style={styles.editProfileText}>Edit Profile</Text>
-              </TouchableOpacity>
-
-              {/* View Info Button */}
-              <TouchableOpacity
-                style={styles.editProfileButton}
-                onPress={navigateToCreatorInfo}
-              >
-                <Text style={styles.editProfileText}>View Info</Text>
-              </TouchableOpacity>
             </View>
           </View>
           {/* Bio Section */}
-
           <Text style={styles.bioText}>
             {userProfile.profile.bio || "No bio available"}
           </Text>
+
+          {/* Edit Profile Button */}
+          <View style={styles.buttonContainer}>
+            {/* Edit Profile Button */}
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={handleEditProfile}
+            >
+              <Text style={styles.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+
+            {/* View Info Button */}
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={navigateToCreatorInfo}
+            >
+              <Text style={styles.editProfileText}>View Info</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* White Line */}
+          <View style={styles.whiteLine} />
 
           {/* Select Platform Button */}
           <View style={styles.selectPlatformContainer}>
@@ -660,48 +664,62 @@ const ProfileContent = () => {
             </View>
 
             {/* Media Links/Images Section */}
-            <View style={styles.mediaLinksContainer}>
-              {loadingStats ? (
-                <ActivityIndicator
-                  size="small"
-                  color="#8A2BE2"
-                  style={{ marginTop: 15 }}
+          </View>
+
+          <View style={styles.mediaLinksContainer}>
+            {loadingStats ? (
+              <ActivityIndicator
+                size="small"
+                color="#8A2BE2"
+                style={{ marginTop: 15 }}
+              />
+            ) : mediaLinks.length > 0 ? (
+              <View>
+                <Text style={styles.mediaLinksTitle}>Media</Text>
+                <FlatList
+                  data={mediaLinks}
+                  keyExtractor={(item, index) => `${item.id || index}`}
+                  numColumns={3}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.mediaItem}
+                      onPress={() => handleImageSelect(item)}
+                    >
+                      <Image
+                        source={{
+                          uri:
+                            item.url ||
+                            `${API_URL}/uploads/images/${item.file_name}`,
+                        }}
+                        style={styles.mediaImage}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  )}
+                  contentContainerStyle={styles.mediaGrid}
                 />
-              ) : mediaLinks.length > 0 ? (
-                <View>
-                  <Text style={styles.mediaLinksTitle}>Media</Text>
-                  <FlatList
-                    data={mediaLinks}
-                    keyExtractor={(item, index) => `${item.id || index}`}
-                    numColumns={3}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.mediaItem}
-                        onPress={() => handleImageSelect(item)}
-                      >
-                        <Image
-                          source={{
-                            uri:
-                              item.url ||
-                              `${API_URL}/uploads/images/${item.file_name}`,
-                          }}
-                          style={styles.mediaImage}
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    )}
-                    contentContainerStyle={styles.mediaGrid}
-                  />
-                </View>
-              ) : (
-                <View style={styles.noMediaContainer}>
-                  <Feather name="image" size={24} color="#666" />
-                  <Text style={styles.noMediaText}>
-                    No media found for {selectedPlatform}
-                  </Text>
-                </View>
-              )}
-            </View>
+              </View>
+            ) : (
+              <View style={styles.noMediaContainer}>
+                {/* <Feather name="image" size={24} color="#666" />
+                <Text style={styles.noMediaText}>
+                  No media found for {selectedPlatform}
+                </Text> */}
+                <Image
+                  style={styles.image}
+                  source={{ uri: 'https://m.media-amazon.com/images/M/MV5BMTkwNjA3NjAyMV5BMl5BanBnXkFtZTcwMjM3NTEzMQ@@._V1_.jpg' }}
+                />
+                <Image
+                  style={styles.image}
+                  source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSabdScY1OQP4jmx3lEJycn1wP-VQAJmEgINw&s' }}
+                />
+                 <Image
+                  style={styles.image}
+                  source={{ uri: 'https://m.media-amazon.com/images/M/MV5BMTkwNjA3NjAyMV5BMl5BanBnXkFtZTcwMjM3NTEzMQ@@._V1_.jpg' }}
+                />
+         
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -712,6 +730,11 @@ const ProfileContent = () => {
         >
           <Entypo name="plus" size={24} color="white" />
         </TouchableOpacity>
+        
+        {/* Bottom Navigation Bar */}
+        <View style={styles.bottomNavContainer}>
+          <BottomNavBar />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -789,12 +812,22 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 14,
   },
+  buttonContainer: {
+    flexDirection: "row", // Align children horizontally
+    justifyContent: "space-between", // Add space between the buttons
+    paddingHorizontal: 20, // Add padding to the sides if needed
+    marginTop: 2, // Adjust margin as needed
+    marginBottom: 20, // Adjust margin as needed
+    backgroundColor: "#1E1E1E",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 9,
+  },
   editProfileButton: {
     backgroundColor: "#8A2BE2",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 4,
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
@@ -805,23 +838,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   selectPlatformContainer: {
-    // paddingHorizontal: 20,
-    marginTop: 10,
+    marginTop: 20,
   },
-  // platformButton: {
-  //   backgroundColor: "#8A2BE2",
-  //   paddingVertical: 8,
-  //   paddingHorizontal: 14,
-  //   borderRadius: 20,
-  //   alignSelf: "flex-start",
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // platformButtonText: {
-  //   color: "white",
-  //   fontSize: 16,
-  //   fontWeight: "bold",
-  // },
 
   platformButton: {
     backgroundColor: "#8A2BE2",
@@ -853,7 +871,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginLeft: 20,
-    marginBottom: 20,
+    marginBottom: 2,
   },
   modalContainer: {
     flex: 1,
@@ -902,7 +920,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 10,
+    bottom: 70, // Increased to make room for bottom navbar
     right: 10,
     width: 50,
     height: 50,
@@ -990,12 +1008,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E1E1E",
     borderRadius: 10,
     margin: 15,
+    height: 180,
   },
   sectionTitle: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 10,
+    marginLeft: 80,
   },
   platformStatsContainer: {
     height: 80, // Approximately 2cm total height
@@ -1061,7 +1081,7 @@ const styles = StyleSheet.create({
   },
   // Media Links Styles
   mediaLinksContainer: {
-    marginTop: 15,
+    marginTop: 45,
   },
   mediaLinksTitle: {
     color: "white",
@@ -1087,6 +1107,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
+    flexDirection: "row", // Add this line to arrange items horizontally
   },
   noMediaText: {
     color: "#888",
@@ -1148,12 +1169,33 @@ const styles = StyleSheet.create({
     width: "100%", // Full width
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 25, // Rounded corners
+    borderRadius: 5, // Rounded corners
   },
   selectPlatformButtonText: {
     color: "white",
     fontSize: 13,
     fontWeight: "bold",
+  },
+  whiteLine: {
+    height: 1, // Height of the line
+    backgroundColor: "white", // Color of the line
+    marginVertical: 2, // Adjust margin as needed
+  },
+  // Bottom Navigation Bar Container
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
+  // Image styles
+  image: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginTop: 10,
+    marginHorizontal: 5,
   },
 });
 

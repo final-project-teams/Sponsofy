@@ -9,7 +9,6 @@ const PlatformSelection = () => {
   const platforms = [
     { name: "instagram", icon: Instagram, color: "#E1306C" },
     { name: "facebook", icon: Facebook, color: "#1877F2" },
-    { name: "twitter", icon: Twitter, color: "#1DA1F2" },
     { name: "tiktok", icon: () => <Text style={styles.tiktokIcon}>TikTok</Text>, color: "#000000" },
     { name: "youtube", icon: Youtube, color: "#FF0000" },
   ];

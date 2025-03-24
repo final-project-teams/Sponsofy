@@ -14,12 +14,12 @@ const CriteriaSelection = () => {
     fetchAllCriteria();
   }, []);
 
-  // Fetch all criteria regardless of platform
+  // Fetch all criteria based on platform
   const fetchAllCriteria = async () => {
     setLoading(true);
     try {
-      console.log("Fetching all criteria");
-      const response = await api.get(`/user/all-criteria`);
+      console.log("Fetching all criteria for platform:", platform);
+      const response = await api.get(`/user/all-criteria?platform=${platform}`);
       console.log("Criteria response:", response.data);
       setCriteria(response.data.criteria || []);
     } catch (error) {

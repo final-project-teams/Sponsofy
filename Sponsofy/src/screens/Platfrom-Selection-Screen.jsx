@@ -1,13 +1,20 @@
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar } from "react-native"
-import { Feather, FontAwesome, FontAwesome5 } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+} from "react-native";
+import { Feather, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 const PlatformSelectionMedia = () => {
-  const navigation = useNavigation()
+  const navigation = useNavigation();
 
   const handlePlatformSelect = (platform) => {
-    navigation.navigate("SocialMediaStats", { platform })
-  }
+    navigation.navigate("SocialMediaStats", { platform });
+  };
 
   const platforms = [
     {
@@ -38,7 +45,7 @@ const PlatformSelectionMedia = () => {
       color: "#1877F2",
       iconFamily: "FontAwesome",
     },
-  ]
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,6 +60,20 @@ const PlatformSelectionMedia = () => {
         <View style={{ width: 24 }} />
       </View>
 
+      {/* Instructions */}
+      <View style={styles.instructionsContainer}>
+        <Text style={styles.instructionsTitle}>What's this for?</Text>
+        <Text style={styles.instructionsText}>
+          Select a social media platform to update your stats including views,
+          likes, and followers. These metrics help sponsors understand your
+          reach and engagement.
+        </Text>
+
+        <Text style={styles.instructionsNote}>
+          Note : when You add a picture link to your profile picture the number
+          of likes and views will be added to that image not the platform
+        </Text>
+      </View>
       {/* Platform Grid */}
       <View style={styles.platformContainer}>
         {platforms.map((platform) => (
@@ -70,18 +91,9 @@ const PlatformSelectionMedia = () => {
           </TouchableOpacity>
         ))}
       </View>
-
-      {/* Instructions */}
-      <View style={styles.instructionsContainer}>
-        <Text style={styles.instructionsTitle}>What's this for?</Text>
-        <Text style={styles.instructionsText}>
-          Select a social media platform to update your stats including views, likes, and followers. These metrics help
-          sponsors understand your reach and engagement.
-        </Text>
-      </View>
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -139,7 +151,12 @@ const styles = StyleSheet.create({
     color: "#CCC",
     lineHeight: 20,
   },
-})
+  instructionsNote: {
+    color: "#CCC",
+    lineHeight: 20,
+    marginTop: 10,
+    fontWeight: "bold",
+  },
+});
 
-export default PlatformSelectionMedia
-
+export default PlatformSelectionMedia;
