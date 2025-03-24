@@ -17,6 +17,7 @@ interface Contract {
   end_date: string;
   rank: string;
   status: string;
+  serialNumber: string;
   Company: {
     name: string;
     user: {
@@ -449,6 +450,10 @@ const ContractPreview = ({ route }) => {
             <h2>1. Agreement Details</h2>
             <div class="terms-section">
               <div class="info-field">
+                <span class="info-label">Serial No:</span>
+                <span class="info-value">${contract.serialNumber || 'N/A'}</span>
+              </div>
+              <div class="info-field">
                 <span class="info-label">Contract ID:</span>
                 <span class="info-value">${contract.id}</span>
               </div>
@@ -637,6 +642,8 @@ const ContractPreview = ({ route }) => {
         <View style={styles.contractCard}>
           <View style={styles.header}>
             <Text style={styles.title}>Contract Preview</Text>
+            <Text style={styles.label}>Serial Number</Text>
+            <Text style={styles.contractTitle}>{contract.serialNumber}</Text>
             <Text style={styles.label}>Contract Title</Text>
             <Text style={styles.contractTitle}>{contract.title}</Text>
             <Text style={styles.label}>Contract ID</Text>
