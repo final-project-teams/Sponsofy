@@ -6,6 +6,8 @@ import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { printToFileAsync } from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import logo from '../../assets/logo.png';
+import QRCode from 'react-native-qrcode-svg';
 
 interface Contract {
   id: number;
@@ -63,13 +65,13 @@ const ContractPreview = ({ route }) => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: currentTheme.colors.background,
+      backgroundColor: currentTheme.colors.black,
     },
     content: {
       padding: 20,
     },
     contractCard: {
-      backgroundColor: currentTheme.colors.background,
+      backgroundColor: currentTheme.colors.black,
     },
     header: {
       alignItems: 'flex-start',
@@ -84,7 +86,7 @@ const ContractPreview = ({ route }) => {
       color: currentTheme.colors.text,
       textAlign: 'center',
       marginTop: 50,
-      marginBottom: 10,
+      marginBottom: 30,
     },
     contractTitle: {
       fontSize: currentTheme.fontSizes.xlarge,
@@ -148,6 +150,7 @@ const ContractPreview = ({ route }) => {
       height: 100,
       borderRadius: 20,
       marginBottom: 10,
+      backgroundColor: currentTheme.colors.white,
     },
     signatureName: {
       fontSize: currentTheme.fontSizes.small,
@@ -177,13 +180,42 @@ const ContractPreview = ({ route }) => {
       position: 'absolute',
       bottom: 20,
       right: 20,
-      backgroundColor: '#333',
+      backgroundColor: currentTheme.colors.background,
       borderRadius: 30,
       padding: 15,
       elevation: 5,
     },
     downloadIcon: {
       color: '#fff',
+    },
+    qrSection: {
+      marginBottom: 20,
+      padding: 25,
+      backgroundColor: currentTheme.colors.black,
+      width: '100%',
+    },
+    qrContainer: {
+      alignItems: 'center',
+      padding: 20,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 8,
+      marginVertical: 15,
+      alignSelf: 'center',
+    },
+    serialNumber: {
+      fontSize: currentTheme.fontSizes.medium,
+      fontFamily: currentTheme.fonts.medium,
+      color: currentTheme.colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 10,
+    },
+    QRCodeTitle: {
+      fontSize: currentTheme.fontSizes.large,
+      fontFamily: currentTheme.fonts.bold,
+      color: currentTheme.colors.text,
+      textAlign: 'left',
+      marginLeft: -15,
+      marginBottom: 10,
     },
   });
 
@@ -567,6 +599,21 @@ const ContractPreview = ({ route }) => {
         </div>
     </div>
 
+          <div class="section">
+            <h2>Contract Verification</h2>
+            <div class="terms-section" style="text-align: center;">
+              <div style="background: white; padding: 20px; display: inline-block; border-radius: 8px; margin: 20px 0;">
+                <img src="data:image/png;base64,${await generateQRCode(qrData)}" alt="Contract QR Code" style="width: 200px; height: 200px;"/>
+              </div>
+              <p style="color: var(--color-text-secondary); margin-top: 10px;">
+                Serial Number: ${contract.serialNumber || 'N/A'}
+              </p>
+              <p style="color: var(--color-text-secondary); font-size: 14px; margin-top: 5px;">
+                Scan to verify contract authenticity
+              </p>
+            </div>
+          </div>
+
           <div class="signatures">
             <div class="signature-box">
               <h3>Company Representative</h3>
@@ -608,6 +655,13 @@ const ContractPreview = ({ route }) => {
     }
   };
 
+  const generateQRCode = async (data: string) => {
+    // You'll need to implement this function to generate a base64 QR code
+    // You can use a library like qrcode or react-native-qrcode-svg
+    // For now, this is a placeholder
+    return '';
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -635,6 +689,11 @@ const ContractPreview = ({ route }) => {
       </View>
     );
   }
+
+  const qrData = JSON.stringify({
+    id: contract.id,
+    serialNumber: contract.serialNumber,
+  });
 
   return (
     <ScrollView style={styles.container}>
@@ -673,6 +732,20 @@ const ContractPreview = ({ route }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Payment Terms</Text>
             <Text style={styles.text}>{contract.payment_terms}</Text>
+          </View>
+
+          <View style={styles.qrSection}>
+            <Text style={styles.QRCodeTitle}>Contract QR Code</Text>
+            <View style={styles.qrContainer}>
+              <QRCode
+                value={qrData}
+                size={200}
+                backgroundColor="white"
+                color="black"
+                logo={logo}
+              />
+            </View>
+            <Text style={styles.serialNumber}>Serial Number: {contract.serialNumber || 'N/A'}</Text>
           </View>
 
           <View style={styles.signatureSection}>

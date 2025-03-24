@@ -6,6 +6,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../theme/ThemeContext';
 import api from '../config/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logo from '../../assets/logo.png';
 
 const ContractDetailsScreen = ({ route, navigation }) => {
     const { contractId } = route.params;
@@ -268,6 +269,7 @@ const ContractDetailsScreen = ({ route, navigation }) => {
                             size={200}
                             backgroundColor="white"
                             color="black"
+                            logo={logo}
                         />
                     </View>
                     <Text style={styles.serialNumber}>Serial Number: {contract.serialNumber || 'N/A'}</Text>
