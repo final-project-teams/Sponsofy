@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { API_URL } from '../config/source';
 import api from '../config/axios';
@@ -61,6 +61,7 @@ const ContractPreview = ({ route }) => {
   const [creatorSignature, setCreatorSignature] = useState<Signature | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const qrCodeRef = useRef();
 
   const styles = StyleSheet.create({
     container: {
@@ -281,6 +282,13 @@ const ContractPreview = ({ route }) => {
 
   const generatePDF = async () => {
     if (!contract) return;
+
+    // Create QR code URL using a web service
+    const qrCodeData = encodeURIComponent(JSON.stringify({
+      id: contract.id,
+      serialNumber: contract.serialNumber,
+    }));
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}`;
 
     const htmlContent = `
       <html>
@@ -618,7 +626,7 @@ const ContractPreview = ({ route }) => {
             <h2>Contract Verification</h2>
             <div class="terms-section" style="text-align: center;">
               <div style="background: white; padding: 20px; display: inline-block; border-radius: 8px; margin: 20px 0;">
-                <img src="data:image/png;base64,${await generateQRCode(qrData)}" alt="Contract QR Code" style="width: 200px; height: 200px;"/>
+                <img src="${qrCodeUrl}" alt="Contract QR Code" style="width: 200px; height: 200px;"/>
               </div>
               <p style="color: var(--color-text-secondary); margin-top: 10px;">
                 Serial Number: ${contract.serialNumber || 'N/A'}
@@ -759,6 +767,7 @@ const ContractPreview = ({ route }) => {
                   backgroundColor="white"
                   color="black"
                   logo={logo}
+                  getRef={qrCodeRef}
                 />
               </View>
               <Text style={styles.serialNumber}>Serial Number: {contract.serialNumber || 'N/A'}</Text>
