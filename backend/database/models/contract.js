@@ -1,7 +1,3 @@
-const { DataTypes } = require('sequelize'); 
-
-
-// Define the Contract model
 module.exports = (sequelize, DataTypes) => {
   const Contract = sequelize.define('Contract', {
     title: {

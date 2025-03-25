@@ -17,8 +17,8 @@
       "assets/fonts/*"
     ],
     "extra": {
-      "API_URL": "http://192.168.2.123:3304/api",
-      "SOCKET_URL": "http://192.168.2.123:3304"
+      "API_URL": "http://192.168.2.107:3304/api",
+      "SOCKET_URL": "http://192.168.2.107:3304"
     },
     
     "fonts": [

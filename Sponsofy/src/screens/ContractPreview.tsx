@@ -54,7 +54,7 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const contractId = 1;
+  const contractId = 5;
   const { currentTheme } = useTheme();
   const [contract, setContract] = useState<Contract | null>(null);
   const [companySignature, setCompanySignature] = useState<Signature | null>(null);
@@ -101,6 +101,11 @@ const ContractPreview = ({ route }) => {
     },
     section: {
       marginBottom: 20,
+      padding: 25,
+      backgroundColor: currentTheme.colors.black,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: currentTheme.colors.border,
     },
     sectionTitle: {
       fontSize: currentTheme.fontSizes.large,
@@ -192,7 +197,9 @@ const ContractPreview = ({ route }) => {
       marginBottom: 20,
       padding: 25,
       backgroundColor: currentTheme.colors.black,
-      width: '100%',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: currentTheme.colors.border,
     },
     qrContainer: {
       alignItems: 'center',
@@ -201,6 +208,14 @@ const ContractPreview = ({ route }) => {
       borderRadius: 8,
       marginVertical: 15,
       alignSelf: 'center',
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     serialNumber: {
       fontSize: currentTheme.fontSizes.medium,
@@ -734,18 +749,20 @@ const ContractPreview = ({ route }) => {
             <Text style={styles.text}>{contract.payment_terms}</Text>
           </View>
 
-          <View style={styles.qrSection}>
-            <Text style={styles.QRCodeTitle}>Contract QR Code</Text>
-            <View style={styles.qrContainer}>
-              <QRCode
-                value={qrData}
-                size={200}
-                backgroundColor="white"
-                color="black"
-                logo={logo}
-              />
+          <View style={styles.section}>
+            <View style={styles.qrSection}>
+              <Text style={styles.sectionTitle}>Contract QR Code</Text>
+              <View style={styles.qrContainer}>
+                <QRCode
+                  value={qrData}
+                  size={200}
+                  backgroundColor="white"
+                  color="black"
+                  logo={logo}
+                />
+              </View>
+              <Text style={styles.serialNumber}>Serial Number: {contract.serialNumber || 'N/A'}</Text>
             </View>
-            <Text style={styles.serialNumber}>Serial Number: {contract.serialNumber || 'N/A'}</Text>
           </View>
 
           <View style={styles.signatureSection}>

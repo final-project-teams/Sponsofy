@@ -1,22 +1,37 @@
 const router = require("express").Router();
-const { addContract, getContractsForCurrentCompany, getContractsByCompanyId, getDealsByContractId, getContractById, getContractWithDeals } = require("../controller/contract.controller");
+const {
+  addContract,
+  getContracts,
+  createContract,
+  getContractById,
+  getContractByCompanyId,
+  getContractWithTerms,
+  updateTermStatus,
+  addTermsToContract,
+  gettermsbycontractid,
+  updateTerm,
+  acceptTerm,
+  getContractByContentCreatorId,
+  updateContractStatus
+} = require("../controller/contract.controller");
 const authenticateJWT = require("../auth/refreshToken");
-const { isCompany } = require("../middleware/roleMiddleware");
+const {isCompany, isContentCreator} = require("../middleware/roleMiddleware");
 
+// More specific routes first
+router.get("/company/:userId", authenticateJWT, isCompany, getContractByCompanyId);
+router.get("/creator/:userId", authenticateJWT, isContentCreator, getContractByContentCreatorId);
+router.get("/:id", getContractById);
+router.get("/", getContracts);
+router.post("/post", createContract);
 router.post("/", authenticateJWT, isCompany, addContract);
-router.get("/current", authenticateJWT, isCompany, getContractsForCurrentCompany);
-router.get("/company/:id", authenticateJWT, getContractsByCompanyId);
 
-// Add this new route for getting contract details
+// New routes for terms
+router.get("/:contractId/with-terms", getContractWithTerms);
+router.put("/:contractId/terms/:termId", authenticateJWT, updateTermStatus);
+router.post("/:contractId/terms", authenticateJWT, addTermsToContract);
+router.get("/:contractId/terms", gettermsbycontractid);
+router.put("/:contractId/terms/:termId/update", authenticateJWT, updateTerm);
+router.put("/:contractId/terms/:termId/accept", authenticateJWT, acceptTerm);
+router.put("/:contractId/update-status", authenticateJWT, updateContractStatus);
 router.get("/detail/:contractId", authenticateJWT, getContractById);
-
-// Route to get a contract with its deals in a single request
-router.get("/:id/with-deals", authenticateJWT, getContractWithDeals);
-
-// Route to get a single contract by ID
-router.get("/:id", authenticateJWT, getContractById);
-
-// Route to get deals for a contract
-router.get("/:contractId", authenticateJWT, getDealsByContractId);
-
 module.exports = router;
