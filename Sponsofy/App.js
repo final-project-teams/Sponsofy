@@ -27,6 +27,7 @@ import AddDeal from './src/screens/AddDeal';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 import EditProfileContent from './src/screens/EditProfileContent';
 
 import ContractSection from './src/screens/ContractSection';

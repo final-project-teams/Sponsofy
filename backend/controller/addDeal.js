@@ -1,4 +1,4 @@
-const { Deal, Term, Contract, Company, ContentCreator, pre_Term } = require("../database/connection");
+const { Deal, Term, Contract, Company, ContentCreator, pre_Term,Criteria } = require("../database/connection");
 const jwt = require('jsonwebtoken');
 
 module.exports = {
@@ -110,6 +110,15 @@ module.exports = {
       
               // Adding terms to the deal object
               deal.dataValues.Terms = terms;
+            }
+            if (deal.id) {
+              const criteria = await Criteria.findAll({
+                where: { ContractId: deal.id },
+                attributes: ['id','name', 'description']
+              });
+      
+              // Adding terms to the deal object
+              deal.dataValues.criteria = criteria;
             }
           
 

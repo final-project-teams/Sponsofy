@@ -29,7 +29,7 @@ const companyRouter = require("../router/company.router")
 
 const roomRoutes = require('../router/roomRoutes');
 const messageRoutes = require('../router/messageRoutes');
-
+const contracts=require("../router/contract")
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
 console.log(path.join(__dirname, 'uploads'))
 
@@ -77,6 +77,7 @@ app.use('/api/companies', companyRouter);
 
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/contracts', contracts);
 
 
 // Root route

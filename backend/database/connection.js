@@ -152,12 +152,12 @@ SubCriteria.belongsTo(Criteria,{
 
 /////////////////////////////////////////
 // ContentCreator -> Media (Many-to-One, Portfolio)
-// ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
-// Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
+ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
 
 // Deal -> Media (Many-to-One, Attach Media to Deals)
-// Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
-// Media.belongsTo(Deal, { foreignKey: 'dealId' });
+Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
+Media.belongsTo(Deal, { foreignKey: 'dealId' });
 
 // Account -> Post (One-to-Many)
 Account.hasMany(Post);
@@ -269,8 +269,8 @@ ContentCreatorSubCriteria.belongsTo(SubCriteria, {
 
 
 // Make sure this association exists and is properly defined
-// Message.hasOne(Media, { foreignKey: 'messageId' });
-// Media.belongsTo(Message, { foreignKey: 'messageId' });
+Message.hasOne(Media, { foreignKey: 'messageId' });
+Media.belongsTo(Message, { foreignKey: 'messageId' });
 
 
 // Add Term associations

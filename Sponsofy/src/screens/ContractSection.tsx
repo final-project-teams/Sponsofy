@@ -22,6 +22,7 @@ import { paymentService } from '../services/api';
 import { CardField, useStripe } from '@stripe/stripe-react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useNavigation } from '@react-navigation/native';
+import { WebView } from 'react-native-webview';
 
 interface CustomJwtPayload {
   userId: number;
@@ -112,7 +113,150 @@ const SponsorshipTerms = () => {
   // Add this check for Stripe availability
   const stripe = useStripe();
   const [stripeReady, setStripeReady] = useState(false);
+// Add these state variables at the top with other useState declarations
+const [contentUrls, setContentUrls] = useState<{ [key: number]: string }>({});
+const [platforms, setPlatforms] = useState<{ [key: number]: string }>({});
 
+// Add these handler functions
+const handleContentUrlChange = (termId: number, url: string) => {
+  setContentUrls(prev => ({
+    ...prev,
+    [termId]: url
+  }));
+};
+
+const handlePlatformSelect = (termId: number, platform: 'youtube' | 'image') => {
+  setPlatforms(prev => ({
+    ...prev,
+    [termId]: platform
+  }));
+};
+
+const handleContentSubmission = async (termId: number) => {
+  try {
+    const url = contentUrls[termId];
+    const platform = platforms[termId];
+
+    if (!url || !platform) {
+      Alert.alert('Error', 'Please provide both URL and platform');
+      return;
+    }
+
+    // First, create the media entry
+    const mediaData = {
+      media_type: platform === 'youtube' ? 'video' : 'image',
+      platform: platform === 'youtube' ? 'youtube' : null,
+      file_url: url,
+      file_name: url.split('/').pop() || 'content',
+      file_format: platform === 'youtube' ? 'video/youtube' : 'image/url',
+      description: terms.find(t => t.id === termId)?.description || '',
+      termId: termId, // Associate with the term
+      uploaded_at: new Date()
+    };
+
+    const response = await contractService.submitContent({
+      termId,
+      contractId: contract!.id,
+      contentUrl: url,
+      platform,
+      mediaData // Pass the media data to be stored
+    });
+
+    if (response.success) {
+      // Emit socket event for real-time updates
+      contractSocket?.emit('content_submitted', {
+        contractId: contract!.id,
+        termId,
+        contentUrl: url,
+        platform,
+        mediaId: response.mediaId // Include the created media ID
+      });
+
+      Alert.alert('Success', 'Content submitted successfully');
+      // Clear the form
+      handleContentUrlChange(termId, '');
+      setPlatforms(prev => ({ ...prev, [termId]: '' }));
+    }
+  } catch (error) {
+    console.error('Error submitting content:', error);
+    Alert.alert('Error', 'Failed to submit content');
+  }
+};
+
+const handleContentApproval = async (termId: number) => {
+  try {
+    const response = await contractService.approveContent({
+      termId,
+      contractId: contract!.id
+    });
+
+    if (response.success) {
+      // Emit socket event for real-time updates
+      contractSocket?.emit('content_approved', {
+        contractId: contract!.id,
+        termId
+      });
+
+      Alert.alert('Success', 'Content approved successfully');
+      
+      // Update local term status
+      const updatedTerms = terms.map(term => 
+        term.id === termId 
+          ? { ...term, status: 'content_approved' }
+          : term
+      );
+      setTerms(updatedTerms);
+    }
+  } catch (error) {
+    console.error('Error approving content:', error);
+    Alert.alert('Error', 'Failed to approve content');
+  }
+};
+
+const handleContentRejection = async (termId: number) => {
+  try {
+    // Show dialog for rejection reason
+    Alert.prompt(
+      'Rejection Reason',
+      'Please provide a reason for rejection:',
+      async (reason) => {
+        if (!reason) {
+          Alert.alert('Error', 'Please provide a reason for rejection');
+          return;
+        }
+
+        const response = await contractService.rejectContent({
+          termId,
+          contractId: contract!.id,
+          reason
+        });
+
+        if (response.success) {
+          // Emit socket event for real-time updates
+          contractSocket?.emit('content_rejected', {
+            contractId: contract!.id,
+            termId,
+            reason
+          });
+
+          Alert.alert('Success', 'Content rejected successfully');
+          
+          // Update local term status
+          const updatedTerms = terms.map(term => 
+            term.id === termId 
+              ? { ...term, status: 'rejected' }
+              : term
+          );
+          setTerms(updatedTerms);
+        }
+      },
+      'plain-text'
+    );
+  } catch (error) {
+    console.error('Error rejecting content:', error);
+    Alert.alert('Error', 'Failed to reject content');
+  }
+};
   // Add this useEffect to check Stripe initialization
   useEffect(() => {
     if (stripe) {
@@ -361,15 +505,12 @@ const SponsorshipTerms = () => {
     return term.negotiation?.confirmation_company && term.negotiation?.confirmation_Influencer;
   };
 
-  const steps = [1, 2, 3, 4, 5];
+  const steps = [1, 2, 3, 4, 5,6];
   
   const handleContinue = () => {
-    if (currentStep === 5) {
-      // Don't proceed beyond payment step
-      return;
-    }
+   
     
-    if (currentStep < 5) {
+    if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -851,6 +992,125 @@ const SponsorshipTerms = () => {
           <Text style={styles.noTermsText}>No terms found for this contract</Text>
         )
       )}
+    </View>
+  );
+  // Add to your switch statement in renderContent
+case 6:
+  return userRole === 'company' ? (
+    <View style={styles.contentReviewContainer}>
+      <Text style={styles.sectionTitle}>Review Content Submissions</Text>
+      {terms.map((term) => (
+        <View key={term.id} style={styles.contentCard}>
+          <View style={styles.contentHeader}>
+            <Text style={styles.contentTitle}>{term.title}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: term.status === 'submitted' ? '#FFA500' : '#10B981' }]}>
+              <Text style={styles.statusText}>{term.status}</Text>
+            </View>
+          </View>
+
+          {/* Display submitted URL */}
+          <View style={styles.urlContainer}>
+            <Text style={styles.urlLabel}>Submitted URL:</Text>
+            <Text style={styles.urlText} selectable={true}>
+              {contentUrls[term.id] || 'No URL submitted'}
+            </Text>
+          </View>
+
+          {term.submissions?.[0]?.file_url && (
+  <View style={styles.mediaContainer}>
+    {(term.submissions[0].media_type === 'video' || term.platform === 'youtube') ? (
+      <View style={styles.videoContainer}>
+        
+        
+        <WebView
+          style={styles.videoPlayer}
+          source={{ uri: term.submissions[0].file_url }}
+          allowsFullscreenVideo={true}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+        />
+      </View>
+              ) : (
+                <Image
+                  style={styles.contentImage}
+                  source={{ uri: term.submissions[0].file_url }}
+                  resizeMode="cover"
+                />
+              )}
+            </View>
+          )}
+
+          {term.status === 'submitted' && (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.approveButton]}
+                onPress={() => handleContentApproval(term.id)}
+              >
+                <MaterialIcons name="check-circle" size={24} color="#fff" />
+                <Text style={styles.buttonText}>Approve Content</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.rejectButton]}
+                onPress={() => handleContentRejection(term.id)}
+              >
+                <MaterialIcons name="cancel" size={24} color="#fff" />
+                <Text style={styles.buttonText}>Request Changes</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  ) : (
+    <View style={styles.contentSubmissionContainer}>
+      <Text style={styles.sectionTitle}>Submit Content</Text>
+      {terms.map((term) => (
+        <View key={term.id} style={styles.submissionCard}>
+          <Text style={styles.termTitle}>{term.title}</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.urlInput}
+              placeholder="Enter content URL (YouTube/Image)"
+              placeholderTextColor="#666"
+              value={term.contentUrl}
+              onChangeText={(text) => handleContentUrlChange(term.id, text)}
+            />
+            <View style={styles.platformSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.platformButton,
+                  term.platform === 'youtube' && styles.platformSelected
+                ]}
+                onPress={() => handlePlatformSelect(term.id, 'youtube')}
+              >
+                <MaterialIcons name="youtube-tv" size={24} color="#fff" />
+                <Text style={styles.platformText}>YouTube</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.platformButton,
+                  term.platform === 'image' && styles.platformSelected
+                ]}
+                onPress={() => handlePlatformSelect(term.id, 'image')}
+              >
+                <MaterialIcons name="image" size={24} color="#fff" />
+                <Text style={styles.platformText}>Image</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                !term.contentUrl && styles.submitButtonDisabled
+              ]}
+              onPress={() => handleContentSubmission(term.id)}
+              
+            >
+              <MaterialIcons name="cloud-upload" size={24} color="#fff" />
+              <Text style={styles.submitButtonText}>Submit Content</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
     </View>
   );
       default:
@@ -2100,6 +2360,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  videoContainer: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#000',
+    marginVertical: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  videoPlayer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  mediaContainer: {
+    width: '100%',
+    marginVertical: 10,
+  },
+  contentImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+  },
   historyBadge: {
     position: 'absolute',
     top: -5,
@@ -2262,7 +2543,141 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 12,
-  }
+  },
+  urlContainer: {
+    padding: 10,
+    backgroundColor: '#1F2937',
+    borderRadius: 8,
+    marginVertical: 10,
+  },
+  urlLabel: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  urlText: {
+    color: '#60A5FA',
+    fontSize: 16,
+    textDecorationLine: 'underline',
+  },
+  contentReviewContainer: {
+    padding: 16,
+  },
+  contentCard: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  contentTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  mediaContainer: {
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  videoPlayer: {
+    flex: 1,
+  },
+  contentImage: {
+    width: '100%',
+    height: '100%',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  approveButton: {
+    backgroundColor: '#10B981',
+  },
+  rejectButton: {
+    backgroundColor: '#EF4444',
+  },
+  buttonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  contentSubmissionContainer: {
+    padding: 16,
+  },
+  submissionCard: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  inputContainer: {
+    marginTop: 12,
+  },
+  urlInput: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    padding: 12,
+    color: '#fff',
+    marginBottom: 12,
+  },
+  platformSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  platformButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2A2A2A',
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  platformSelected: {
+    backgroundColor: '#7C4DFF',
+  },
+  platformText: {
+    color: '#fff',
+    marginLeft: 8,
+  },
+  submitButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#2A2A2A',
+    opacity: 0.5,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
 });
 
 export default SponsorshipTerms;

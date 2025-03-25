@@ -48,6 +48,59 @@ export const userService = {
 };
 
 export const contractService = {
+  submitContent: async (data: {
+    termId: number;
+    contractId: number;
+    contentUrl: string;
+    platform: string;
+    mediaData?: any;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/submit`, {
+        ...data,
+        mediaData: {
+          media_type: data.platform === 'youtube' ? 'video' : 'image',
+          platform: data.platform,
+          file_url: data.contentUrl,
+          file_name: data.contentUrl.split('/').pop() || 'content',
+          termId: data.termId,
+          file_format: 'mp4',
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting content:', error);
+      throw error;
+    }
+  },
+
+  approveContent: async (data: {
+    termId: number;
+    contractId: number;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/approve`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error approving content:', error);
+      throw error;
+    }
+  },
+
+  rejectContent: async (data: {
+    termId: number;
+    contractId: number;
+    reason: string;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/reject`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error rejecting content:', error);
+      throw error;
+    }
+  },
+
   getContracts: async () => {
     const response = await api.get('/contract');
     return response.data;

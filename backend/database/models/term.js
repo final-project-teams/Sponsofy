@@ -14,7 +14,7 @@ const Term = sequelize.define('Term', {
   },
  
   status: {
-    type: DataTypes.ENUM('pending', 'accepted', 'rejected'),
+    type: DataTypes.ENUM('pending', 'accepted', 'rejected','completed','submitted','content_approved','content_rejected','content_submitted'),
     defaultValue: 'pending',  // Status of the term
   },
   ContractId: {
