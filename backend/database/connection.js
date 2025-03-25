@@ -65,6 +65,12 @@ Deal.belongsTo(ContentCreator, { as: "ContentCreatorDeals", foreignKey: "content
 Company.hasMany(Contract)
 Contract.belongsTo(Company)
 
+// ContentCreator -> Contract (One-to-Many)
+ContentCreator.hasOne(Contract);
+Contract.belongsTo(ContentCreator);
+
+Contract.hasMany(Deal);
+Deal.belongsTo(Contract);
 Contract.hasMany(Deal)
 Deal.belongsTo(Contract)
 
@@ -112,8 +118,11 @@ Deal.belongsTo(Contract)
 Deal.hasMany(Term)
 Term.belongsTo(Deal)
 
-Term.hasMany(Negotiation)
-Negotiation.belongsTo(Term)
+  Term.hasMany(Negotiation)
+  Negotiation.belongsTo(Term)
+
+Contract.belongsTo(Criteria, { through: ContractCriteria })
+Criteria.belongsTo(Contract, { through: ContractCriteria })
 
 Criteria.hasMany(SubCriteria)
 SubCriteria.belongsTo(Criteria)
@@ -142,6 +151,51 @@ SubCriteria.belongsTo(Criteria,{
 })
 
 /////////////////////////////////////////
+// ContentCreator -> Media (Many-to-One, Portfolio)
+ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
+
+// Deal -> Media (Many-to-One, Attach Media to Deals)
+Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
+Media.belongsTo(Deal, { foreignKey: 'dealId' });
+
+// Account -> Post (One-to-Many)
+Account.hasMany(Post);
+Post.belongsTo(Account);
+
+
+// Contract -> Deal (One-to-Many)
+Contract.hasMany(Deal);
+Deal.belongsTo(Contract);
+
+// Deal -> Term (One-to-Many)
+Deal.hasMany(Term);
+Term.belongsTo(Deal);
+
+// Term -> Negotiation (One-to-Many)
+  Term.hasOne(Negotiation, {as:'negotiation', foreignKey: 'termId'});
+  Negotiation.belongsTo(Term);
+
+
+Term.hasMany(Contract);
+Contract.belongsTo(Term);
+
+// Contract -> Criteria (Many-to-Many through contract_criteria)
+Contract.belongsTo(Criteria, { through: ContractCriteria });
+Criteria.belongsTo(Contract, { through: ContractCriteria });
+
+
+// Criteria -> SubCriteria (One-to-Many)
+Criteria.hasMany(SubCriteria);
+SubCriteria.belongsTo(Criteria);
+
+// A user has one signature
+User.hasOne(Signature);
+Signature.belongsTo(User);
+
+// A user has many notifications
+User.hasMany(Notification);
+Notification.belongsTo(User);
 
 // A room has many messages
 Room.hasMany(Message, {
@@ -213,6 +267,16 @@ ContentCreatorSubCriteria.belongsTo(SubCriteria, {
   as: "sub_criterias",
 });
 
+
+// Make sure this association exists and is properly defined
+Message.hasOne(Media, { foreignKey: 'messageId' });
+Media.belongsTo(Message, { foreignKey: 'messageId' });
+
+
+// Add Term associations
+Contract.hasMany(Term);
+Term.belongsTo(Contract);
+
 sequelize
   .authenticate()
   .then(() => {
@@ -223,47 +287,7 @@ sequelize
   })
 
 // Sync models with the database
-// Modify the sync process to handle dependencies correctly
-async function syncDatabase() {
-  try {
-    // First, synchronize the Criteria model
-    await Criteria.sync({ alter: true });
-    console.log('Criteria table synchronized');
-    
-    // Then synchronize SubCriteria which depends on Criteria
-    await SubCriteria.sync({ alter: true });
-    console.log('SubCriteria table synchronized');
-    
-    // Then synchronize Contract which depends on Criteria
-    await Contract.sync({ alter: true });
-    console.log('Contract table synchronized');
-    
-    // Then synchronize ContractCriteria which depends on both Contract and Criteria
-    // Force: true will drop and recreate the table to fix the primary key issue
-    await ContractCriteria.sync({ force: true });
-    console.log('ContractCriteria table synchronized');
-    
-    // Then synchronize all remaining models
-    const remainingModels = [
-      User, ContentCreator, Media, Deal, Company, Account, Post, 
-      Term, Negotiation, Signature, Notification, 
-      Room, Message, Payment, DealRequest, pre_Term, UserRoom, ContentCreatorSubCriteria
-    ];
-    
-    for (const model of remainingModels) {
-      await model.sync({ alter: true });
-    }
-    
-    console.log('All database tables have been synchronized!');
-  } catch (error) {
-    console.error('Error syncing database:', error);
-  }
-}
-
-// Execute the sync function
-// syncDatabase();
-
-// sequelize.sync({ force: true }) // Use `force: true` only in development
+//  sequelize.sync({ alter: true }) // Use `force: true` only in development
 //   .then(() => {
 //     console.log('Database & tables have been synchronized!');
 //   })

@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria, Term , Deal,Media,Post,ContentCreator,Account, User} = require("../database/connection");
+const { Contract, Company, Criteria, Term ,ContentCreator ,Notification, Negotiation} = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -52,433 +52,396 @@ module.exports = {
       });
     }
   },
-
-  getContractsForCurrentCompany: async (req, res) => {
+  createContract : async (req, res) => {
     try {
-      const decoded = req.user;
+        const { title, description, start_date, end_date, CompanyId, ContentCreatorId,rank,payment_terms,status,TermId} = req.body;
 
-      // Find the company associated with the user
-      const company = await Company.findOne({ where: { userId: decoded.userId } });
+        const newContract = await Contract.create({
+            title,
+            description,
+            start_date,
+            end_date,
+            CompanyId,
+            ContentCreatorId,
+            rank,
+            payment_terms,
+            status,
+            TermId
 
-      if (!company) {
-        return res.status(404).json({
-          success: false,
-          message: 'Company not found'
         });
-      }
 
-      // Retrieve all contracts associated with the company, including criteria
-      const contracts = await Contract.findAll({
-        where: { CompanyId: company.id },
-        include: [
-          { 
-            model: Criteria,
-            as: 'criteria'
-          }
-        ],
-        order: [['createdAt', 'DESC']]
-      });
-
-      res.status(200).json({
-        success: true,
-        contracts
-      });
-
+        res.status(201).json(newContract);
     } catch (error) {
-      console.error("Error fetching contracts:", error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching contracts',
-        error: error.message
-      });
+        console.error('Error creating contract:', error);
+        res.status(500).json({ message: 'Error creating contract', error });
     }
-  },
+},
 
-  // New method to get contracts by company ID
-  getContractsByCompanyId: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const decoded = req.user;
-
-      console.log(`Fetching contracts for company ID: ${id}`);
-      console.log(`User ID from token: ${decoded.userId}`);
-
-      // Verify if the user has access to this company's contracts
-      // If the user is a company, they should only access their own contracts
-      if (decoded.role === 'company') {
-        const userCompany = await Company.findOne({ where: { userId: decoded.userId } });
-        
-        if (!userCompany) {
-          return res.status(404).json({
-            success: false,
-            message: 'Company not found for this user'
-          });
-        }
-
-        // Check if the requested company ID matches the user's company ID
-        if (userCompany.id.toString() !== id) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to access these contracts'
-          });
-        }
-      }
-
-      // Find the company
-      const company = await Company.findByPk(id);
-      if (!company) {
-        return res.status(404).json({
-          success: false,
-          message: 'Company not found'
-        });
-      }
-
-      // Retrieve all contracts associated with the company, including criteria
-      const contracts = await Contract.findAll({
-        where: { CompanyId: id },
-        include: [
-          { 
-            model: Criteria,
-            as: 'criteria'
-          }
-        ],
-        order: [['createdAt', 'DESC']]
-      });
-
-      res.status(200).json({
-        success: true,
-        company: {
-          id: company.id,
-          name: company.name
-        },
-        contracts
-      });
-
-    } catch (error) {
-      console.error("Error fetching contracts by company ID:", error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching contracts',
-        error: error.message
-      });
-    }
-  },
-
-  // Enhance this method to get deals by contract ID
-  getDealsByContractId: async (req, res) => {
-    try {
-      const { contractId } = req.params;
-      const decoded = req.user;
-      
-      console.log(`Fetching deals for contract ID: ${contractId}`);
-      console.log(`User ID from token: ${decoded.userId}, role: ${decoded.role}`);
-      
-      // First verify the contract exists
-      const contract = await Contract.findByPk(contractId);
-      
-      if (!contract) {
-        return res.status(404).json({
-          success: false,
-          message: 'Contract not found'
-        });
-      }
-      
-      // Verify if the user has access to this contract's deals
-      // If the user is a company, they should only access deals for their own contracts
-      if (decoded.role === 'company') {
-        const userCompany = await Company.findOne({ where: { userId: decoded.userId } });
-        
-        if (!userCompany) {
-          return res.status(404).json({
-            success: false,
-            message: 'Company not found for this user'
-          });
-        }
-        
-        // Check if the requested contract belongs to the user's company
-        if (contract.CompanyId.toString() !== userCompany.id.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to access deals for this contract'
-          });
-        }
-      } else if (decoded.role === 'creator') {
-        // If user is a content creator, they should only see deals they're involved in
-        // This would require further checks based on your application logic
-        // For example, checking if there are any deals with this creator for this contract
-        const contentCreator = await ContentCreator.findOne({ where: { userId: decoded.userId } });
-        
-        if (!contentCreator) {
-          return res.status(404).json({
-            success: false,
-            message: 'Content creator profile not found'
-          });
-        }
-        
-        // You could check if this creator has any deals with this contract
-        const creatorHasDeals = await Deal.findOne({
-          where: { 
-            ContractId: contractId,
-            contentCreatorId: contentCreator.id
-          }
-        });
-        
-        if (!creatorHasDeals) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have any deals associated with this contract'
-          });
-        }
-      }
-      
-      // Fetch the deals with all the related data
-      const deals = await Deal.findAll({
-        where: { ContractId: contractId },
-        include: [
-          {
-            model: Term,
-            include: [
-              {
-                model: Media
-              },
-              {
-                model: Post
-              }
-            ]
-          },
-          {
-            model: ContentCreator,
-            as: 'ContentCreatorDeals',
-            include: [
-              {
-                model: Media,
-                as: 'ProfilePicture'
-              },
-              {
-                model: Account,
-                as: 'accounts'
-              },
-              {
-                model: User,
-                as: 'user',
-                attributes: ['username', 'email']
-              }
-            ]
-          },
-          {
-            model: Media,
-            as: 'AttachedMedia'
-          }
-        ],
-        order: [['createdAt', 'DESC']]
-      });
-      
-      // Return empty array instead of 404 if no deals found
-      if (!deals.length) {
-        console.log(`No deals found for contract ID: ${contractId}`);
-        return res.status(200).json({
-          success: true,
-          message: 'No deals found for this contract',
-          deals: []
-        });
-      }
-      
-      console.log(`Found ${deals.length} deals for contract ID: ${contractId}`);
-      
-      // Return the deals along with the contract summary
-      res.status(200).json({
-        success: true,
-        contractSummary: {
-          id: contract.id,
-          title: contract.title,
-          status: contract.status
-        },
-        deals
-      });
-      
-    } catch (error) {
-      console.error("Error fetching deals by contract ID:", error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching deals',
-        error: error.message
-      });
-    }
-  },
-
-  // Add this new method to get a single contract by ID
-  getContractById: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const decoded = req.user;
-
-      console.log(`Fetching contract with ID: ${id}`);
-      console.log(`User ID from token: ${decoded.userId}`);
-
-      // Find the contract with its associated data
-      const contract = await Contract.findByPk(id, {
-        include: [
-          { 
-            model: Criteria,
-            as: 'criteria'
-          },
-          {
-            model: Company,
-            attributes: ['id', 'name', 'industry', 'location', 'verified']
-          }
-        ]
-      });
-
-      if (!contract) {
-        return res.status(404).json({
-          success: false,
-          message: 'Contract not found'
-        });
-      }
-
-      // Verify if the user has access to this contract
-      // If the user is a company, they should only access their own contracts
-      if (decoded.role === 'company') {
-        const userCompany = await Company.findOne({ where: { userId: decoded.userId } });
-        
-        if (!userCompany) {
-          return res.status(404).json({
-            success: false,
-            message: 'Company not found for this user'
-          });
-        }
-
-        // Check if the requested contract belongs to the user's company
-        if (contract.CompanyId.toString() !== userCompany.id.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to access this contract'
-          });
-        }
-      }
-
-      res.status(200).json({
-        success: true,
-        contract
-      });
-
-    } catch (error) {
-      console.error("Error fetching contract by ID:", error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching contract',
-        error: error.message
-      });
-    }
-  },
-
-  // Add this new method to get a contract with its deals in a single request
-  getContractWithDeals: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const decoded = req.user;
-
-      console.log(`Fetching contract with deals for ID: ${id}`);
-      console.log(`User ID from token: ${decoded.userId}, role: ${decoded.role}`);
-
-      // Find the contract with its associated data
-      const contract = await Contract.findByPk(id, {
-        include: [
-          { 
-            model: Criteria,
-            as: 'criteria'
-          },
-          {
-            model: Company,
-            attributes: ['id', 'name', 'industry', 'location', 'verified']
-          }
-        ]
-      });
-
-      if (!contract) {
-        return res.status(404).json({
-          success: false,
-          message: 'Contract not found'
-        });
-      }
-
-      // Verify if the user has access to this contract
-      // If the user is a company, they should only access their own contracts
-      if (decoded.role === 'company') {
-        const userCompany = await Company.findOne({ where: { userId: decoded.userId } });
-        
-        if (!userCompany) {
-          return res.status(404).json({
-            success: false,
-            message: 'Company not found for this user'
-          });
-        }
-
-        // Check if the requested contract belongs to the user's company
-        if (contract.CompanyId.toString() !== userCompany.id.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to access this contract'
-          });
-        }
-      }
-
-      // Fetch the deals for this contract
-      const deals = await Deal.findAll({
-        where: { ContractId: id },
-        include: [
-          {
-            model: Term,
-            include: [
-              {
-                model: Media
-              },
-              {
-                model: Post
-              }
-            ]
-          },
-          {
-            model: ContentCreator,
-            as: 'ContentCreatorDeals',
-            include: [
-              {
-                model: Media,
-                as: 'ProfilePicture'
-              },
-              {
-                model: Account,
-                as: 'accounts'
-              },
-              {
-                model: User,
-                as: 'user',
-                attributes: ['username', 'email']
-              }
-            ]
-          },
-          {
-            model: Media,
-            as: 'AttachedMedia'
-          }
-        ],
-        order: [['createdAt', 'DESC']]
-      });
-
-      // Return both the contract and its deals
-      res.status(200).json({
-        success: true,
-        contract,
-        deals: deals || []
-      });
-
-    } catch (error) {
-      console.error("Error fetching contract with deals:", error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching contract with deals',
-        error: error.message
-      });
-    }
+getContracts : async (req, res) => {
+  try {
+      const contracts = await Contract.findAll();
+      res.json(contracts);
+  } catch (error) {
+      console.error('Error fetching contracts:', error);
+      res.status(500).json({ message: 'Error fetching contracts', error });
   }
-};
+},
+
+getContractById : async (req, res) => {
+  try {
+    const { id } = req.params;
+    const contract = await Contract.findByPk(id);
+    res.json(contract);
+  } catch (error) {
+    console.error('Error fetching contract:', error);
+    res.status(500).json({ message: 'Error fetching contract', error });
+  }
+},
+getContractByCompanyId : async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    console.log('Fetching contracts for userId:', userId);
+    
+    // First find the company associated with this user
+    const company = await Company.findOne({ where: { userId: userId } });
+    console.log('Found company:', company);
+    
+    if (!company) {
+      return res.status(404).json({ 
+        message: 'Company not found for this user',
+        userId
+      });
+    }
+    
+    // Now use the company's ID to find contracts
+    const contracts = await Contract.findAll({ 
+      where: { CompanyId: company.id },
+      include: [{ model: Criteria }] // Include related criteria if needed
+    });
+    console.log('Found contracts:', contracts);
+    
+    res.json(contracts);
+  } catch (error) {
+    console.error('Error fetching contract by company id:', error);
+    res.status(500).json({ 
+      message: 'Error fetching contract by company id', 
+      error: error.message 
+    });
+  }
+},
+getContractByContentCreatorId : async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    console.log('Fetching contracts for userId:', userId);
+    
+    // First find the content creator associated with this user
+    const contentCreator = await ContentCreator.findOne({ where: { userId: userId } });
+    console.log('Found content creator:', contentCreator);
+    
+    if (!contentCreator) {
+      return res.status(404).json({ 
+        message: 'Content creator not found for this user',
+        userId
+      });
+    }
+
+    // Use contentCreator.id instead of ContentCreator.id
+    const contracts = await Contract.findAll({ 
+      where: { ContentCreatorId: contentCreator.id },
+      include: [{ model: Criteria }]
+    });
+    console.log('Found contracts:', contracts);
+    
+    res.json(contracts);
+  } catch (error) {
+    console.error('Error fetching contract by content creator id:', error);
+    res.status(500).json({ 
+      message: 'Error fetching contract by content creator id', 
+      error: error.message 
+    });
+  }
+},
+// Get contract with its terms
+getContractWithTerms: async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    
+    const contract = await Contract.findOne({
+      where: { id: contractId },
+      include: [{
+        model: Term,
+        attributes: ['id', 'title', 'description', 'companyAccepted', 'influencerAccepted', 'status']
+      }]
+    });
+
+    if (!contract) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Contract not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      contract
+    });
+
+  } catch (error) {
+    console.error("Error fetching contract with terms:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching contract',
+      error: error.message 
+    });
+  }
+},
+
+// Update term acceptance status
+updateTermStatus: async (req, res) => {
+  try {
+    const { contractId, termId } = req.params;
+    const { userRole } = req.body;
+
+    const term = await Term.findOne({
+      where: { 
+        id: termId,
+        ContractId: contractId
+      }
+    });
+
+    if (!term) {
+      return res.status(404).json({
+        success: false,
+        message: 'Term not found'
+      });
+    }
+
+    // Update the appropriate acceptance field based on user role
+    if (userRole === 'company') {
+      term.companyAccepted = true;
+    } else if (userRole === 'influencer') {
+      term.influencerAccepted = true;
+    }
+
+    // Check if both parties have accepted
+    if (term.companyAccepted && term.influencerAccepted) {
+      term.status = 'accepted';
+    }
+
+    await term.save();
+
+    res.json({
+      success: true,
+      message: 'Term updated successfully',
+      term
+    });
+
+  } catch (error) {
+    console.error("Error updating term:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating term',
+      error: error.message
+    });
+  }
+},
+
+// Add terms to a contract
+addTermsToContract: async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { terms } = req.body;
+
+    // Validate input
+    if (!terms || !Array.isArray(terms) || terms.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Terms array is required and cannot be empty'
+      });
+    }
+
+    // Check if contract exists
+    const contract = await Contract.findByPk(contractId);
+    if (!contract) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contract not found'
+      });
+    }
+
+    // Validate each term has required fields
+    for (const term of terms) {
+      if (!term.title || !term.description) {
+        return res.status(400).json({
+          success: false,
+          message: 'Each term must have a title and description'
+        });
+      }
+    }
+
+    // Create terms with default acceptance status
+    const createdTerms = await Promise.all(
+      terms.map(term => Term.create({
+        title: term.title,
+        description: term.description,
+        companyAccepted: false,
+        influencerAccepted: false,
+        ContractId: contractId
+      }))
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Terms added successfully',
+      terms: createdTerms
+    });
+
+  } catch (error) {
+    console.error("Error adding terms:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Error adding terms',
+      error: error.message
+    });
+  }
+},
+updateContractStatus: async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { status } = req.body;
+    await Contract.update({ status }, { where: { id: contractId } });
+    res.json({ success: true, message: 'Contract status updated' });
+  } catch (error) {
+    console.error('Error updating contract status:', error);
+    res.status(500).json({ success: false, message: 'Error updating contract status', error: error.message });
+  }
+},
+
+
+gettermsbycontractid : async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const terms = await Term.findAll({ 
+      where: { ContractId: contractId },
+      include: [{
+        model: Negotiation,
+        as: "negotiation",
+        attributes: ['status', 'confirmation_company', 'confirmation_Influencer']
+      }]
+    });
+    res.json(terms);
+  } catch (error) {
+    console.error('Error fetching terms:', error);
+    res.status(500).json({ message: 'Error fetching terms', error });
+  }
+},
+updateTerm: async (req, res) => {
+  try {
+    const { contractId, termId } = req.params;
+    const { title, description } = req.body;
+    
+    console.log('Updating term with:', {
+      contractId,
+      termId,
+      updates: { title, description }
+    });
+
+    // First verify the term exists
+    const term = await Term.findOne({
+      where: { 
+        id: termId,
+        ContractId: contractId 
+      }
+    });
+
+    if (!term) {
+      console.log('Term not found:', { termId, contractId });
+      return res.status(404).json({
+        success: false,
+        message: 'Term not found'
+      });
+    }
+
+    // Perform the update
+    await term.update({
+      title,
+      description
+    });
+
+    // Fetch the fresh term to confirm update
+    const updatedTerm = await Term.findOne({
+      where: { 
+        id: termId,
+        ContractId: contractId 
+      }
+    });
+
+    console.log('Updated term:', updatedTerm.toJSON());
+
+    return res.json({
+      success: true,
+      message: 'Term updated successfully',
+      term: updatedTerm
+    });
+
+  } catch (error) {
+    console.error('Error in updateTerm:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update term',
+      error: error.message
+    });
+  }
+},
+acceptTerm: async (req, res) => {
+  try {
+    const { contractId, termId } = req.params;
+    const { userRole } = req.body;
+    
+    // Find or create negotiation for this term
+    const [negotiation, created] = await Negotiation.findOrCreate({
+      where: { TermId: termId },
+      defaults: {
+        status: 'pending',
+        confirmation_company: false,
+        confirmation_Influencer: false,
+        TermId: termId
+      }
+    });
+
+    // Update the appropriate confirmation based on user role
+    if (userRole === 'company') {
+      negotiation.confirmation_company = true;
+    } else if (userRole === 'influencer') {
+      negotiation.confirmation_Influencer = true;
+    }
+
+    // Check if both parties have confirmed
+    if (negotiation.confirmation_company && negotiation.confirmation_Influencer) {
+      negotiation.status = 'completed';
+      
+      // Update the term status
+      await Term.update(
+        { status: 'accepted' },
+        { where: { id: termId } }
+      );
+    }
+
+    await negotiation.save();
+
+    res.json({ 
+      success: true,
+      message: 'Term acceptance updated',
+      negotiation: negotiation
+    });
+
+  } catch (error) {
+    console.error('Error accepting term:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error accepting term', 
+      error: error.message 
+    });
+  }
+},
+}
