@@ -23,6 +23,7 @@ import {
   Entypo,
   FontAwesome,
   AntDesign,
+  MaterialIcons,
 } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -488,18 +489,20 @@ const ProfileContent = () => {
           <View style={styles.buttonContainer}>
             {/* Edit Profile Button */}
             <TouchableOpacity
-              style={styles.editProfileButton}
+              style={styles.iconButton}
               onPress={handleEditProfile}
             >
-              <Text style={styles.editProfileText}>Edit Profile</Text>
+              <MaterialIcons name="edit" size={24} color="#8A2BE2" />
+              <Text style={styles.iconButtonText}>Edit Profile</Text>
             </TouchableOpacity>
 
             {/* View Info Button */}
             <TouchableOpacity
-              style={styles.editProfileButton}
+              style={styles.iconButton}
               onPress={navigateToCreatorInfo}
             >
-              <Text style={styles.editProfileText}>View Info</Text>
+              <Feather name="info" size={24} color="#8A2BE2" />
+              <Text style={styles.iconButtonText}>View Info</Text>
             </TouchableOpacity>
           </View>
 
@@ -701,23 +704,18 @@ const ProfileContent = () => {
               </View>
             ) : (
               <View style={styles.noMediaContainer}>
-                {/* <Feather name="image" size={24} color="#666" />
-                <Text style={styles.noMediaText}>
-                  No media found for {selectedPlatform}
-                </Text> */}
                 <Image
                   style={styles.image}
-                  source={{ uri: 'https://m.media-amazon.com/images/M/MV5BMTkwNjA3NjAyMV5BMl5BanBnXkFtZTcwMjM3NTEzMQ@@._V1_.jpg' }}
+                  source={{
+                    uri: "https://m.media-amazon.com/images/M/MV5BMTkwNjA3NjAyMV5BMl5BanBnXkFtZTcwMjM3NTEzMQ@@._V1_.jpg",
+                  }}
                 />
                 <Image
                   style={styles.image}
-                  source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSabdScY1OQP4jmx3lEJycn1wP-VQAJmEgINw&s' }}
+                  source={{
+                    uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSabdScY1OQP4jmx3lEJycn1wP-VQAJmEgINw&s",
+                  }}
                 />
-                 <Image
-                  style={styles.image}
-                  source={{ uri: 'https://m.media-amazon.com/images/M/MV5BMTkwNjA3NjAyMV5BMl5BanBnXkFtZTcwMjM3NTEzMQ@@._V1_.jpg' }}
-                />
-         
               </View>
             )}
           </View>
@@ -730,7 +728,7 @@ const ProfileContent = () => {
         >
           <Entypo name="plus" size={24} color="white" />
         </TouchableOpacity>
-        
+
         {/* Bottom Navigation Bar */}
         <View style={styles.bottomNavContainer}>
           <BottomNavBar />
@@ -813,16 +811,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   buttonContainer: {
-    flexDirection: "row", // Align children horizontally
-    justifyContent: "space-between", // Add space between the buttons
-    paddingHorizontal: 20, // Add padding to the sides if needed
-    marginTop: 2, // Adjust margin as needed
-    marginBottom: 20, // Adjust margin as needed
-    backgroundColor: "#1E1E1E",
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 9,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 15,
+    marginTop: 10,
+    marginBottom: 20,
+
+    borderRadius: 12,
   },
+  iconButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 10,
+    flexDirection: "row",
+    backgroundColor: "#1E1E1E",
+    borderRadius: 8,
+    gap: 8,
+  },
+  iconButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
   editProfileButton: {
     backgroundColor: "#8A2BE2",
     paddingVertical: 10,
@@ -1104,10 +1115,11 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   noMediaContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    flexDirection: "row", // Add this line to arrange items horizontally
+    flexDirection: "row",
+    justifyContent: "space-evenly", // or "space-between" if you prefer
+    width: '100%', // ensure container takes full width
+    paddingVertical: 20, // vertical padding only
+    margin:10,
   },
   noMediaText: {
     color: "#888",
@@ -1183,7 +1195,7 @@ const styles = StyleSheet.create({
   },
   // Bottom Navigation Bar Container
   bottomNavContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -1191,11 +1203,10 @@ const styles = StyleSheet.create({
   },
   // Image styles
   image: {
-    width: 100,
-    height: 100,
+    width: '45%', // takes nearly half the container width
+    aspectRatio: 1, // keeps images square
     borderRadius: 8,
-    marginTop: 10,
-    marginHorizontal: 5,
+    marginHorizontal: '2.5%', // adds spacing between images
   },
 });
 

@@ -53,7 +53,7 @@ const DeleteCardScreen = ({ route, navigation }) => {
         await api.delete(`/card-payments/${id}`)
   
         Alert.alert("Success", "Card payment deleted successfully", [
-          { text: "OK", onPress: () => navigation.navigate("GetAllCards", { userId }) },
+          { text: "OK", onPress: () => navigation.navigate("ProfileContent", { userId }) },
         ])
       } catch (error) {
         console.error("Error deleting card payment:", error)
@@ -111,10 +111,10 @@ const DeleteCardScreen = ({ route, navigation }) => {
               </View>
             </View>
   
-            <View style={styles.amountContainer}>
+            {/* <View style={styles.amountContainer}>
               <Text style={styles.amountLabel}>Amount</Text>
               <Text style={styles.amountValue}>${Number.parseFloat(cardDetails.amount).toFixed(2)}</Text>
-            </View>
+            </View> */}
           </View>
         </View>
   

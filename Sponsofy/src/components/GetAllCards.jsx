@@ -61,11 +61,6 @@ const GetAllCardsScreen = ({ route, navigation }) => {
             <Text style={styles.detailLabel}>Expires</Text>
             <Text style={styles.detailValue}>{item.expirationDate}</Text>
           </View>
-
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Amount</Text>
-            <Text style={styles.detailValue}>${Number.parseFloat(item.amount).toFixed(2)}</Text>
-          </View>
         </View>
       </TouchableOpacity>
     </View>
@@ -239,5 +234,4 @@ const styles = StyleSheet.create({
 })
 
 export default GetAllCardsScreen
-
 

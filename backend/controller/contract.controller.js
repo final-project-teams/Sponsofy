@@ -272,6 +272,7 @@ module.exports = {
         ],
       })
 
+      
       // Extract unique contracts from deals
       const contractsMap = new Map()
       deals.forEach((deal) => {
@@ -279,6 +280,7 @@ module.exports = {
           contractsMap.set(deal.Contract.id, deal.Contract)
         }
       })
+
 
       const contracts = Array.from(contractsMap.values())
 
