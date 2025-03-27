@@ -54,7 +54,7 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const contractId = 5;
+  const contractId = route.params.contractId;
   const { currentTheme } = useTheme();
   const [contract, setContract] = useState<Contract | null>(null);
   const [companySignature, setCompanySignature] = useState<Signature | null>(null);
@@ -102,17 +102,14 @@ const ContractPreview = ({ route }) => {
     },
     section: {
       marginBottom: 20,
-      padding: 25,
+      padding: 0,
       backgroundColor: currentTheme.colors.black,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: currentTheme.colors.border,
     },
     sectionTitle: {
       fontSize: currentTheme.fontSizes.large,
       fontFamily: currentTheme.fonts.semibold,
       color: currentTheme.colors.text,
-      marginBottom: 10,
+      marginBottom: 20,
     },
     text: {
       fontSize: currentTheme.fontSizes.medium,
@@ -196,18 +193,16 @@ const ContractPreview = ({ route }) => {
     },
     qrSection: {
       marginBottom: 20,
-      padding: 25,
+      marginTop: 20,
       backgroundColor: currentTheme.colors.black,
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: currentTheme.colors.border,
     },
     qrContainer: {
       alignItems: 'center',
       padding: 20,
       backgroundColor: '#FFFFFF',
       borderRadius: 8,
-      marginVertical: 15,
+      marginVertical: 10,
       alignSelf: 'center',
       shadowColor: "#000",
       shadowOffset: {
@@ -490,13 +485,6 @@ const ContractPreview = ({ route }) => {
                   <span class="info-label">Email:</span>
                   <span class="info-value">${contract.Deals?.[0]?.ContentCreatorDeals?.user?.email || 'N/A'}</span>
                 </div>
-                <div class="info-field">
-                ${contract.Deals?.[0]?.ContentCreatorDeals?.accounts?.map(account => `
-                  <div class="info-field">
-                    <span class="info-label">${account.platform}:</span>
-                    <span class="info-value">${account.username}</span>
-                  </div>
-                `).join('') || ''}
               </div>
             </div>
           </div>

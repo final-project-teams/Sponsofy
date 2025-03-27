@@ -49,6 +49,7 @@ import ContractDetails from './src/screens/ContractDetails';
 import SignatureManagement from './src/screens/SignatureManagement';
 import ContentCreatorInfo from './src/components/ContentCreatorInfo';
 import ContractPreview from './src/screens/ContractPreview';
+import QRCodeVerifier from './src/screens/QRCodeVerifier';
 
 const Stack = createStackNavigator();
 
@@ -73,7 +74,7 @@ const App = () => {
                 <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
                 {/* Main App Screens */}
-                <Stack.Screen name="Home" component={ContractPreview} options={{ headerShown: false }} />
+                <Stack.Screen name="Home" component={QRCodeVerifier} options={{ headerShown: false }} />
                 <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
                 <Stack.Screen name="ContentCreatorInfo" component={ContentCreatorInfo} options={{ headerShown: false }} />

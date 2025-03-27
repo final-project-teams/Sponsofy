@@ -28,6 +28,7 @@ const dealRouter = require("../router/deal.router")
 const roomRoutes = require('../router/roomRoutes');
 const messageRoutes = require('../router/messageRoutes');
 const signatureRouter = require('../router/signatureRouter');
+const QRCodeVerifierRouter = require('../router/QRCodeVerifierRouter');
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
 console.log(path.join(__dirname, 'uploads'))
 
@@ -74,7 +75,7 @@ app.use('/api/user', userRouter);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/signature', signatureRouter);
-
+app.use('/api/qr', QRCodeVerifierRouter);
 
 
 // Root route
