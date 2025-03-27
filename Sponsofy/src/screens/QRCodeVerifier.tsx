@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { API_URL } from '../config/source';
 import api from '../config/axios';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 interface VerifiedContract {
     id: number;
@@ -39,6 +40,7 @@ const QRCodeVerifier = () => {
         message: string;
         contract?: VerifiedContract;
     } | null>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     const verifyContract = async () => {
         try {
@@ -71,6 +73,56 @@ const QRCodeVerifier = () => {
     const closeModal = () => {
         setShowModal(false);
 
+    };
+
+    const pickImage = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 1,
+                base64: true,
+            });
+
+            if (!result.canceled) {
+                setSelectedImage(result.assets[0].uri);
+                setLoading(true);
+
+                try {
+                    // Send the image to backend for processing
+                    const response = await api.post(`${API_URL}/qr/process-image`, {
+                        image: `data:image/jpeg;base64,${result.assets[0].base64}`
+                    });
+
+                    if (response.data.success) {
+                        setVerificationResult({
+                            success: true,
+                            message: 'Contract Successfully Verified!',
+                            contract: response.data.contract
+                        });
+                        setSerialNumber(response.data.contract.serialNumber);
+                        setShowModal(true);
+                    }
+                } catch (err: any) {
+                    setVerificationResult({
+                        success: false,
+                        message: err.response?.data?.message || 'Error processing QR code'
+                    });
+                    setShowModal(true);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        } catch (error) {
+            console.error('Error picking image:', error);
+            setVerificationResult({
+                success: false,
+                message: 'Error selecting image'
+            });
+            setShowModal(true);
+            setLoading(false);
+        }
     };
 
     const styles = StyleSheet.create({
@@ -237,15 +289,22 @@ const QRCodeVerifier = () => {
             fontSize: currentTheme.fontSizes.small,
             fontFamily: currentTheme.fonts.medium,
         },
+        imagePreview: {
+            marginTop: 20,
+            padding: 10,
+            borderRadius: 8,
+            backgroundColor: currentTheme.colors.surface,
+            alignItems: 'center',
+        },
     });
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'active':
             case 'completed':
-                return currentTheme.colors.success;
+                return currentTheme.colors.primary;
             case 'pending':
-                return currentTheme.colors.warning;
+                return currentTheme.colors.secondary;
             case 'terminated':
             case 'rejected':
                 return currentTheme.colors.error;
@@ -271,7 +330,7 @@ const QRCodeVerifier = () => {
                 </View>
 
                 <TouchableOpacity
-                    style={styles.verifyButton}
+                    style={[styles.verifyButton, { marginBottom: 10 }]}
                     onPress={verifyContract}
                     disabled={loading || !serialNumber}
                 >
@@ -281,6 +340,22 @@ const QRCodeVerifier = () => {
                         <Text style={styles.buttonText}>Verify Contract</Text>
                     )}
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.verifyButton, { backgroundColor: currentTheme.colors.secondary }]}
+                    onPress={pickImage}
+                >
+                    <Text style={styles.buttonText}>Scan QR Code</Text>
+                </TouchableOpacity>
+
+                {selectedImage && (
+                    <View style={styles.imagePreview}>
+                        <Image
+                            source={{ uri: selectedImage }}
+                            style={{ width: 200, height: 200, alignSelf: 'center', marginTop: 20 }}
+                        />
+                    </View>
+                )}
 
                 <Modal
                     visible={showModal}
@@ -355,7 +430,7 @@ const QRCodeVerifier = () => {
                                     styles.closeButton,
                                     {
                                         backgroundColor: verificationResult?.success
-                                            ? currentTheme.colors.success
+                                            ? currentTheme.colors.primary
                                             : currentTheme.colors.error
                                     }
                                 ]}

@@ -1,6 +1,7 @@
 const router = require("express").Router();
-const { verifyContract } = require("../controller/QRCodeVerifierController");
+const { verifyContract, processQRCode } = require("../controller/QRCodeVerifierController");
 
 router.get("/verify/:serialNumber", verifyContract);
+router.post("/process-image", processQRCode);
 
 module.exports = router;
