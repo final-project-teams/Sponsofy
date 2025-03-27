@@ -1,7 +1,17 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import React from "react";
 
-const SideBarContent = ({
+interface SideBarContentProps {
+  onProfileClick: () => void;
+  onDealsClick: () => void;
+  onTransactionsClick: () => void;
+  onCardPaymentClick: () => void;
+  onActiveContractsClick: () => void;
+  onCompletedContractsClick: () => void;
+}
+
+const SideBarContent: React.FC<SideBarContentProps> = ({
   onProfileClick,
   onDealsClick,
   onTransactionsClick,
@@ -94,8 +104,8 @@ const SideBarContent = ({
         </TouchableOpacity>
       </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -198,7 +208,6 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontSize: 13,
   },
-})
+});
 
-export default SideBarContent
-
+export default SideBarContent;

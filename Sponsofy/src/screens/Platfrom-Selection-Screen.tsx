@@ -1,3 +1,4 @@
+import React from "react";
 import {
   StyleSheet,
   View,
@@ -8,15 +9,31 @@ import {
 } from "react-native";
 import { Feather, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+
+type RootStackParamList = {
+  SocialMediaStats: { platform: string };
+  // Add other screens here as needed
+};
+
+type PlatformSelectionMediaNavigationProp = StackNavigationProp<RootStackParamList, 'SocialMediaStats'>;
+
+interface Platform {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  iconFamily: "FontAwesome" | "FontAwesome5";
+}
 
 const PlatformSelectionMedia = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<PlatformSelectionMediaNavigationProp>();
 
-  const handlePlatformSelect = (platform) => {
+  const handlePlatformSelect = (platform: string) => {
     navigation.navigate("SocialMediaStats", { platform });
   };
 
-  const platforms = [
+  const platforms: Platform[] = [
     {
       id: "instagram",
       name: "Instagram",
@@ -34,7 +51,7 @@ const PlatformSelectionMedia = () => {
     {
       id: "tiktok",
       name: "TikTok",
-      icon: "tiktok", // Using custom icon or approx equivalent
+      icon: "tiktok",
       color: "#000000",
       iconFamily: "FontAwesome5",
     },
@@ -83,9 +100,9 @@ const PlatformSelectionMedia = () => {
             onPress={() => handlePlatformSelect(platform.id)}
           >
             {platform.iconFamily === "FontAwesome" ? (
-              <FontAwesome name={platform.icon} size={32} color="white" />
+              <FontAwesome name={platform.icon as any} size={32} color="white" />
             ) : (
-              <FontAwesome5 name={platform.icon} size={32} color="white" />
+              <FontAwesome5 name={platform.icon as any} size={32} color="white" />
             )}
             <Text style={styles.platformText}>{platform.name}</Text>
           </TouchableOpacity>

@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useEffect, useState } from "react"
 import {
   View,
@@ -14,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import api from "../config/axios"
 
-const ContentCreatorCompletedContractsScreen = ({ navigation, route }) => {
+const ContentCreatorActiveContractsScreen = ({ navigation, route }) => {
   const [contracts, setContracts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -23,19 +24,19 @@ const ContentCreatorCompletedContractsScreen = ({ navigation, route }) => {
   const { contentCreatorId, profile } = route.params
 
   useEffect(() => {
-    fetchCompletedContracts()
+    fetchActiveContracts()
   }, [contentCreatorId])
 
-  const fetchCompletedContracts = async () => {
+  const fetchActiveContracts = async () => {
     try {
       setLoading(true)
-      const response = await api.get(`/contract/content-creator/${contentCreatorId}/status/completed`)
+      const response = await api.get(`/contract/content-creator/${contentCreatorId}/status/active`)
       setContracts(response.data.contracts)
-      console.log("Completed Contracts:", response.data.contracts)
+      console.log("Active Contracts:", response.data.contracts)
       setLoading(false)
     } catch (err) {
-      console.error("Error fetching completed contracts:", err)
-      setError(err.message || "Failed to load completed contracts")
+      console.error("Error fetching active contracts:", err)
+      setError(err.message || "Failed to load active contracts")
       setLoading(false)
     }
   }
@@ -108,9 +109,9 @@ const ContentCreatorCompletedContractsScreen = ({ navigation, route }) => {
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="checkmark-done-outline" size={64} color="#555" />
-      <Text style={styles.emptyText}>No completed contracts found</Text>
-      <Text style={styles.emptySubtext}>Completed contracts will appear here once you finish your collaborations</Text>
+      <Ionicons name="document-text-outline" size={64} color="#555" />
+      <Text style={styles.emptyText}>No active contracts found</Text>
+      <Text style={styles.emptySubtext}>Active contracts will appear here once you have ongoing collaborations</Text>
     </View>
   )
 
@@ -127,7 +128,7 @@ const ContentCreatorCompletedContractsScreen = ({ navigation, route }) => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle" size={48} color="#e74c3c" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchCompletedContracts}>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchActiveContracts}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -138,8 +139,8 @@ const ContentCreatorCompletedContractsScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Completed Contracts</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={fetchCompletedContracts}>
+        <Text style={styles.headerTitle}>Active Contracts</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchActiveContracts}>
           <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -302,5 +303,5 @@ const styles = StyleSheet.create({
   },
 })
 
-export default ContentCreatorCompletedContractsScreen
+export default ContentCreatorActiveContractsScreen
 
