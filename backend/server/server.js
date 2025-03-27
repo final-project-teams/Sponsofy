@@ -25,11 +25,10 @@ const paymentRouter = require('../router/paymetnRouter');
 const userRouter = require("../router/userRoutes")
 const termsRouter = require("../router/termsrouter")
 const dealRouter = require("../router/deal.router")
-const companyRouter = require("../router/company.router")
-
 const roomRoutes = require('../router/roomRoutes');
 const messageRoutes = require('../router/messageRoutes');
-const contracts=require("../router/contract")
+const signatureRouter = require('../router/signatureRouter');
+const QRCodeVerifierRouter = require('../router/QRCodeVerifierRouter');const contracts=require("../router/contract")
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
 console.log(path.join(__dirname, 'uploads'))
 
@@ -73,10 +72,10 @@ app.use('/api/payment', paymentRouter);
 app.use('/api/search', searchRoutes);
 // app.use('/api/contract', contract);
 app.use('/api/user', userRouter);
-app.use('/api/companies', companyRouter);
-
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/signature', signatureRouter);
+app.use('/api/qr', QRCodeVerifierRouter);
 app.use('/api/contracts', contracts);
 
 
@@ -85,7 +84,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-app.use("/api/addDeal", dealRouter)
+app.use("/api/deal", dealRouter)
 
 
 // Add this to your server.js file

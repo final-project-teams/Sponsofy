@@ -1,4 +1,4 @@
-const { Contract, Company, Criteria, Term ,ContentCreator ,Notification, Negotiation} = require("../database/connection");
+const { Contract, Company, Criteria, Term, Deal, Media, Post, ContentCreator, Account, pre_terms, pre_Term, SubCriteria , User, Signature , Negotiation} = require("../database/connection");
 
 module.exports = {
   addContract: async (req, res) => {
@@ -6,7 +6,7 @@ module.exports = {
       const decoded = req.user;
       console.log("decodedaaa", decoded);
       
-      const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList } = req.body;
+      const { title, description, budget, start_date, end_date, payment_terms, rank, criteriaList, termsList } = req.body;
 
       const company = await Company.findOne({ where: { userId: decoded.userId } });
       console.log("companyaaaa", company);
@@ -14,7 +14,7 @@ module.exports = {
       const contract = await Contract.create({
         title,
         description,
-        amount: budget,
+        budget,
         payment_terms,
         start_date: new Date(start_date),
         end_date: new Date(end_date),
@@ -24,10 +24,31 @@ module.exports = {
       });
 
       if (criteriaList && criteriaList.length > 0) {
-        await Promise.all(criteriaList.map(criteria => {
-          return Criteria.create({
+        await Promise.all(criteriaList.map(async ({ criteria, subCriteria }) => {
+          console.log('Creating criteria with platform:', criteria.platform);
+          
+          const createdCriteria = await Criteria.create({
             name: criteria.name,
-            description: criteria.description,
+            platform: criteria.platform,
+            ContractId: contract.id
+          });
+
+          if (subCriteria) {
+            await SubCriteria.create({
+              name: subCriteria.name,
+              description: subCriteria.description,
+              CriterionId: createdCriteria.id
+            });
+          }
+        }));
+      }
+
+      if (termsList && termsList.length > 0) {
+        await Promise.all(termsList.map(term => {
+          return pre_Term.create({
+            title: term.title,
+            description: term.description || '',
+            status: 'negotiating',
             ContractId: contract.id
           });
         }));
@@ -39,7 +60,9 @@ module.exports = {
         contract: {
           id: contract.id,
           title,
-          status: contract.status
+          status: contract.status,
+          contractData: contract.contractData,
+          serialNumber: contract.serialNumber,
         }
       });
 
@@ -54,11 +77,12 @@ module.exports = {
   },
   createContract : async (req, res) => {
     try {
-        const { title, description, start_date, end_date, CompanyId, ContentCreatorId,rank,payment_terms,status,TermId} = req.body;
+        const { title, description, budget, start_date, end_date, CompanyId, ContentCreatorId,rank,payment_terms,status,TermId} = req.body;
 
         const newContract = await Contract.create({
             title,
             description,
+            budget,
             start_date,
             end_date,
             CompanyId,
@@ -89,12 +113,93 @@ getContracts : async (req, res) => {
 
 getContractById : async (req, res) => {
   try {
-    const { id } = req.params;
-    const contract = await Contract.findByPk(id);
-    res.json(contract);
+    const { contractId } = req.params;
+    
+    const contract = await Contract.findOne({
+      where: { id: contractId },
+      include: [
+        {
+          model: Company,
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username', 'email']
+          }]
+        },
+        {
+          model: Deal,
+          include: [{
+            model: ContentCreator,
+            as: 'ContentCreatorDeals',
+            include: [
+              {
+                model: User,
+                as: 'user',
+                attributes: ['id', 'username', 'email']
+              },
+              {
+                model: Account,
+                as: 'accounts',
+                attributes: ['platform', 'username']
+              }
+            ]
+          }]
+        },
+        {
+          model: pre_Term,
+          attributes: ['id', 'title', 'description', 'status']
+        }
+      ]
+    });
+
+    if (!contract) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contract not found'
+      });
+    }
+
+    // Get user IDs for signatures
+    const companyUserId = contract.Company?.user?.id;
+    const creatorUserId = contract.Deals?.[0]?.ContentCreatorDeals?.user?.id;
+
+    // Get signatures
+    const [companySignature, creatorSignature] = await Promise.all([
+      companyUserId ? Signature.findOne({
+        where: { userId: companyUserId },
+        order: [['created_at', 'DESC']]
+      }) : null,
+      creatorUserId ? Signature.findOne({
+        where: { userId: creatorUserId },
+        order: [['created_at', 'DESC']]
+      }) : null
+    ]);
+
+    // Add debug logging
+    console.log('Contract data:', {
+      companyEmail: contract.Company?.user?.email,
+      creatorEmail: contract.Deals?.[0]?.ContentCreatorDeals?.user?.email,
+      terms: contract.pre_Terms
+    });
+
+    const contractData = contract.toJSON();
+    contractData.signatures = {
+      companySignature,
+      creatorSignature
+    };
+
+    res.status(200).json({
+      success: true,
+      contract: contractData
+    });
+
   } catch (error) {
     console.error('Error fetching contract:', error);
-    res.status(500).json({ message: 'Error fetching contract', error });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching contract', 
+      error: error.message 
+    });
   }
 },
 getContractByCompanyId : async (req, res) => {
@@ -105,17 +210,17 @@ getContractByCompanyId : async (req, res) => {
     // First find the company associated with this user
     const company = await Company.findOne({ where: { userId: userId } });
     console.log('Found company:', company);
-    
-    if (!company) {
-      return res.status(404).json({ 
+
+      if (!company) {
+        return res.status(404).json({
         message: 'Company not found for this user',
         userId
-      });
-    }
-    
+        });
+      }
+
     // Now use the company's ID to find contracts
-    const contracts = await Contract.findAll({ 
-      where: { CompanyId: company.id },
+      const contracts = await Contract.findAll({
+        where: { CompanyId: company.id },
       include: [{ model: Criteria }] // Include related criteria if needed
     });
     console.log('Found contracts:', contracts);
@@ -182,19 +287,19 @@ getContractWithTerms: async (req, res) => {
     }
 
     res.json({
-      success: true,
+        success: true,
       contract
-    });
+      });
 
-  } catch (error) {
+    } catch (error) {
     console.error("Error fetching contract with terms:", error);
-    res.status(500).json({ 
-      success: false, 
+      res.status(500).json({
+        success: false,
       message: 'Error fetching contract',
-      error: error.message 
-    });
-  }
-},
+        error: error.message
+      });
+    }
+  },
 
 // Update term acceptance status
 updateTermStatus: async (req, res) => {
@@ -210,8 +315,8 @@ updateTermStatus: async (req, res) => {
     });
 
     if (!term) {
-      return res.status(404).json({
-        success: false,
+          return res.status(404).json({
+            success: false,
         message: 'Term not found'
       });
     }
@@ -239,7 +344,7 @@ updateTermStatus: async (req, res) => {
   } catch (error) {
     console.error("Error updating term:", error);
     res.status(500).json({
-      success: false,
+            success: false,
       message: 'Error updating term',
       error: error.message
     });
@@ -263,48 +368,53 @@ addTermsToContract: async (req, res) => {
     // Check if contract exists
     const contract = await Contract.findByPk(contractId);
     if (!contract) {
-      return res.status(404).json({
-        success: false,
+        return res.status(404).json({
+          success: false,
         message: 'Contract not found'
       });
     }
 
-    // Validate each term has required fields
-    for (const term of terms) {
-      if (!term.title || !term.description) {
-        return res.status(400).json({
-          success: false,
-          message: 'Each term must have a title and description'
-        });
-      }
-    }
+      // Get user IDs safely
+      const companyUserId = contract?.Company?.user?.id;
+      const creatorUserId = contract?.ContentCreator?.user?.id;
 
-    // Create terms with default acceptance status
-    const createdTerms = await Promise.all(
-      terms.map(term => Term.create({
-        title: term.title,
-        description: term.description,
-        companyAccepted: false,
-        influencerAccepted: false,
-        ContractId: contractId
-      }))
-    );
+      console.log('Found users:', {
+        companyUsername: contract?.Company?.user?.username,
+        creatorUsername: contract?.ContentCreator?.user?.username
+      });
 
-    res.status(201).json({
-      success: true,
-      message: 'Terms added successfully',
-      terms: createdTerms
-    });
+      // Get signatures
+      const [companySignature, creatorSignature] = await Promise.all([
+        companyUserId ? Signature.findOne({
+          where: { userId: companyUserId },
+          order: [['created_at', 'DESC']]
+        }) : null,
+        creatorUserId ? Signature.findOne({
+          where: { userId: creatorUserId },
+          order: [['created_at', 'DESC']]
+        }) : null
+      ]);
 
-  } catch (error) {
+      const contractData = contract.toJSON();
+      contractData.signatures = {
+        companySignature,
+        creatorSignature
+      };
+
+      res.status(200).json({
+        success: true,
+        contract: contractData
+      });
+
+    } catch (error) {
     console.error("Error adding terms:", error);
-    res.status(500).json({
-      success: false,
+      res.status(500).json({
+        success: false,
       message: 'Error adding terms',
-      error: error.message
-    });
-  }
-},
+        error: error.message
+      });
+    }
+  },
 updateContractStatus: async (req, res) => {
   try {
     const { contractId } = req.params;
@@ -319,10 +429,10 @@ updateContractStatus: async (req, res) => {
 
 
 gettermsbycontractid : async (req, res) => {
-  try {
-    const { contractId } = req.params;
+    try {
+      const { contractId } = req.params;
     const terms = await Term.findAll({ 
-      where: { ContractId: contractId },
+        where: { ContractId: contractId },
       include: [{
         model: Negotiation,
         as: "negotiation",
@@ -356,8 +466,8 @@ updateTerm: async (req, res) => {
 
     if (!term) {
       console.log('Term not found:', { termId, contractId });
-      return res.status(404).json({
-        success: false,
+        return res.status(404).json({
+          success: false,
         message: 'Term not found'
       });
     }
@@ -430,18 +540,18 @@ acceptTerm: async (req, res) => {
     await negotiation.save();
 
     res.json({ 
-      success: true,
+        success: true,
       message: 'Term acceptance updated',
       negotiation: negotiation
-    });
+      });
 
-  } catch (error) {
+    } catch (error) {
     console.error('Error accepting term:', error);
-    res.status(500).json({ 
-      success: false,
+      res.status(500).json({
+        success: false,
       message: 'Error accepting term', 
-      error: error.message 
-    });
-  }
+        error: error.message
+      });
+    }
 },
-}
+  }

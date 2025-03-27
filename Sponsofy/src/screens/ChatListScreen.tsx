@@ -26,6 +26,7 @@ const formatMessageTime = (timestamp: string) => {
   return messageDate.toLocaleDateString();
 };
 
+
 const ChatListScreen = ({ navigation }) => {
   const { currentTheme } = useTheme();
   const { user } = useAuth();

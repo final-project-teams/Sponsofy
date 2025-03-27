@@ -33,4 +33,5 @@ router.get("/:contractId/terms", gettermsbycontractid);
 router.put("/:contractId/terms/:termId/update", authenticateJWT, updateTerm);
 router.put("/:contractId/terms/:termId/accept", authenticateJWT, acceptTerm);
 router.put("/:contractId/update-status", authenticateJWT, updateContractStatus);
+router.get("/detail/:contractId", authenticateJWT, getContractById);
 module.exports = router;

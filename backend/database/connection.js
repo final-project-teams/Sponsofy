@@ -127,8 +127,8 @@ Criteria.belongsTo(Contract, { through: ContractCriteria })
 Criteria.hasMany(SubCriteria)
 SubCriteria.belongsTo(Criteria)
 
-User.hasOne(Signature)
-Signature.belongsTo(User)
+// User.hasOne(Signature)
+// Signature.belongsTo(User)
 
 User.hasMany(Notification)
 Notification.belongsTo(User)
@@ -173,7 +173,7 @@ Deal.hasMany(Term);
 Term.belongsTo(Deal);
 
 // Term -> Negotiation (One-to-Many)
-  Term.hasOne(Negotiation, {as:'negotiation', foreignKey: 'termId'});
+  Term.hasOne(Negotiation, {as:'negotiation' , foreignKey: 'termId'});
   Negotiation.belongsTo(Term);
 
 
@@ -190,8 +190,18 @@ Criteria.hasMany(SubCriteria);
 SubCriteria.belongsTo(Criteria);
 
 // A user has one signature
-User.hasOne(Signature);
-Signature.belongsTo(User);
+// User.hasOne(Signature);
+// Signature.belongsTo(User);
+
+// A user has many signatures
+User.hasMany(Signature, {
+    foreignKey: 'userId',
+    as: 'signatures'
+});
+Signature.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'signer'
+});
 
 // A user has many notifications
 User.hasMany(Notification);
@@ -268,6 +278,17 @@ ContentCreatorSubCriteria.belongsTo(SubCriteria, {
 });
 
 
+// User -> Signature (One-to-Many, since a user can sign multiple contracts)
+// User.hasMany(Signature, {
+//     foreignKey: 'userId',
+//     as: 'signatures'
+// });
+// Signature.belongsTo(User, {
+//     foreignKey: 'userId',
+//     as: 'signer'
+// });
+
+
 // Make sure this association exists and is properly defined
 Message.hasOne(Media, { foreignKey: 'messageId' });
 Media.belongsTo(Message, { foreignKey: 'messageId' });
@@ -287,14 +308,11 @@ sequelize
   })
 
 // Sync models with the database
-//  sequelize.sync({ alter: true }) // Use `force: true` only in development
-//   .then(() => {
-//     console.log('Database & tables have been synchronized!');
-//   })
-//   .catch((error) => {
-//     console.error('Error syncing database:', error);
-//   });
-
+  // sequelize.sync({ alter:true }).then(() => {
+  //   console.log('Database & tables have been synchronized!');
+  // }).catch((error) => {
+  //   console.error('Error syncing database:', error);
+  // });
 
 // Export models and sequelize instance
 module.exports = {
