@@ -75,13 +75,14 @@ const App = () => {
                 <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
                 {/* Main App Screens */}
-                <Stack.Screen name="Home" component={QRCodeVerifier} options={{ headerShown: false }} />
+                <Stack.Screen name="Home" component={ContractPreview} options={{ headerShown: false }} />
                 <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
                 <Stack.Screen name="ContentCreatorInfo" component={ContentCreatorInfo} options={{ headerShown: false }} />
                 <Stack.Screen name="PremiumScreen" component={PremiumScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="ContractSection" component={ContractSection} options={{ headerShown: false }} />
-
+                <Stack.Screen name="QRCodeVerifier" component={QRCodeVerifier} options={{ headerShown: false }} />
+                <Stack.Screen name="SignatureManagement" component={SignatureManagement} options={{ headerShown: false }} />
                 {/* Contract Screens */}
                 <Stack.Screen
                   name="Contracts"

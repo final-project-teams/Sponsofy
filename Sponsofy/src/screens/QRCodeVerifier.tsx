@@ -35,6 +35,7 @@ const QRCodeVerifier = () => {
     const [serialNumber, setSerialNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [verificationMode, setVerificationMode] = useState<'scan' | 'manual'>('scan');
     const [verificationResult, setVerificationResult] = useState<{
         success: boolean;
         message: string;
@@ -205,10 +206,10 @@ const QRCodeVerifier = () => {
             fontFamily: currentTheme.fonts.medium,
         },
         statusBadge: {
-            paddingHorizontal: 10,
+            paddingHorizontal: 15,
             paddingVertical: 5,
-            borderRadius: 15,
-            backgroundColor: currentTheme.colors.primary,
+            borderRadius: 12,
+            backgroundColor: currentTheme.colors.surface,
         },
         section: {
             marginVertical: 15,
@@ -296,6 +297,55 @@ const QRCodeVerifier = () => {
             backgroundColor: currentTheme.colors.surface,
             alignItems: 'center',
         },
+        modeToggleContainer: {
+            flexDirection: 'row',
+            marginBottom: 30,
+            marginTop: 20,
+            backgroundColor: currentTheme.colors.surface,
+            borderRadius: 8,
+            overflow: 'hidden',
+        },
+        modeToggleButton: {
+            flex: 1,
+            paddingVertical: 15,
+            alignItems: 'center',
+            flexDirection: 'row',
+            justifyContent: 'center',
+        },
+        activeToggleButton: {
+            backgroundColor: currentTheme.colors.primary,
+        },
+        modeToggleText: {
+            fontFamily: currentTheme.fonts.medium,
+            fontSize: currentTheme.fontSizes.small,
+            color: currentTheme.colors.textSecondary,
+            marginLeft: 8,
+        },
+        activeToggleText: {
+            color: currentTheme.colors.white,
+        },
+        uploadButton: {
+            backgroundColor: currentTheme.colors.background,
+            padding: 50,
+            borderRadius: 8,
+            alignItems: 'center',
+
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+        },
+        uploadButtonText: {
+            fontFamily: currentTheme.fonts.medium,
+            fontSize: currentTheme.fontSizes.medium,
+            color: currentTheme.colors.text,
+            marginTop: 15,
+        },
+        secondaryUploadButtonText: {
+            fontFamily: currentTheme.fonts.regular,
+            fontSize: currentTheme.fontSizes.small,
+            color: currentTheme.colors.textSecondary,
+            marginTop: 5,
+            textAlign: 'center',
+        },
     });
 
     const getStatusColor = (status: string) => {
@@ -318,43 +368,105 @@ const QRCodeVerifier = () => {
             <View style={styles.content}>
                 <Text style={styles.title}>Contract Verification</Text>
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Enter Contract Serial Number</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={serialNumber}
-                        onChangeText={setSerialNumber}
-                        placeholder="Enter serial number..."
-                        placeholderTextColor={currentTheme.colors.textSecondary}
-                    />
+                <View style={styles.modeToggleContainer}>
+                    <TouchableOpacity
+                        style={[
+                            styles.modeToggleButton,
+                            verificationMode === 'scan' && styles.activeToggleButton
+                        ]}
+                        onPress={() => setVerificationMode('scan')}
+                    >
+                        <Ionicons
+                            name="scan-outline"
+                            size={20}
+                            color={verificationMode === 'scan'
+                                ? currentTheme.colors.white
+                                : currentTheme.colors.textSecondary
+                            }
+                        />
+                        <Text style={[
+                            styles.modeToggleText,
+                            verificationMode === 'scan' && styles.activeToggleText
+                        ]}>
+                            Scan QR Code
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.modeToggleButton,
+                            verificationMode === 'manual' && styles.activeToggleButton
+                        ]}
+                        onPress={() => setVerificationMode('manual')}
+                    >
+                        <Ionicons
+                            name="create-outline"
+                            size={20}
+                            color={verificationMode === 'manual'
+                                ? currentTheme.colors.white
+                                : currentTheme.colors.textSecondary
+                            }
+                        />
+                        <Text style={[
+                            styles.modeToggleText,
+                            verificationMode === 'manual' && styles.activeToggleText
+                        ]}>
+                            Manual Entry
+                        </Text>
+                    </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                    style={[styles.verifyButton, { marginBottom: 10 }]}
-                    onPress={verifyContract}
-                    disabled={loading || !serialNumber}
-                >
-                    {loading ? (
-                        <ActivityIndicator color={currentTheme.colors.white} />
-                    ) : (
-                        <Text style={styles.buttonText}>Verify Contract</Text>
-                    )}
-                </TouchableOpacity>
+                {verificationMode === 'manual' ? (
+                    <>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Enter Contract Serial Number</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={serialNumber}
+                                onChangeText={setSerialNumber}
+                                placeholder="Enter serial number..."
+                                placeholderTextColor={currentTheme.colors.textSecondary}
+                            />
+                        </View>
 
-                <TouchableOpacity
-                    style={[styles.verifyButton, { backgroundColor: currentTheme.colors.secondary }]}
-                    onPress={pickImage}
-                >
-                    <Text style={styles.buttonText}>Scan QR Code</Text>
-                </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.verifyButton}
+                            onPress={verifyContract}
+                            disabled={loading || !serialNumber}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color={currentTheme.colors.white} />
+                            ) : (
+                                <Text style={styles.buttonText}>Verify Contract</Text>
+                            )}
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        <TouchableOpacity
+                                style={[styles.uploadButton, { marginBottom: 10 }]}
+                                onPress={pickImage}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color={currentTheme.colors.white} />
+                                ) : (
+                                    <>
+                                        <Ionicons name="camera-outline" size={20} color={currentTheme.colors.white} style={{ marginRight: 8 }} />
+                                            <Text style={styles.uploadButtonText}>Upload QR Code Image</Text>
+                                            <Text style={styles.secondaryUploadButtonText}>Please select only the QR code without anything extra.</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
 
-                {selectedImage && (
-                    <View style={styles.imagePreview}>
-                        <Image
-                            source={{ uri: selectedImage }}
-                            style={{ width: 200, height: 200, alignSelf: 'center', marginTop: 20 }}
-                        />
-                    </View>
+                            {selectedImage && (
+                                <View style={styles.imagePreview}>
+                                    <Image
+                                        source={{ uri: selectedImage }}
+                                        style={{ width: 200, height: 200, alignSelf: 'center', marginTop: 20 }}
+                                    />
+                                </View>
+                            )}
+                        </>
                 )}
 
                 <Modal
@@ -421,7 +533,10 @@ const QRCodeVerifier = () => {
                                     <Text style={styles.modalTitle}>Verification Failed</Text>
                                     <Text style={styles.modalMessage}>
                                         {verificationResult?.message}
-                                    </Text>
+                                        </Text>
+                                        <Text style={styles.modalMessage}>
+                                            Please try cropping the QR code image without extra content.
+                                        </Text>
                                 </>
                             )}
 
@@ -501,7 +616,7 @@ const QRCodeVerifier = () => {
 
                         <View style={styles.resultRow}>
                             <Text style={styles.resultLabel}>Contract Status:</Text>
-                            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(verificationResult.contract.status) }]}>
+                            <View style={[styles.statusBadge]}>
                                 <Text style={[styles.resultValue, { color: currentTheme.colors.white }]}>
                                     {verificationResult.contract.status}
                                 </Text>
@@ -510,7 +625,7 @@ const QRCodeVerifier = () => {
 
                         <View style={styles.resultRow}>
                             <Text style={styles.resultLabel}>Deal Status:</Text>
-                            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(verificationResult.contract.dealStatus) }]}>
+                            <View style={[styles.statusBadge , {borderWidth: 1, borderColor: "gray"}]}>
                                 <Text style={[styles.resultValue, { color: currentTheme.colors.white }]}>
                                     {verificationResult.contract.dealStatus}
                                 </Text>

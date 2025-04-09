@@ -106,8 +106,8 @@ Post.belongsTo(Term)
 Message.hasMany(Media, { foreignKey: 'MessageId' });
 Media.belongsTo(Message, { foreignKey: 'MessageId' });
 
-Deal.hasMany(Media, { as: "AttachedMedia", foreignKey: "dealId" })
-Media.belongsTo(Deal, { foreignKey: "dealId" })
+// Deal.hasMany(Media, { as: "AttachedMedia", foreignKey: "dealId" })
+// Media.belongsTo(Deal, { foreignKey: "dealId" })
 
 Account.hasMany(Post)
 Post.belongsTo(Account)
