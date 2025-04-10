@@ -6,8 +6,20 @@ import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { printToFileAsync } from 'expo-print';
 import * as Sharing from 'expo-sharing';
+// @ts-ignore
 import logo from '../../assets/logo.png';
 import QRCode from 'react-native-qrcode-svg';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+// Define navigation type
+type RootStackParamList = {
+  SignatureManagement: undefined;
+  QRCodeVerifier: undefined;
+  // Add other screens as needed
+};
+
+type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface Contract {
   id: number;
@@ -54,14 +66,15 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const contractId = route.params.contractId;
+  const contractId = 5;
   const { currentTheme } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const [contract, setContract] = useState<Contract | null>(null);
   const [companySignature, setCompanySignature] = useState<Signature | null>(null);
   const [creatorSignature, setCreatorSignature] = useState<Signature | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const qrCodeRef = useRef();
+  const qrCodeRef = useRef<any>(null);
 
   const styles = StyleSheet.create({
     container: {
@@ -102,8 +115,11 @@ const ContractPreview = ({ route }) => {
     },
     section: {
       marginBottom: 20,
-      padding: 0,
-      backgroundColor: currentTheme.colors.black,
+      padding: 25,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: currentTheme.colors.border,
+      backgroundColor: currentTheme.colors.background,
     },
     sectionTitle: {
       fontSize: currentTheme.fontSizes.large,
@@ -154,6 +170,7 @@ const ContractPreview = ({ route }) => {
       borderRadius: 20,
       marginBottom: 10,
       backgroundColor: currentTheme.colors.white,
+      marginLeft: 10,
     },
     signatureName: {
       fontSize: currentTheme.fontSizes.small,
@@ -194,7 +211,8 @@ const ContractPreview = ({ route }) => {
     qrSection: {
       marginBottom: 20,
       marginTop: 20,
-      backgroundColor: currentTheme.colors.black,
+      backgroundColor: currentTheme.colors.surface,
+      padding: 15,
       borderRadius: 8,
     },
     qrContainer: {
@@ -228,6 +246,36 @@ const ContractPreview = ({ route }) => {
       marginLeft: -15,
       marginBottom: 10,
     },
+    verifyButton: {
+      backgroundColor: currentTheme.colors.surface,
+      padding: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 15,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: currentTheme.colors.primary,
+    },
+    verifyButtonText: {
+      color: currentTheme.colors.white,
+      fontSize: currentTheme.fontSizes.medium,
+      fontFamily: currentTheme.fonts.semibold,
+      marginLeft: 8,
+    },
+    termTitle: {
+      fontSize: currentTheme.fontSizes.large,
+      fontFamily: currentTheme.fonts.bold,
+      color: currentTheme.colors.text,
+      textAlign: 'left',
+      marginLeft: -15,
+      marginBottom: 15,
+    },
+    termDescription: {
+      fontSize: currentTheme.fontSizes.medium,
+      fontFamily: currentTheme.fonts.regular,
+      color: currentTheme.colors.textSecondary,
+    }
   });
 
   const getSignatureUrl = (signature: Signature | null) => {
@@ -710,8 +758,10 @@ const ContractPreview = ({ route }) => {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.contractCard}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Contract Preview</Text>
+          
+          <Text style={styles.title}>Contract Preview</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Contract Information</Text>
             <Text style={styles.label}>Serial Number</Text>
             <Text style={styles.contractTitle}>{contract.serialNumber}</Text>
             <Text style={styles.label}>Contract Title</Text>
@@ -725,6 +775,8 @@ const ContractPreview = ({ route }) => {
             <View style={styles.infoRow}>
               <Text style={styles.label}>Company:</Text>
               <Text style={styles.value}>{contract.Company?.name}</Text>
+              <Text style={styles.label}>Content Creator:</Text>
+              <Text style={styles.value}>{contract.Deals?.[0]?.ContentCreatorDeals?.user?.username || 'N/A'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Amount:</Text>
@@ -746,6 +798,16 @@ const ContractPreview = ({ route }) => {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Contract Terms</Text>
+            {contract.pre_Terms?.map((term, index) => (
+              <View key={index} style={styles.section}>
+                <Text style={styles.termTitle}>{term.title}</Text>
+                <Text style={styles.termDescription}>{term.description || 'No description'}</Text>
+              </View>
+              
+            ))}
+          </View>
+          <View style={styles.section}>
             <View style={styles.qrSection}>
               <Text style={styles.sectionTitle}>Contract QR Code</Text>
               <View style={styles.qrContainer}>
@@ -755,17 +817,28 @@ const ContractPreview = ({ route }) => {
                   backgroundColor="white"
                   color="black"
                   logo={logo}
-                  getRef={qrCodeRef}
+                  getRef={(c) => (qrCodeRef.current = c)}
                 />
               </View>
               <Text style={styles.serialNumber}>Serial Number: {contract.serialNumber || 'N/A'}</Text>
+
+              <TouchableOpacity
+                style={styles.verifyButton}
+                onPress={() => navigation.navigate('QRCodeVerifier')}
+              >
+                <Ionicons name="qr-code-outline" size={20} color={currentTheme.colors.white} />
+                <Text style={styles.verifyButtonText}>Verify Contract</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.signatureSection}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Signatures</Text>
             <View style={styles.signatureContainer}>
-              <View style={styles.signatureBox}>
+              <TouchableOpacity
+                style={styles.signatureBox}
+                onPress={() => navigation.navigate('SignatureManagement')}
+              >
                 <Image
                   source={{ uri: getSignatureUrl(companySignature) || '' }}
                   style={styles.signatureImage}
@@ -778,8 +851,11 @@ const ContractPreview = ({ route }) => {
                 ) : (
                   <Text style={styles.signatureDate}>Pending signature</Text>
                 )}
-              </View>
-              <View style={styles.signatureBox}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.signatureBox}
+                onPress={() => navigation.navigate('SignatureManagement')}
+              >
                 <Image
                   source={{ uri: getSignatureUrl(creatorSignature) || '' }}
                   style={styles.signatureImage}
@@ -792,10 +868,12 @@ const ContractPreview = ({ route }) => {
                 ) : (
                   <Text style={styles.signatureDate}>Pending signature</Text>
                 )}
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
-        </View>
+          
+          </View>
+        
 
         <TouchableOpacity onPress={generatePDF} style={styles.downloadButton}>
           <Ionicons name="download-outline" size={24} style={styles.downloadIcon} />

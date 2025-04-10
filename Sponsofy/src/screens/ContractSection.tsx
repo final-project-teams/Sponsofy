@@ -31,6 +31,8 @@ interface CustomJwtPayload {
   exp: number;
 }
 
+
+
 interface ContractTerm {
   id: number;
   title: string;
@@ -1255,7 +1257,6 @@ case 6:
       </View>
     </Modal>
   );
-
   // Add this component for the history badge
   const HistoryBadge = ({ count }: { count: number }) => (
     count > 0 ? (
@@ -1351,6 +1352,8 @@ case 6:
 
       fetchPaymentStatus();
     }, [contract.id]);
+
+    
 
     return (
       <View style={styles.paymentStatusContainer}>

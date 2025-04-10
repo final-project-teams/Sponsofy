@@ -95,7 +95,7 @@ const ChatScreen = ({ route, navigation }) => {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const typingDots = [
-    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,  
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
   ];
