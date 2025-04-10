@@ -1,19 +1,21 @@
 import api from '../config/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../config/source';
 
 export const chatService = {
-  getMessages: async (chatId: string) => {
+  getMessages: async (roomId: string) => {
     try {
-      const response = await api.get(`/chats/${chatId}/messages`);
+      const response = await api.get(`chat/rooms/${roomId}/messages`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  sendMessage: async (chatId: string, message: string) => {
+  sendMessage: async (roomId: string, message: string) => {
     try {
-      const response = await api.post(`/chats/${chatId}/messages`, { message });
+      const response = await api.post(`chat/rooms/${roomId}/messages`, { message });
       return response.data;
     } catch (error) {
       throw error;
@@ -44,42 +46,192 @@ export const userService = {
     }
   },
 };
+
 export const contractService = {
+  submitContent: async (data: {
+    termId: number;
+    contractId: number;
+    contentUrl: string;
+    platform: string;
+    mediaData?: any;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/submit`, {
+        ...data,
+        mediaData: {
+          media_type: data.platform === 'youtube' ? 'video' : 'image',
+          platform: data.platform,
+          file_url: data.contentUrl,
+          file_name: data.contentUrl.split('/').pop() || 'content',
+          termId: data.termId,
+          file_format: 'mp4',
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting content:', error);
+      throw error;
+    }
+  },
+
+  approveContent: async (data: {
+    termId: number;
+    contractId: number;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/approve`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error approving content:', error);
+      throw error;
+    }
+  },
+
+  rejectContent: async (data: {
+    termId: number;
+    contractId: number;
+    reason: string;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/reject`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error rejecting content:', error);
+      throw error;
+    }
+  },
+
   getContracts: async () => {
+    const response = await api.get('/contract');
+    return response.data;
+  },
+  
+  // Fetch contracts for a specific user
+  getContractByCompanyId: async (userId: number ) => {
+  try { 
+    const response = await api.get(`/contract/company/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+
+},  
+getContractByContentCreatorId: async (userId: number) => {
+  try {
+    console.log('Fetching contracts for content creator with ID:', userId);
+    // Update to match your backend route
+    const response = await api.get(`/contract/creator/${userId}`);
+    console.log('Content creator contracts response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching content creator contracts:', error);
+    throw error;
+  }
+},
+
+    // Accept a contract
+
+    // Create a new contract
+    createContract: async (contractData) => {
+      try {
+        const response = await api.post('/contract/post', contractData);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Update an existing contract
+    updateContract: async (contractId, contractData) => {
+        try {
+            const response = await api.put(`/contract/${contractId}`, contractData);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+    updateContractStatus: async (contractId, status) => {
+        try {
+            const response = await api.put(`/contract/${contractId}/update-status`, { status });
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+    
+
+    // Delete a contract
+    deleteContract: async (contractId) => {
+        try {
+            const response = await api.delete(`/contract/${contractId}`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+  // Get contract terms
+  getContractTerms: async (contractId: number | string) => {
     try {
-      const response = await api.get('/contract');
-      console.log("response",response.data);
-      
+      const response = await api.get(`/contract/${contractId}/terms`);
       return response.data;
     } catch (error) {
+      console.error('Error fetching contract terms:', error);
       throw error;
     }
   },
-  createContract: async (contractData: any) => {
+
+  
+
+  // Get contract by ID with terms
+
+  gettermsbycontractid: async (contractId: number | string) => {
     try {
-      const response = await api.post('/contracts', contractData);
+      console.log('Making API request for contract ID:', contractId);
+      const response = await api.get(`/contract/${contractId}/terms`);
+      console.log('Full API response:', response);
       return response.data;
     } catch (error) {
+      console.error('Error in gettermsbycontractid:', error);
       throw error;
     }
   },
-  updateContract: async (contractId: string, contractData: any) => {
-    try {
-      const response = await api.put(`/contracts/${contractId}`, contractData);
-      return response.data;
-    } catch (error) {
-      throw error;
+updateTerm: async (contractId: number | string, termId: number | string, updates: { title: string, description: string }) => {
+  try {
+    console.log('Sending update request:', { contractId, termId, updates });
+    
+    const response = await api.put(`/contract/${contractId}/terms/${termId}/update`, updates);
+    
+    console.log('Server response:', response.data);
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to update term');
     }
-  },
-  deleteContract: async (contractId: string) => {
-    try {
-      const response = await api.delete(`/contracts/${contractId}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error in updateTerm:', error);
+    throw error;
+  }
+},
+acceptTerm: async (contractId: number | string, termId: number | string, userRole: 'company' | 'influencer') => {
+  try {
+    const response = await api.put(`/contract/${contractId}/terms/${termId}/accept`, { userRole });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+getContractPaymentDetails: async (contractId: number) => {
+  try {
+    const response = await api.get(`/contract/${contractId}/payment-details`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 };
+
 
 export const searchService = {
   searchCompanies: async (query: string) => {
@@ -133,30 +285,104 @@ export const contentCreatorService = {
   
 };
 export const paymentService = {
-  async createPaymentIntent(amount: number, tokenToUse: string) {
+  createPaymentIntent: async (paymentData: {
+    contractId: number;
+    amount: number;
+    userId: number;
+    currency?: string;
+  }) => {
     try {
-      const response = await api.post(
-        '/payment/create-payment-intent',
-        { amount }, 
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': tokenToUse
-          }
-        }
-      );
-      
-      console.log('Payment intent created successfully:', response.data);
+      const response = await api.post('/payment/create-payment-intent', paymentData);
       return response.data;
-    } catch (error: any) {
-      console.error('Payment service error:', error);
+    } catch (error) {
+      throw error;
+    }
+  },
+  createEscrowPayment: async (paymentData: {
+    contractId: number;
+    amount: number;
+    userId: number;
+    currency?: string;
+    escrowHoldPeriod?: number;
+  }) => {
+    try {
+      const dataWithHoldPeriod = {
+        ...paymentData,
+        escrowHoldPeriod: paymentData.escrowHoldPeriod || 7
+      };
       
-      // Check if it's an auth issue and handle appropriately
-      if (error.response?.data?.error === 'jwt malformed') {
-        console.error('Authentication token is malformed. User might need to login again.');
-        // Handle re-authentication logic here if needed
+      console.log('Sending payment data:', JSON.stringify(dataWithHoldPeriod));
+      const response = await api.post('/payment/create-escrow-payment', dataWithHoldPeriod);
+
+      // Convert paymentId to string before returning
+      if (response.data.success && response.data.paymentId) {
+        response.data.paymentId = response.data.paymentId.toString();
+      }
+
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Server error response:', error.response.data);
+      }
+      throw error;
+    }
+  },
+  confirmEscrowPayment: async (paymentId: string) => {
+    try {
+      // Log the data being sent
+      console.log('Sending confirmation request for payment ID:', paymentId);
+      
+      // Make sure paymentId is sent in the correct format
+      const response = await api.post('/payment/confirm-escrow', { 
+        paymentId: paymentId.toString() // Ensure it's a string
+      });
+      
+      console.log('Confirmation response:', response.data);
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Server error during confirmation:', error.response.data);
+      }
+      console.error('Error confirming escrow payment:', error);
+      throw error;
+    }
+  },
+  getPaymentStatus: async (contractId: string) => {
+    try {
+      console.log('Fetching payment status for contract:', contractId);
+      const response = await api.get(`/payment/status/${contractId}`);
+      
+      console.log('Payment status response:', response.data);
+      
+      if (!response.data || !response.data.status) {
+        return {
+          status: 'pending',
+          message: 'Awaiting payment',
+          amount: 1000,
+          currency: 'usd'
+        };
       }
       
+      return response.data;
+    } catch (error) {
+      console.error('Error getting payment status:', error);
+      return {
+        status: 'pending',
+        message: 'Unable to fetch payment status',
+        amount: 1000,
+        currency: 'usd'
+      };
+    }
+  },
+  refundPayment: async (paymentId: string, reason: string) => {
+    try {
+      const response = await api.post('/payment/refund-payment', { 
+        paymentId,
+        reason 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error refunding payment:', error);
       throw error;
     }
   },
@@ -176,7 +402,27 @@ export const paymentService = {
     const response = await api.post(`/terms/confirm/${termId}`);
     return response.data;
   },
+  
+};
 
+// Fetch contracts for a specific company
+export const getContractbyCompanyId = async (companyId: string) => {
+    try {
+        const response = await api.get(`/contract/company/${companyId}`);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Accept a contract
+export const acceptContract = async (contractId: string, userId: string) => {
+    try {
+        const response = await api.post(`/contract/${contractId}/accept`, { userId });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
 };
 
 

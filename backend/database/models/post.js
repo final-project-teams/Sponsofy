@@ -21,6 +21,14 @@ const Post = sequelize.define('Post', {
     type: DataTypes.ENUM('draft', 'published', 'pending'),
     defaultValue: 'draft',  // Default to draft
   },
+  content_creator_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'content_creators',
+      key: 'id',
+    },
+  },
 }, {
   tableName: 'posts',
   timestamps: true,  // Automatically add createdAt and updatedAt columns

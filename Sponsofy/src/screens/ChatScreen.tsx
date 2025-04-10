@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,50 +7,215 @@ import {
   TouchableOpacity,
   SafeAreaView,
   FlatList,
+  ActivityIndicator,
+  Image,
+  Platform,
+  Alert,
+  Animated,
+  Easing,
 } from 'react-native';
-import { useTheme } from '@react-navigation/native';
+import { Video, ResizeMode } from 'expo-av';
+import { useTheme } from "../theme/ThemeContext";
 import Icon from 'react-native-vector-icons/Ionicons';
-import { socketService } from '../services/socketService';
-import { chatService } from '../services/api';
 import api from '../config/axios';
+import { useAuth } from '../context/AuthContext';
+import * as ImagePicker from 'react-native-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { API_URL } from '../config/source';
+import { SOCKET_URL } from '../config/source';
+import { useSocket } from '../context/socketContext';
+
 interface Message {
   id: string;
   content: string;
-  UserId: string;
+  sender: {
+    id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
   created_at: string;
+  Media?: {
+    id: string;
+    media_type: 'image' | 'video' | 'audio' | 'document';
+    file_url: string;
+    file_name: string;
+    file_size: number;
+    file_format: string;
+  };
+  roomId?: string;
 }
 
-const ChatScreen = ({ route }) => {
-  const { colors } = useTheme();
+// Add type for file upload
+interface UploadFile {
+  name?: string;
+  fileName?: string;
+  type?: string;
+  mimeType?: string;
+  uri: string;
+  size?: number;
+}
+
+interface TypingUser {
+  userId: string;
+  username: string;
+  socketId: string;
+}
+
+const formatMessageTime = (timestamp: string) => {
+  try {
+    const now = new Date();
+    const messageDate = new Date(timestamp);
+
+    if (isNaN(messageDate.getTime())) {
+      return 'just now';
+    }
+
+    const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60));
+
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+    return messageDate.toLocaleDateString();
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'just now';
+  }
+};
+
+const ChatScreen = ({ route, navigation }) => {
+  const { currentTheme } = useTheme();
+  const { user } = useAuth();
+  const { chatSocket, isConnected } = useSocket();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const roomId = route.params?.roomId || '1';
-  const currentUserId = '1'; // Replace with actual user ID from your auth system
-const getTest = async () => {
-  try {
+  const { roomId, recipientUser } = route.params;
+  const [isUploading, setIsUploading] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingDots = [
+    useRef(new Animated.Value(0)).current,  
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
-    const response = await api.get("/");
-    console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",response.data)
-  } catch (error) {
-    console.error('Error loading messages:', error);  
-  }
-}
   useEffect(() => {
-    getTest();
-    // loadMessages();
-    // setupSocketConnection();
+    loadMessages();
 
-    // return () => {
-    //   socketService.disconnect();
-    // };
-  }, []);
+    if (!chatSocket) {
+      console.error('Socket not initialized');
+      return;
+    }
+
+    // Initialize user in the socket
+    chatSocket.emit('init_user', {
+      id: user.id,
+      username: user.username
+    });
+
+    // Join the room
+    chatSocket.emit('join_room', {
+      roomId,
+      userId: user.id
+    });
+
+    // Listen for new messages
+    chatSocket.on('receive_message', (message) => {
+      console.log('Received message:', message);
+      setMessages(prevMessages => {
+        // Check if message already exists to avoid duplicates
+        if (prevMessages.some(m => m.id === message.id)) {
+          return prevMessages;
+        }
+        // Add new message to the beginning since FlatList is inverted
+        return [message, ...prevMessages];
+      });
+    });
+
+    // Listen specifically for media messages
+    chatSocket.on('receive_media_message', (message) => {
+      console.log('Received media message:', message);
+      setMessages(prevMessages => {
+        // Check if message already exists to avoid duplicates
+        if (prevMessages.some(m => m.id === message.id)) {
+          return prevMessages;
+        }
+        // Add new message to the beginning since FlatList is inverted
+        return [message, ...prevMessages];
+      });
+    });
+
+    chatSocket.on('user_typing', (user: TypingUser) => {
+      setTypingUsers(prev => {
+        if (!prev.some(u => u.userId === user.userId)) {
+          return [...prev, user];
+        }
+        return prev;
+      });
+    });
+
+    chatSocket.on('user_stopped_typing', (user: { userId: string }) => {
+      setTypingUsers(prev => prev.filter(u => u.userId !== user.userId));
+    });
+
+    // Cleanup socket listeners when component unmounts
+    return () => {
+      if (chatSocket) {
+        chatSocket.off('receive_message');
+        chatSocket.off('receive_media_message');
+        chatSocket.emit('leave_room', {
+          roomId,
+          userId: user.id
+        });
+        chatSocket.off('user_typing');
+        chatSocket.off('user_stopped_typing');
+      }
+    };
+  }, [roomId, chatSocket, user]);
+
+  useEffect(() => {
+    const animateDots = () => {
+      const animations = typingDots.map((dot, index) => {
+        return Animated.sequence([
+          Animated.delay(index * 200),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.ease,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.ease,
+            useNativeDriver: true,
+          }),
+        ]);
+      });
+
+      Animated.loop(
+        Animated.parallel(animations)
+      ).start();
+    };
+
+    if (typingUsers.length > 0) {
+      animateDots();
+    }
+  }, [typingUsers]);
 
   const loadMessages = async () => {
     try {
       setIsLoading(true);
-      const response = await chatService.getMessages(roomId);
-      setMessages(response.data);
+      const response = await api.get(`/messages/room/${roomId}`);
+      if (response.data) {
+        console.log("Messages from server:", JSON.stringify(response.data, null, 2));
+
+        // Apply the fix to messages
+        const fixedMessages = fixMessagesWithMedia(response.data);
+        setMessages(fixedMessages);
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
@@ -58,106 +223,518 @@ const getTest = async () => {
     }
   };
 
-  const setupSocketConnection = () => {
-    // socketService.connect(/* your auth token */);
-    socketService.joinRoom(roomId);
-    socketService.onReceiveMessage((message) => {
-      setMessages(prev => [...prev, message]);
-    });
-  };
-
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
+    const tempMessage = {
+      id: `temp_${Date.now()}`,
+      content: newMessage,
+      sender: {
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name || '',
+        last_name: user.last_name || ''
+      },
+      created_at: new Date().toISOString()
+    };
+
     try {
-      socketService.sendMessage({
-        roomId,
-        message: newMessage,
-        userId: currentUserId
+      if (!chatSocket || !isConnected) {
+        console.error('Socket not connected');
+        return;
+      }
+
+      // Add temporary message immediately
+      setMessages(prevMessages => [tempMessage, ...prevMessages]);
+
+      // First, save to database
+      const response = await api.post(`/messages/room/${roomId}`, {
+        content: newMessage
       });
-      setNewMessage('');
+
+      if (response.data) {
+        // Replace temporary message with server response
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === tempMessage.id ? response.data : msg
+          )
+        );
+
+        // Then, emit through socket for real-time update
+        chatSocket.emit('new_message', {
+          ...response.data,
+          roomId,
+          content: newMessage,
+          userId: user.id,
+          sender: {
+            id: user.id,
+            username: user.username,
+            first_name: user.first_name || '',
+            last_name: user.last_name || ''
+          }
+        });
+
+        // Clear typing indicator when message is sent
+        if (isTyping) {
+          setIsTyping(false);
+          chatSocket.emit('typing_end', { roomId });
+        }
+
+        setNewMessage('');
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+      // Remove temporary message if sending failed
+      setMessages(prevMessages =>
+        prevMessages.filter(msg => msg.id !== tempMessage.id)
+      );
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isSentByMe = item.UserId === currentUserId;
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibrary({
+        mediaType: 'mixed',
+        quality: 0.8,
+      });
+
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        // Convert ImagePicker asset to UploadFile type
+        const uploadFile: UploadFile = {
+          uri: asset.uri || '',
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || 'image.jpg',
+          size: asset.fileSize
+        };
+        await uploadMedia(uploadFile);
+      }
+    } catch (error) {
+      console.error('ImagePicker Error:', error);
+    }
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        // Convert DocumentPicker asset to UploadFile type
+        const uploadFile: UploadFile = {
+          uri: asset.uri,
+          type: asset.mimeType || 'application/octet-stream',
+          name: asset.name,
+          size: asset.size
+        };
+        await uploadMedia(uploadFile);
+      }
+    } catch (err) {
+      console.error('Document Picker Error:', err);
+    }
+  };
+
+  const uploadMedia = async (file: UploadFile) => {
+    if (!chatSocket || !isConnected) {
+      console.error('Socket not connected');
+      return;
+    }
+
+    const tempMessageId = `temp_${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempMessageId,
+      content: newMessage || 'Sent a file',
+      sender: {
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name || '',
+        last_name: user.last_name || ''
+      },
+      created_at: new Date().toISOString(),
+      Media: {
+        id: 'temp',
+        media_type: (file.type?.includes('image') ? 'image' :
+          file.type?.includes('video') ? 'video' :
+            file.type?.includes('audio') ? 'audio' : 'document') as 'image' | 'video' | 'audio' | 'document',
+        file_url: file.uri,
+        file_name: file.name || 'Unknown file',
+        file_size: file.size || 0,
+        file_format: file.type || 'unknown'
+      }
+    };
+
+    try {
+      setIsUploading(true);
+      console.log("Uploading file:", file);
+
+      // Add the temporary message to the beginning of the messages list
+      setMessages(prevMessages => [tempMessage, ...prevMessages]);
+
+      // Create FormData for upload
+      const formData = new FormData();
+      const fileBlob = {
+        uri: file.uri,
+        type: file.type || 'application/octet-stream',
+        name: file.name || 'file'
+      };
+      formData.append('file', fileBlob as any);
+
+      if (newMessage.trim()) {
+        formData.append('content', newMessage);
+      }
+
+      // Upload the file
+      const response = await api.post(
+        `/messages/room/${roomId}/media`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      console.log("Upload response:", response.data);
+
+      if (response.data) {
+        // Replace the temporary message with the server response
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === tempMessageId ? response.data : msg
+          )
+        );
+
+        // Emit socket event for real-time update
+        chatSocket.emit('new_message_with_media', {
+          ...response.data,
+          roomId,
+          sender: {
+            id: user.id,
+            username: user.username,
+            first_name: user.first_name || '',
+            last_name: user.last_name || ''
+          }
+        });
+
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      // Remove the temporary message if upload fails
+      setMessages(prevMessages =>
+        prevMessages.filter(msg => msg.id !== tempMessageId)
+      );
+      Alert.alert('Error', 'Failed to upload media');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      console.log('Attempting to delete message:', messageId);
+
+      // First delete from database
+      const response = await api.delete(`/messages/${messageId}`);
+      console.log('Delete API response:', response.data);
+
+      // Then emit delete event to socket
+      console.log('Emitting delete_message event:', { roomId, messageId });
+      chatSocket?.emit('delete_message', { roomId, messageId });
+
+      // Remove message from local state
+      setMessages(prevMessages => {
+        const newMessages = prevMessages.filter(msg => msg.id !== messageId);
+        console.log('Updated messages count:', newMessages.length);
+        return newMessages;
+      });
+
+      // Clear selected message
+      setSelectedMessage(null);
+    } catch (error) {
+      console.error('Error deleting message:', error.response?.data || error.message);
+      Alert.alert('Error', 'Failed to delete message');
+    }
+  };
+
+  // Add socket listener for deleted messages
+  useEffect(() => {
+    if (!chatSocket) return;
+
+    chatSocket.on('message_deleted', ({ messageId }) => {
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+    });
+
+    return () => {
+      chatSocket.off('message_deleted');
+    };
+  }, [chatSocket]);
+
+  const MessageActionsMenu = ({ message }: { message: Message }) => {
+    const isSentByMe = message.sender.id === user?.id;
+    if (!isSentByMe) return null;
 
     return (
-      <View
+      <TouchableOpacity
         style={[
-          isSentByMe ? styles.messageSent : styles.messageReceived,
-          { backgroundColor: isSentByMe ? colors.primary : colors.card }
+          styles.messageActionsMenu,
+          { backgroundColor: currentTheme.colors.surface }
         ]}
+        onPress={() => handleDeleteMessage(message.id)}
+        activeOpacity={0.7}
       >
-        <Text style={[
-          styles.messageText,
-          { color: isSentByMe ? '#FFFFFF' : colors.text }
-        ]}>
-          {item.content}
-        </Text>
+        <View style={styles.messageAction}>
+          <Icon name="trash-outline" size={20} color="#FF4444" />
+          <Text style={[styles.messageActionText, { color: '#FF4444' }]}>Delete</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isSentByMe = item.sender.id === user?.id;
+    const hasMedia = item.Media && item.Media.file_url;
+
+    return (
+      <View style={styles.messageWrapper}>
+        {selectedMessage?.id === item.id && <MessageActionsMenu message={item} />}
+        <TouchableOpacity
+          onLongPress={() => setSelectedMessage(item)}
+          activeOpacity={0.7}
+          style={[styles.messageContainer, isSentByMe ? styles.messageSent : styles.messageReceived]}
+        >
+          {!isSentByMe && (
+            <Text style={[styles.senderName, { color: currentTheme.colors.textSecondary }]}>
+              {item.sender.first_name} {item.sender.last_name}
+            </Text>
+          )}
+          <View style={[
+            styles.messageBubble,
+            { 
+              backgroundColor: isSentByMe ? currentTheme.colors.primary : currentTheme.colors.surface,
+              alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
+            }
+          ]}>
+            {/* Show a placeholder for debugging */}
+            {item.content === 'Sent a file' && !hasMedia && (
+              <View style={styles.mediaPlaceholder}>
+                <Text style={{ color: 'white' }}>Media not loaded properly</Text>
+                <Text style={{ color: 'white', fontSize: 10 }}>Check console for details</Text>
+              </View>
+            )}
+
+            {/* Render media based on type */}
+            {hasMedia && item.Media.media_type === 'image' && (
+              <View style={styles.mediaImageContainer}>
+                <Image
+                  source={{ uri: `${API_URL}/uploads/images/${item.Media.file_name}` }}
+                  style={styles.mediaImage}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+
+            {hasMedia && item.Media.media_type === 'video' && (
+              <View style={styles.videoContainer}>
+                <Video
+                  source={{ uri: `${API_URL}/uploads/videos/${item.Media.file_name}` }}
+                  style={styles.mediaVideo}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                />
+              </View>
+            )}
+
+            {hasMedia && item.Media.media_type === 'audio' && (
+              <View style={styles.audioContainer}>
+                <Icon name="musical-note" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
+                <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
+                  {item.Media.file_name}
+                </Text>
+              </View>
+            )}
+
+            {hasMedia && item.Media.media_type === 'document' && (
+              <View style={styles.documentContainer}>
+                <Icon name="document-text" size={24} color={isSentByMe ? '#FFFFFF' : currentTheme.colors.text} />
+                <Text style={[styles.mediaFileName, { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }]}>
+                  {item.Media.file_name}
+                </Text>
+              </View>
+            )}
+
+            {/* Only show content if it's not the default "Sent a file" message or if there's no media */}
+            {(!hasMedia || (item.content && item.content !== 'Sent a file')) && (
+              <Text style={[
+                styles.messageText,
+                { color: isSentByMe ? '#FFFFFF' : currentTheme.colors.text }
+              ]}>
+                {item.content}
+              </Text>
+            )}
+
+            <Text style={[
+              styles.messageTime,
+              { color: isSentByMe ? '#FFFFFF80' : currentTheme.colors.textSecondary }
+            ]}>
+              {formatMessageTime(item.created_at)}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
     );
   };
 
+  // Add this function to manually fix messages with missing media
+  const fixMessagesWithMedia = (messages) => {
+    return messages.map(message => {
+      // If the message content is "Sent a file" but has no Media property,
+      // we'll create a placeholder Media object
+      if (message.content === 'Sent a file' && !message.Media) {
+        console.log(`Adding placeholder Media for message ${message.id}`);
+        return {
+          ...message,
+          Media: {
+            id: 'placeholder',
+            media_type: 'document',
+            file_url: null,
+            file_name: 'Unknown file',
+            file_size: 0,
+            file_format: 'unknown'
+          }
+        };
+      }
+      return message;
+    });
+  };
+
+  const handleTyping = (text: string) => {
+    setNewMessage(text);
+
+    if (!isTyping && text.length > 0) {
+      setIsTyping(true);
+      chatSocket?.emit('typing_start', { roomId });
+    } else if (isTyping && text.length === 0) {
+      setIsTyping(false);
+      chatSocket?.emit('typing_end', { roomId });
+    }
+  };
+
+  const TypingIndicator = () => {
+    if (typingUsers.length === 0) return null;
+
+    const typingText = typingUsers.length === 1
+      ? `${typingUsers[0].username} is typing...`
+      : typingUsers.length === 2
+        ? `${typingUsers[0].username} and ${typingUsers[1].username} are typing...`
+        : 'Several people are typing...';
+
+    return (
+      <View style={styles.typingContainer}>
+        <Text style={[styles.typingText, { color: currentTheme.colors.textSecondary }]}>
+          {typingText}
+        </Text>
+        <View style={styles.dotsContainer}>
+          {typingDots.map((dot, index) => (
+            <Animated.View
+              key={index}
+              style={[
+                styles.typingDot,
+                {
+                  backgroundColor: currentTheme.colors.textSecondary,
+                  opacity: dot,
+                  transform: [{
+                    translateY: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -8],
+                    }),
+                  }],
+                },
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Add touch handler to dismiss menu when tapping outside
+  const handleScreenPress = () => {
+    if (selectedMessage) {
+      setSelectedMessage(null);
+    }
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity>
-          <Icon name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.username, { color: colors.text }]}>Username</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="call" size={20} color={colors.text} />
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={handleScreenPress}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={currentTheme.colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="videocam" size={20} color={colors.text} />
-          </TouchableOpacity>
+          <Text style={[styles.username, { color: currentTheme.colors.text }]}>
+            {recipientUser?.username || 'Chat'}
+          </Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.iconButton}>
+              <Icon name="call" size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Icon name="videocam" size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <FlatList
-        style={styles.messagesContainer}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={item => item.id}
-        inverted
-      />
-
-      <View style={styles.inputContainer}>
-        <View style={styles.attachmentButtons}>
-          <TouchableOpacity>
-            <Icon name="image" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Icon name="videocam" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Icon name="document" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
-          <TextInput
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Message..."
-            placeholderTextColor={colors.border}
-            style={[styles.input, { color: colors.text }]}
+        {isLoading ? (
+          <ActivityIndicator size="large" color={currentTheme.colors.primary} style={styles.loader} />
+        ) : (
+          <FlatList
+            style={styles.messagesContainer}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={item => item.id}
+            inverted
           />
-          <TouchableOpacity onPress={handleSendMessage}>
-            <Icon name="send" size={24} color={colors.primary} />
-          </TouchableOpacity>
+        )}
+        <TypingIndicator />
+        <View style={styles.inputContainer}>
+          <View style={[styles.inputWrapper, { backgroundColor: currentTheme.colors.surface }]}>
+            <TouchableOpacity onPress={handlePickDocument} style={styles.mediaButton}>
+              <Icon name="document" size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+
+            <TextInput
+              style={[styles.input, { color: currentTheme.colors.text }]}
+              value={newMessage}
+              onChangeText={handleTyping}
+              placeholder="Type a message..."
+              placeholderTextColor={currentTheme.colors.textSecondary}
+              multiline
+            />
+
+            <TouchableOpacity
+              style={[styles.sendButton, { backgroundColor: currentTheme.colors.primary }]}
+              onPress={handleSendMessage}
+              disabled={isUploading || (!newMessage.trim() && !isUploading)}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Icon name="send" size={15} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </TouchableOpacity>
   );
 };
-
-// ... existing styles remain the same ...
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -172,8 +749,8 @@ const styles = StyleSheet.create({
   username: {
     flex: 1,
     fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
+    fontWeight: 'bold',
+    marginLeft: 16,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -185,45 +762,178 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  messageReceived: {
+  messageWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+    width: '100%',
+    zIndex: 1,
+  },
+  messageContainer: {
     maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
+    position: 'relative',
+    zIndex: 1,
   },
   messageSent: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
     alignSelf: 'flex-end',
+  },
+  messageReceived: {
+    alignSelf: 'flex-start',
+  },
+  senderName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  messageBubble: {
+    borderRadius: 16,
+    padding: 12,
+    maxWidth: '100%',
+    position: 'relative',
+    zIndex: 1,
   },
   messageText: {
     fontSize: 16,
   },
-  messageSentText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+  messageTime: {
+    fontSize: 10,
+    color: '#666',
+    alignSelf: 'flex-end',
+    marginTop: 4,
   },
   inputContainer: {
     padding: 16,
   },
-  attachmentButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 24,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#181818',
+    borderWidth: 1,
+    borderColor: '#262626',
   },
   input: {
     flex: 1,
-    marginHorizontal: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     fontSize: 16,
+    backgroundColor: 'transparent',
+
+  },
+  mediaButton: {
+    paddingRight: 6,
+  },
+  sendButton: {
+    width: 45,
+    height: 28,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mediaImageContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  mediaImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  videoContainer: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#000',
+  },
+  mediaVideo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  audioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  documentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mediaFileName: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  mediaPlaceholder: {
+    width: 200,
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#555',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  typingText: {
+    fontSize: 12,
+    marginRight: 8,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 2,
+  },
+  messageActionsMenu: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 9999,
+    backgroundColor: '#262626',
+  },
+  messageAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  messageActionText: {
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
