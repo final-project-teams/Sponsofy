@@ -153,7 +153,7 @@ const ProfileContent = () => {
       const token = await AsyncStorage.getItem("userToken")
 
       if (token) {
-        const response = await api.get("/api/deals", {
+        const response = await api.get("/deal", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

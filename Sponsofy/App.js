@@ -75,7 +75,7 @@ const App = () => {
                 <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
                 {/* Main App Screens */}
-                <Stack.Screen name="Home" component={ContractPreview} options={{ headerShown: false }} />
+                <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
                 <Stack.Screen name="ContentCreatorInfo" component={ContentCreatorInfo} options={{ headerShown: false }} />
