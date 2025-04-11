@@ -27,8 +27,8 @@ import AddDeal from './src/screens/AddDeal';
 import DealDetailsScreen from './src/screens/DealDetailsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
-import UploadSignature from './src/screens/UploadSignature';
-import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
+// import UploadSignature from './src/screens/UploadSignature';
+// import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 import EditProfileContent from './src/screens/EditProfileContent';
 
 import ContractSection from './src/screens/ContractSection';
@@ -41,16 +41,17 @@ import SocialMediaStats from './src/screens/Social-Media-Stats-Screen';
 import PlatformSelectionMedia from './src/screens/Platfrom-Selection-Screen';
 import ContentCreatorDealsScreen from './src/screens/ContentCreatorDealsScreen';
 
+
 // import TermsScreen from './src/screens/TermsScreen';
 
 import CompanyCard from './src/components/CompanyCard';
 import CompanyProfile from './src/screens/CompanyProfile';
 import EditProfile from './src/screens/EditProfile';
-import ContractQRCode from './src/components/ContractQRCode';
-import ContractDetails from './src/screens/ContractDetails';
+// import ContractQRCode from './src/components/ContractQRCode';
+// import ContractDetails from './src/screens/ContractDetails';
 import SignatureManagement from './src/screens/SignatureManagement';
 import ContentCreatorInfo from './src/components/ContentCreatorInfo';
-import ContractPreview from './src/screens/ContractPreview';
+// import ContractPreview from './src/screens/ContractPreview';
 import QRCodeVerifier from './src/screens/QRCodeVerifier';
 
 import ContentCreatorTransactionsScreen from "./src/screens/ContentCreatorTransactionsScreen ";
@@ -93,7 +94,7 @@ const App = () => {
                 <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
                 {/* Main App Screens */}
-                <Stack.Screen name="Home" component={ContractPreview} options={{ headerShown: false }} />
+                <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="SocialAccounts" component={SocialAccountsScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="ProfileContent" component={ProfileContent} options={{ headerShown: false }} />
                 <Stack.Screen name="ContentCreatorInfo" component={ContentCreatorInfo} options={{ headerShown: false }} />
@@ -146,7 +147,7 @@ const App = () => {
                 <Stack.Screen name="EditProfileContent" component={EditProfileContent} options={{ headerShown: false }} />
 
                 {/* New Screens for Platform, Criteria, and Sub-Criteria Selection */}
-                {/* <Stack.Screen name="PlatformSelection" component={PlatformSelection} options={{ headerShown: false }} /> */}
+                <Stack.Screen name="PlatformSelection" component={PlatformSelection} options={{ headerShown: false }} />
                 <Stack.Screen name="CriteriaSelection" component={CriteriaSelection} options={{ headerShown: false }} />
                 <Stack.Screen name="SubCriteriaSelection" component={SubCriteriaSelection} options={{ headerShown: false }} />
 
@@ -155,6 +156,21 @@ const App = () => {
                 
                 {/* Platform Selection Screen */}
                 <Stack.Screen name="PlatformSelectionMedia" component={PlatformSelectionMedia} options={{ headerShown: false }} />
+                <Stack.Screen name="ContentCreatorTransactions" component={ContentCreatorTransactionsScreen} options={{ headerShown: false }} />
+                <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} options={{ headerShown: false }} />
+                <Stack.Screen name="CardPayment" component={MainCardScreen} options={{ headerShown: false }} />
+
+                
+              <Stack.Screen name="GetAllCards" component={GetAllCardsScreen} options={{ headerShown: false }} />    
+              <Stack.Screen name="UpdateCard" component={UpdateCardScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="PostCard" component={PostCardScreen} options={{ headerShown: false }} />  
+              <Stack.Screen name="DeleteCard" component={DeleteCardScreen} options={{ headerShown: false }} />
+
+              <Stack.Screen name="ContentCreatorActiveContracts" component={ContentCreatorActiveContractsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ContentCreatorCompletedContracts" component={ContentCreatorCompletedContractsScreen} options={{ headerShown: false }} />
+
+              <Stack.Screen name="ContentCreatorDealsScreen" component={ContentCreatorDealsScreen} options={{ headerShown: false }} />
+
 
                 {/* <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} /> */}
               </Stack.Navigator>

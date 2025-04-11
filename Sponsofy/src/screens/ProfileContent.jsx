@@ -1117,9 +1117,9 @@ const styles = StyleSheet.create({
   noMediaContainer: {
     flexDirection: "row",
     justifyContent: "space-evenly", // or "space-between" if you prefer
-    width: '100%', // ensure container takes full width
+    width: "100%", // ensure container takes full width
     paddingVertical: 20, // vertical padding only
-    margin:10,
+    margin: 10,
   },
   noMediaText: {
     color: "#888",
@@ -1203,10 +1203,10 @@ const styles = StyleSheet.create({
   },
   // Image styles
   image: {
-    width: '45%', // takes nearly half the container width
+    width: "45%", // takes nearly half the container width
     aspectRatio: 1, // keeps images square
     borderRadius: 8,
-    marginHorizontal: '2.5%', // adds spacing between images
+    marginHorizontal: "2.5%", // adds spacing between images
   },
 });
 

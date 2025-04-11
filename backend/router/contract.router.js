@@ -12,7 +12,11 @@ const {
   updateTerm,
   acceptTerm,
   getContractByContentCreatorId,
-  updateContractStatus
+  updateContractStatus, 
+  getContractsForCurrentCompany,
+  getContractsByCompanyId,
+  getDealsByContractId,
+  getContentCreatorContractsByStatus,
 } = require("../controller/contract.controller");
 const authenticateJWT = require("../auth/refreshToken");
 const {isCompany, isContentCreator} = require("../middleware/roleMiddleware");
@@ -34,4 +38,16 @@ router.put("/:contractId/terms/:termId/update", authenticateJWT, updateTerm);
 router.put("/:contractId/terms/:termId/accept", authenticateJWT, acceptTerm);
 router.put("/:contractId/update-status", authenticateJWT, updateContractStatus);
 router.get("/detail/:contractId", authenticateJWT, getContractById);
+
+router.get("/current", authenticateJWT, isCompany, getContractsForCurrentCompany)
+router.get("/company/:id", authenticateJWT, getContractsByCompanyId)
+addContract
+// Deal routes
+router.get("/:contractId/deals", authenticateJWT, getDealsByContractId)
+
+// Content Creator routes - Add these new routes
+router.get("/content-creator/:contentCreatorId/status/:status", authenticateJWT, getContentCreatorContractsByStatus)
+
+
+
 module.exports = router;

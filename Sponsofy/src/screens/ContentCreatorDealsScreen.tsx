@@ -16,7 +16,7 @@ const ContentCreatorDealsScreen = ({ navigation }) => {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+ ///melek 
   useEffect(() => {
     fetchDeals();
   }, []);
@@ -24,7 +24,7 @@ const ContentCreatorDealsScreen = ({ navigation }) => {
   const fetchDeals = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/addDeal/creator/deals');
+      const response = await api.get('/deal/creator/deals');
       setDeals(response.data.deals);
       setLoading(false);
     } catch (err) {

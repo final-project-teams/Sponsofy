@@ -82,6 +82,9 @@ app.use('/api/signature', signatureRouter);
 app.use('/api/qr', QRCodeVerifierRouter);
 app.use('/api/contracts', contracts);
 
+app.use('/api/transactions', transactionRouter);
+app.use("/api", cardPaymentRoutes);
+
 
 // Root route
 app.get('/', (req, res) => {

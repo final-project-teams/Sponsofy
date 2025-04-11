@@ -13,7 +13,7 @@ const ContentCreatorDealsScreen = () => {
       const token = await AsyncStorage.getItem("userToken");
 
       if (token) {
-        const response = await api.get("/addDeal/creator/deals", {
+        const response = await api.get("/deal/creator/deals", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
