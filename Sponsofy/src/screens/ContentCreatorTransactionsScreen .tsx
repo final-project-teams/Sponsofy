@@ -1,111 +1,103 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
   SafeAreaView,
-  StatusBar
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/axios';
 
-const ContentCreatorDealsScreen = ({ navigation }) => {
-  const [deals, setDeals] = useState([]);
+const ContentCreatorTransactionsScreen = ({ navigation, route }) => {
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
- ///melek 
-  useEffect(() => {
-    fetchDeals();
-  }, []);
 
-  const fetchDeals = async () => {
+  // Get the userId and profile from navigation params
+  const { userId, profile } = route.params;
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [userId]);
+
+  const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/deal/creator/deals');
-      setDeals(response.data.deals);
+      const response = await api.get(`/transactions/content-creator/${userId}`);
+      setTransactions(response.data.transactions);
+      console.log('Transactions:', response.data.transactions);
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching deals:', err);
-      setError(err.message || 'Failed to load deals');
+      console.error('Error fetching transactions:', err);
+      setError(err.message || 'Failed to load transactions');
       setLoading(false);
     }
   };
 
-  // Get status color based on deal status
+  // Get status color based on transaction status
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
         return '#f39c12'; // Orange
-      case 'accepted':
-        return '#2ecc71'; // Green
-      case 'rejected':
-        return '#e74c3c'; // Red
       case 'completed':
-        return '#3498db'; // Blue
+        return '#2ecc71'; // Green
+      case 'failed':
+        return '#e74c3c'; // Red
       default:
         return '#95a5a6'; // Gray
     }
   };
 
-  // Get rank color
-  const getRankColor = (rank) => {
-    switch (rank) {
-      case 'gold':
-        return 'gold';
-      case 'silver':
-        return 'silver';
-      case 'plat':
-        return '#8A2BE2'; // Purple
-      default:
-        return '#95a5a6'; // Gray
-    }
-  };
-
-  const renderDealItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.dealCard}
-      onPress={() => navigation.navigate('DealDetails', { dealId: item.id })}
+  const renderTransactionItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.transactionCard}
+      onPress={() => navigation.navigate('TransactionDetails', { transaction: item })}
     >
-      <View style={styles.dealHeader}>
-        <Text style={styles.dealTitle}>{item.Contract?.title || 'Untitled Deal'}</Text>
+      <View style={styles.transactionHeader}>
+        <Text style={styles.transactionTitle}>Transaction #{item.id}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{item.status}</Text>
         </View>
       </View>
-
-      <View style={styles.dealInfo}>
+  
+      <View style={styles.transactionInfo}>
+        <View style={styles.infoRow}>
+          <Ionicons name="cash-outline" size={16} color="#aaa" />
+          <Text style={styles.infoLabel}>Amount:</Text>
+          <Text style={styles.infoValue}>${item.amount}</Text>
+        </View>
+  
+        <View style={styles.infoRow}>
+          <Ionicons name="card-outline" size={16} color="#aaa" />
+          <Text style={styles.infoLabel}>Payment Method:</Text>
+          <Text style={styles.infoValue}>{item.payment_method}</Text>
+        </View>
+  
         <View style={styles.infoRow}>
           <Ionicons name="business-outline" size={16} color="#aaa" />
           <Text style={styles.infoLabel}>Company:</Text>
-          <Text style={styles.infoValue}>{item.Contract?.Company?.name || 'Unknown'}</Text>
+          <Text style={styles.infoValue}>{item.company?.name || 'Unknown'}</Text>
         </View>
-
+  
         <View style={styles.infoRow}>
-          <Ionicons name="calendar-outline" size={16} color="#aaa" />
-          <Text style={styles.infoLabel}>Date:</Text>
-          <Text style={styles.infoValue}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Ionicons name="cash-outline" size={16} color="#aaa" />
-          <Text style={styles.infoLabel}>Price:</Text>
-          <Text style={styles.infoValue}>${item.price || 0}</Text>
+          <Ionicons name="document-text-outline" size={16} color="#aaa" />
+          <Text style={styles.infoLabel}>Deal:</Text>
+          <Text style={styles.infoValue}>{item.deal?.deal_terms || 'No Deal'}</Text>
         </View>
       </View>
-
-      <View style={styles.dealFooter}>
-        <View style={[styles.rankBadge, { backgroundColor: getRankColor(item.Contract?.rank) }]}>
-          <Text style={styles.rankText}>{item.Contract?.rank || 'N/A'}</Text>
-        </View>
-        <View style={styles.viewDetails}>
+  
+      <View style={styles.transactionFooter}>
+        <TouchableOpacity
+          style={styles.viewDetails}
+          onPress={() => navigation.navigate('TransactionDetails', { transaction: item })}
+        >
           <Text style={styles.viewDetailsText}>View Details</Text>
           <Ionicons name="chevron-forward" size={16} color="#0099ff" />
-        </View>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -113,9 +105,9 @@ const ContentCreatorDealsScreen = ({ navigation }) => {
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="document-text-outline" size={64} color="#555" />
-      <Text style={styles.emptyText}>No deals found</Text>
+      <Text style={styles.emptyText}>No transactions found</Text>
       <Text style={styles.emptySubtext}>
-        Browse available contracts and submit deal requests to get started
+        Your transactions will appear here once you complete deals
       </Text>
     </View>
   );
@@ -133,7 +125,7 @@ const ContentCreatorDealsScreen = ({ navigation }) => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle" size={48} color="#e74c3c" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchDeals}>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchTransactions}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -144,16 +136,16 @@ const ContentCreatorDealsScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Deals</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={fetchDeals}>
+        <Text style={styles.headerTitle}>My Transactions</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchTransactions}>
           <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={deals}
-        renderItem={renderDealItem}
-        keyExtractor={item => item.id.toString()}
+        data={transactions}
+        renderItem={renderTransactionItem}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={renderEmptyList}
         showsVerticalScrollIndicator={false}
@@ -217,7 +209,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 80, // Extra padding at bottom for better scrolling
   },
-  dealCard: {
+  transactionCard: {
     backgroundColor: '#222',
     borderRadius: 12,
     marginBottom: 16,
@@ -228,7 +220,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  dealHeader: {
+  transactionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -236,7 +228,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
-  dealTitle: {
+  transactionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
@@ -254,7 +246,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textTransform: 'uppercase',
   },
-  dealInfo: {
+  transactionInfo: {
     padding: 16,
   },
   infoRow: {
@@ -266,30 +258,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#aaa',
     marginLeft: 8,
-    width: 70,
+    width: 100,
   },
   infoValue: {
     fontSize: 14,
     color: '#fff',
     flex: 1,
   },
-  dealFooter: {
+  transactionFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     padding: 12,
     backgroundColor: '#1a1a1a',
-  },
-  rankBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  rankText: {
-    color: '#000',
-    fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
   },
   viewDetails: {
     flexDirection: 'row',
@@ -319,4 +300,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ContentCreatorDealsScreen;
+export default ContentCreatorTransactionsScreen;

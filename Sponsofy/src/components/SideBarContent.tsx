@@ -1,7 +1,24 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import React from "react";
 
-const SideBarContent = ({ onProfileClick }) => {
+interface SideBarContentProps {
+  onProfileClick: () => void;
+  onDealsClick: () => void;
+  onTransactionsClick: () => void;
+  onCardPaymentClick: () => void;
+  onActiveContractsClick: () => void;
+  onCompletedContractsClick: () => void;
+}
+
+const SideBarContent: React.FC<SideBarContentProps> = ({
+  onProfileClick,
+  onDealsClick,
+  onTransactionsClick,
+  onCardPaymentClick,
+  onActiveContractsClick,
+  onCompletedContractsClick,
+}) => {
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>Sponsofy</Text>
@@ -13,27 +30,27 @@ const SideBarContent = ({ onProfileClick }) => {
           <Text style={styles.menuText}>Profile</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onDealsClick}>
           <MaterialIcons name="compare-arrows" size={20} color="#fff" />
           <Text style={styles.menuText}>Accept / Deny Deals</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onActiveContractsClick}>
           <Ionicons name="timer-outline" size={20} color="#fff" />
-          <Text style={styles.menuText}>Ongoing Contracts</Text>
+          <Text style={styles.menuText}>Active Contracts</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onCompletedContractsClick}>
           <MaterialIcons name="pending-actions" size={20} color="#fff" />
-          <Text style={styles.menuText}>Pending Contracts</Text>
+          <Text style={styles.menuText}>Completed Contracts</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onCardPaymentClick}>
           <Ionicons name="card-outline" size={20} color="#fff" />
           <Text style={styles.menuText}>Payment Methods</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onTransactionsClick}>
           <Ionicons name="time-outline" size={20} color="#fff" />
           <Text style={styles.menuText}>History Transactions</Text>
         </TouchableOpacity>
@@ -87,8 +104,8 @@ const SideBarContent = ({ onProfileClick }) => {
         </TouchableOpacity>
       </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -191,7 +208,6 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontSize: 13,
   },
-})
+});
 
-export default SideBarContent
-
+export default SideBarContent;

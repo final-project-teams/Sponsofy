@@ -1,15 +1,39 @@
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar } from "react-native"
-import { Feather, FontAwesome, FontAwesome5 } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import React from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+} from "react-native";
+import { Feather, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+
+type RootStackParamList = {
+  SocialMediaStats: { platform: string };
+  // Add other screens here as needed
+};
+
+type PlatformSelectionMediaNavigationProp = StackNavigationProp<RootStackParamList, 'SocialMediaStats'>;
+
+interface Platform {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  iconFamily: "FontAwesome" | "FontAwesome5";
+}
 
 const PlatformSelectionMedia = () => {
-  const navigation = useNavigation()
+  const navigation = useNavigation<PlatformSelectionMediaNavigationProp>();
 
-  const handlePlatformSelect = (platform) => {
-    navigation.navigate("SocialMediaStats", { platform })
-  }
+  const handlePlatformSelect = (platform: string) => {
+    navigation.navigate("SocialMediaStats", { platform });
+  };
 
-  const platforms = [
+  const platforms: Platform[] = [
     {
       id: "instagram",
       name: "Instagram",
@@ -27,7 +51,7 @@ const PlatformSelectionMedia = () => {
     {
       id: "tiktok",
       name: "TikTok",
-      icon: "tiktok", // Using custom icon or approx equivalent
+      icon: "tiktok",
       color: "#000000",
       iconFamily: "FontAwesome5",
     },
@@ -38,7 +62,7 @@ const PlatformSelectionMedia = () => {
       color: "#1877F2",
       iconFamily: "FontAwesome",
     },
-  ]
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,6 +77,20 @@ const PlatformSelectionMedia = () => {
         <View style={{ width: 24 }} />
       </View>
 
+      {/* Instructions */}
+      <View style={styles.instructionsContainer}>
+        <Text style={styles.instructionsTitle}>What's this for?</Text>
+        <Text style={styles.instructionsText}>
+          Select a social media platform to update your stats including views,
+          likes, and followers. These metrics help sponsors understand your
+          reach and engagement.
+        </Text>
+
+        <Text style={styles.instructionsNote}>
+          Note : when You add a picture link to your profile picture the number
+          of likes and views will be added to that image not the platform
+        </Text>
+      </View>
       {/* Platform Grid */}
       <View style={styles.platformContainer}>
         {platforms.map((platform) => (
@@ -62,26 +100,17 @@ const PlatformSelectionMedia = () => {
             onPress={() => handlePlatformSelect(platform.id)}
           >
             {platform.iconFamily === "FontAwesome" ? (
-              <FontAwesome name={platform.icon} size={32} color="white" />
+              <FontAwesome name={platform.icon as any} size={32} color="white" />
             ) : (
-              <FontAwesome5 name={platform.icon} size={32} color="white" />
+              <FontAwesome5 name={platform.icon as any} size={32} color="white" />
             )}
             <Text style={styles.platformText}>{platform.name}</Text>
           </TouchableOpacity>
         ))}
       </View>
-
-      {/* Instructions */}
-      <View style={styles.instructionsContainer}>
-        <Text style={styles.instructionsTitle}>What's this for?</Text>
-        <Text style={styles.instructionsText}>
-          Select a social media platform to update your stats including views, likes, and followers. These metrics help
-          sponsors understand your reach and engagement.
-        </Text>
-      </View>
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -139,7 +168,12 @@ const styles = StyleSheet.create({
     color: "#CCC",
     lineHeight: 20,
   },
-})
+  instructionsNote: {
+    color: "#CCC",
+    lineHeight: 20,
+    marginTop: 10,
+    fontWeight: "bold",
+  },
+});
 
-export default PlatformSelectionMedia
-
+export default PlatformSelectionMedia;

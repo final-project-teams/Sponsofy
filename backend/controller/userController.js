@@ -430,6 +430,107 @@ module.exports = {
       res.status(500).json({ message: "Failed to fetch social media stats", error: error.message });
     }
   },
+  
+ postMediaLink : async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const {
+      platform,
+      media_type,
+      file_url,
+      file_name,
+      file_format,
+      description,
+      audience,
+      views,
+      likes,
+      followers,
+    } = req.body;
+
+    // Validate required fields
+    if (!platform || !file_url) {
+      return res.status(400).json({ 
+        message: "Platform and file_url are required fields" 
+      });
+    }
+
+    // Find the content creator
+    const contentCreator = await ContentCreator.findOne({ 
+      where: { userId: parseInt(userId) } 
+    });
+    
+    if (!contentCreator) {
+      return res.status(404).json({ message: "Content creator not found" });
+    }
+
+    // Create a new media entry
+    const media = await Media.create({
+      platform,
+      media_type: 'document',
+      file_url,
+      file_name: file_name || `${platform}-link`,
+      file_format: file_format || 'link',
+      description: description || `${platform} media link`,
+      audience: audience || '',
+      views: views || 0,
+      likes: likes || 0,
+      followers: followers || 0,
+      contentCreatorId: contentCreator.id,
+    });
+
+    res.status(201).json({
+      message: "Media link added successfully",
+      media,
+    });
+  } catch (error) {
+    console.error("Error adding media link:", error);
+    res.status(500).json({ 
+      message: "Failed to add media link", 
+      error: error.message 
+    });
+  }
+},
+
+// This is the updated controller function for deleteMediaLink
+ deleteMediaLink : async (req, res) => {
+  try {
+    const { userId, mediaId } = req.params;
+
+    // Find the content creator
+    const contentCreator = await ContentCreator.findOne({ 
+      where: { userId: parseInt(userId) } 
+    });
+    
+    if (!contentCreator) {
+      return res.status(404).json({ message: "Content creator not found" });
+    }
+
+    // Find the media entry
+    const media = await Media.findOne({
+      where: { 
+        id: mediaId, 
+        contentCreatorId: contentCreator.id 
+      },
+    });
+    
+    if (!media) {
+      return res.status(404).json({ message: "Media link not found" });
+    }
+
+    // Delete the media entry
+    await media.destroy();
+
+    res.status(200).json({
+      message: "Media link deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting media link:", error);
+    res.status(500).json({ 
+      message: "Failed to delete media link", 
+      error: error.message 
+    });
+  }
+},
 
   // Update Profile Controller
   updateProfile: async (req, res) => {
@@ -510,12 +611,16 @@ module.exports = {
    // Add these new controller functions to your existing userController.js
 
 // Get all criteria regardless of platform
- getAllCriteria : async (req, res) => {
+getAllCriteria: async (req, res) => {
   try {
+    const { platform } = req.query; // Get platform from query parameters
+    const whereClause = platform ? { platform } : {}; // Filter by platform if provided
+
     const criteria = await Criteria.findAll({
       attributes: ['id', 'name', 'description', 'platform'],
+      where: whereClause,
     });
-    
+
     res.status(200).json({ criteria });
   } catch (error) {
     console.error("Error fetching all criteria:", error);
@@ -746,7 +851,7 @@ uploadMedia: async (req, res) => {
     })
 
     const mediaWithUrl = media.toJSON()
-    if (mediaWithUrl.file_url) {
+    if (mediaWithUrl.file_url) {a
       mediaWithUrl.file_url = createMediaUrl(mediaWithUrl.file_url)
     }
 

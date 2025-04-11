@@ -7,6 +7,10 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { showMessage } from 'react-native-flash-message';
@@ -15,34 +19,48 @@ import api from '../config/axios';
 import { getTheme } from "../theme/theme";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
 
-const SignupScreen = ({ navigation, route }) => {
-  const { role } = route.params; // Get role from navigation params
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [industry, setIndustry] = useState('');
-  const [codeFiscal, setCodeFiscal] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+type RootStackParamList = {
+  Signup: { role: 'content_creator' | 'company' };
+  Login: undefined;
+  // Add other screens as needed
+};
+
+type SignupScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Signup'>;
+type SignupScreenRouteProp = RouteProp<RootStackParamList, 'Signup'>;
+
+interface SignupScreenProps {
+  navigation: SignupScreenNavigationProp;
+  route: SignupScreenRouteProp;
+}
+
+const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, route }) => {
+  const { role } = route.params;
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [industry, setIndustry] = useState<string>('');
+  const [codeFiscal, setCodeFiscal] = useState<string>('');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const theme = getTheme(isDarkMode);
 
-  // Validate password
-  const validatePassword = (password) => {
+  const validatePassword = (password: string): boolean => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
     return passwordRegex.test(password);
   };
 
-  // Handle password change
-  const handlePasswordChange = (text) => {
+  const handlePasswordChange = (text: string): void => {
     setPassword(text);
     if (!validatePassword(text)) {
       setPasswordError("Password must contain at least 8 characters, one uppercase letter, and one number");
@@ -51,8 +69,7 @@ const SignupScreen = ({ navigation, route }) => {
     }
   };
 
-  // Validate passwords match
-  const validatePasswords = () => {
+  const validatePasswords = (): boolean => {
     if (password !== confirmPassword) {
       setPasswordError("Passwords do not match");
       return false;
@@ -65,8 +82,7 @@ const SignupScreen = ({ navigation, route }) => {
     return true;
   };
 
-  // Handle image picker
-  const pickImage = async () => {
+  const pickImage = async (): Promise<void> => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -74,16 +90,14 @@ const SignupScreen = ({ navigation, route }) => {
       quality: 1,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets && result.assets[0].uri) {
       setProfileImage(result.assets[0].uri);
     }
   };
 
-  // Handle signup
-  const handleSignup = async () => {
+  const handleSignup = async (): Promise<void> => {
     if (isSubmitting) return;
     
-    // Validate passwords
     if (!validatePasswords()) {
       showMessage({
         message: "Validation Error",
@@ -94,7 +108,6 @@ const SignupScreen = ({ navigation, route }) => {
       return;
     }
 
-    // Validate role-specific fields
     if (role === 'content_creator' && (!firstName || !lastName)) {
       showMessage({
         message: "Validation Error",
@@ -120,12 +133,10 @@ const SignupScreen = ({ navigation, route }) => {
       
       const formData = new FormData();
       
-      // Common fields
       formData.append('email', email);
       formData.append('password', password);
       formData.append('role', role);
       
-      // Role-specific fields
       if (role === 'content_creator') {
         formData.append('username', `${firstName} ${lastName}`);
         formData.append('first_name', firstName);
@@ -136,14 +147,13 @@ const SignupScreen = ({ navigation, route }) => {
         formData.append('codeFiscal', codeFiscal);
       }
 
-      // Add profile image if selected
       if (profileImage) {
         const file = {
           uri: profileImage,
           name: `profile-${Date.now()}.jpg`,
           type: 'image/jpeg',
         };
-        formData.append('media', file);
+        formData.append('media', file as any);
       }
 
       const response = await api.post("/user/register", formData, {
@@ -160,14 +170,13 @@ const SignupScreen = ({ navigation, route }) => {
           icon: "auto",
         });
         
-        // Store token if returned
         if (response.data.accessToken) {
           await AsyncStorage.setItem('userToken', response.data.accessToken);
         }
         
         navigation.navigate("Login");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
       showMessage({
         message: "Error",
@@ -197,7 +206,6 @@ const SignupScreen = ({ navigation, route }) => {
       <Text style={styles.title}>Get Started With</Text>
       <Text style={styles.title}>Sponsofy</Text>
       
-      {/* Profile Image Picker */}
       <View style={styles.imagePickerContainer}>
         <TouchableOpacity onPress={pickImage}>
           {profileImage ? (
@@ -231,12 +239,10 @@ const SignupScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
       
-      {/* Dynamic Fields Based on Role */}
       {role === 'content_creator' ? (
         <>
-          {/* First Name and Last Name */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ width: '48%' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' } as StyleProp<ViewStyle>}>
+            <View style={{ width: '48%' } as StyleProp<ViewStyle>}>
               <Text style={styles.inputLabel}>First Name</Text>
               <View style={styles.inputContainer}>
                 <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -250,7 +256,7 @@ const SignupScreen = ({ navigation, route }) => {
               </View>
             </View>
 
-            <View style={{ width: '48%' }}>
+            <View style={{ width: '48%' } as StyleProp<ViewStyle>}>
               <Text style={styles.inputLabel}>Last Name</Text>
               <View style={styles.inputContainer}>
                 <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -267,9 +273,8 @@ const SignupScreen = ({ navigation, route }) => {
         </>
       ) : (
         <>
-          {/* Industry and Code Fiscal */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ width: '48%' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' } as StyleProp<ViewStyle>}>
+            <View style={{ width: '48%' } as StyleProp<ViewStyle>}>
               <Text style={styles.inputLabel}>Industry</Text>
               <View style={styles.inputContainer}>
                 <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -283,7 +288,7 @@ const SignupScreen = ({ navigation, route }) => {
               </View>
             </View>
 
-            <View style={{ width: '48%' }}>
+            <View style={{ width: '48%' } as StyleProp<ViewStyle>}>
               <Text style={styles.inputLabel}>Code Fiscal</Text>
               <View style={styles.inputContainer}>
                 <Ionicons name="document-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -298,7 +303,6 @@ const SignupScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          {/* Username for Company */}
           <Text style={styles.inputLabel}>Username</Text>
           <View style={styles.inputContainer}>
             <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -313,7 +317,6 @@ const SignupScreen = ({ navigation, route }) => {
         </>
       )}
       
-      {/* Email */}
       <Text style={styles.inputLabel}>Email</Text>
       <View style={styles.inputContainer}>
         <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -327,7 +330,6 @@ const SignupScreen = ({ navigation, route }) => {
         />
       </View>
       
-      {/* Password */}
       <Text style={styles.inputLabel}>Password</Text>
       <View style={styles.inputContainer}>
         <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -348,7 +350,6 @@ const SignupScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
       
-      {/* Confirm Password */}
       <Text style={styles.inputLabel}>Confirm Password</Text>
       <View style={styles.inputContainer}>
         <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -369,12 +370,10 @@ const SignupScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
       
-      {/* Password Error Message */}
       {passwordError ? (
         <Text style={styles.errorText}>{passwordError}</Text>
       ) : null}
       
-      {/* Continue Button */}
       <TouchableOpacity 
         style={[styles.continueButton, isSubmitting && styles.disabledButton]} 
         onPress={handleSignup}
@@ -387,7 +386,6 @@ const SignupScreen = ({ navigation, route }) => {
         )}
       </TouchableOpacity>
       
-      {/* Login Link */}
       <View style={styles.loginContainer}>
         <Text style={styles.alreadyAccountText}>Already have an account? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>

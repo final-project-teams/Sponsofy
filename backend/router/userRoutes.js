@@ -1,3 +1,5 @@
+// Updated routes file
+
 const express = require("express");
 const router = express.Router();
 const path = require("path");
@@ -18,6 +20,8 @@ const {
   getContentCreatorMedia,
   uploadMedia,
   deleteMedia,
+  postMediaLink,
+  deleteMediaLink,
 } = require("../controller/userController");
 const { upload } = require("../middleware/uploadMiddleware");
 const { GoogleAuth } = require("../controller/googleAuthController");
@@ -26,7 +30,6 @@ const { uploadSingle, handleUploadError } = require('../middleware/uploadMiddlew
 
 // New routes for criteria selection flow
 router.get("/all-criteria", getAllCriteria);
-// Updated route to use criteriaId as a param
 router.post(
   "/associate-platform-criteria/:criteriaId",
   authenticateJWT,
@@ -35,9 +38,21 @@ router.post(
 router.get("/sub-criteria", getSubCriteriaByCriteriaId);
 router.post("/associate-subcriteria", authenticateJWT, associateSubCriteria);
 
-// Existing routes
+
+
+
+
+
+// Social media routes - FIXED
 router.put("/:userId/social-media", updateSocialMedia);
 router.get("/:userId/social-media", getSocialMediaStats);
+router.post("/:userId/social-media", postMediaLink); // Add media link
+router.delete("/:userId/social-media/:mediaId", deleteMediaLink); // Delete media link
+
+
+
+
+// Authentication routes
 router.post("/login", Login);
 router.post("/register", uploadSingle, handleUploadError, Register);
 router.post("/google-auth", GoogleAuth);
@@ -50,15 +65,16 @@ router.put(
 );
 router.put("/profile", authenticateJWT, upload.single("media"), updateProfile);
 
-// Get all media for a content creator
+// Media routes
 router.get(
   "/content-creator/:contentCreatorId/media",
   authenticateJWT,
   getContentCreatorMedia
 );
-// Upload new media
 router.post("/media", authenticateJWT, upload.single("media"), uploadMedia);
-// Delete media
 router.delete("/media/:mediaId", authenticateJWT, deleteMedia);
+
+console.log("Routes updated successfully");
+console.log("Social media routes are now properly configured");
 
 module.exports = router;

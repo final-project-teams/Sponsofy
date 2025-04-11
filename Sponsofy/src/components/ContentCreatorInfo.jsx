@@ -28,6 +28,7 @@ const ContentCreatorInfo = ({ route }) => {
   const navigation = useNavigation()
   const [loading, setLoading] = useState(false)
   const [mediaLoading, setMediaLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [userProfile, setUserProfile] = useState(profile || null)
   const [media, setMedia] = useState([])
   const [selectedMedia, setSelectedMedia] = useState(null)
@@ -101,7 +102,6 @@ const ContentCreatorInfo = ({ route }) => {
       const token = await AsyncStorage.getItem("userToken")
 
       if (token) {
-        // Assuming there's an endpoint to fetch media for a content creator
         const response = await api.get(`/user/content-creator/${userId}/media`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -155,46 +155,88 @@ const ContentCreatorInfo = ({ route }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
-      quality: 1,
+      quality: 0.8,
     })
 
-    if (!result.canceled) {
-      const token = await AsyncStorage.getItem("userToken")
-      if (!token) {
-        Alert.alert("Error", "You need to be logged in to upload media.")
-        return
-      }
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedAsset = result.assets[0]
+      uploadMedia(selectedAsset)
+    }
+  }
 
-      const file = {
-        uri: result.assets[0].uri,
-        name: `media-${Date.now()}.${result.assets[0].uri.split(".").pop()}`,
-        type: result.assets[0].type || "image/jpeg",
-      }
+  // Take a photo with camera
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "Please allow access to your camera.")
+      return
+    }
 
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    })
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedAsset = result.assets[0]
+      uploadMedia(selectedAsset)
+    }
+  }
+
+  // Upload media to server
+  const uploadMedia = async (asset) => {
+    const token = await AsyncStorage.getItem("userToken")
+    if (!token) {
+      Alert.alert("Error", "You need to be logged in to upload media.")
+      return
+    }
+
+    try {
+      setMediaLoading(true)
+      setUploadProgress(0)
+      setAddMediaModalVisible(false)
+
+      // Create file name with extension
+      const fileExtension = asset.uri.split(".").pop()
+      const fileName = `media_${Date.now()}.${fileExtension}`
+
+      // Create form data
       const formData = new FormData()
-      formData.append("media", file)
-      formData.append("contentCreatorId", userProfile.id)
+      formData.append("media", {
+        uri: asset.uri,
+        type: asset.type || `image/${fileExtension}`,
+        name: fileName,
+      })
+      formData.append("contentCreatorId", userId)
       formData.append("description", "Content creator media")
 
-      try {
-        setMediaLoading(true)
-        const response = await api.post("/user/media", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        })
+      // Upload with progress tracking
+      const response = await api.post("/user/media", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          setUploadProgress(percentCompleted)
+        },
+      })
 
+      if (response.status === 201) {
         // Add the new media to the state
         setMedia([...media, response.data.media])
         Alert.alert("Success", "Media uploaded successfully")
-        setAddMediaModalVisible(false)
-      } catch (error) {
-        console.error("Error uploading media:", error)
-        Alert.alert("Error", "Failed to upload media")
-      } finally {
-        setMediaLoading(false)
+
+        // Refresh media list
+        fetchMedia()
       }
+    } catch (error) {
+      console.error("Error uploading media:", error)
+      Alert.alert("Upload Failed", error.response?.data?.message || "Failed to upload media. Please try again.")
+    } finally {
+      setMediaLoading(false)
+      setUploadProgress(0)
     }
   }
 
@@ -328,7 +370,15 @@ const ContentCreatorInfo = ({ route }) => {
             </View>
 
             {mediaLoading ? (
-              <ActivityIndicator size="small" color="#8A2BE2" style={styles.mediaLoader} />
+              <View style={styles.mediaLoaderContainer}>
+                <ActivityIndicator size="small" color="#8A2BE2" style={styles.mediaLoader} />
+                {uploadProgress > 0 && (
+                  <View style={styles.progressContainer}>
+                    <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
+                    <Text style={styles.progressText}>{uploadProgress}%</Text>
+                  </View>
+                )}
+              </View>
             ) : media.length > 0 ? (
               <FlatList
                 data={media}
@@ -400,6 +450,15 @@ const ContentCreatorInfo = ({ route }) => {
                 resizeMode="contain"
               />
             )}
+
+            {selectedMedia && (
+              <View style={styles.mediaInfoContainer}>
+                <Text style={styles.mediaInfoText}>{selectedMedia.description || "No description"}</Text>
+                <Text style={styles.mediaInfoSubtext}>
+                  {new Date(selectedMedia.uploaded_at || selectedMedia.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -428,13 +487,7 @@ const ContentCreatorInfo = ({ route }) => {
                 <Text style={styles.addMediaOptionText}>Choose from Gallery</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.addMediaOption}
-                onPress={() => {
-                  setAddMediaModalVisible(false)
-                  // You could add camera functionality here
-                }}
-              >
+              <TouchableOpacity style={styles.addMediaOption} onPress={takePhoto}>
                 <View style={styles.addMediaIconContainer}>
                   <Feather name="camera" size={30} color="white" />
                 </View>
@@ -581,8 +634,31 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 5,
   },
-  mediaLoader: {
+  mediaLoaderContainer: {
+    alignItems: "center",
     marginVertical: 20,
+  },
+  mediaLoader: {
+    marginBottom: 10,
+  },
+  progressContainer: {
+    width: "100%",
+    height: 20,
+    backgroundColor: "#333",
+    borderRadius: 10,
+    overflow: "hidden",
+    marginTop: 5,
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#8A2BE2",
+  },
+  progressText: {
+    position: "absolute",
+    color: "white",
+    fontSize: 12,
+    alignSelf: "center",
+    top: 2,
   },
   mediaGrid: {
     marginTop: 5,
@@ -637,6 +713,24 @@ const styles = StyleSheet.create({
   fullMediaImage: {
     width: "90%",
     height: "80%",
+  },
+  mediaInfoContainer: {
+    position: "absolute",
+    bottom: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    padding: 15,
+    borderRadius: 10,
+  },
+  mediaInfoText: {
+    color: "white",
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  mediaInfoSubtext: {
+    color: "#ccc",
+    fontSize: 12,
   },
   deleteButton: {
     backgroundColor: "#e74c3c",

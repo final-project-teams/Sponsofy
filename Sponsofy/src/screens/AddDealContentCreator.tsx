@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useState } from "react"
 import {
   StyleSheet,
@@ -18,13 +19,28 @@ import {
 import { Feather } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import api from "../config/axios"
 
+type DealData = {
+  title: string
+  price: string
+  deal_terms: string
+  description: string
+}
+
+type RootStackParamList = {
+  // Define your navigation stack params here
+  // Example:
+  // Home: undefined;
+  // Profile: { userId: string };
+  [key: string]: undefined | object
+}
+
 const AddDealContentCreator = () => {
-  
-  const navigation = useNavigation()
-  const [loading, setLoading] = useState(false)
-  const [dealData, setDealData] = useState({
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const [loading, setLoading] = useState<boolean>(false)
+  const [dealData, setDealData] = useState<DealData>({
     title: "",
     price: "",
     deal_terms: "",
@@ -32,7 +48,7 @@ const AddDealContentCreator = () => {
   })
 
   // Handle input changes
-  const handleChange = (field, value) => {
+  const handleChange = (field: keyof DealData, value: string) => {
     setDealData((prev) => ({
       ...prev,
       [field]: value,
@@ -76,7 +92,7 @@ const AddDealContentCreator = () => {
           onPress: () => navigation.goBack(),
         },
       ])
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating deal:", error)
       Alert.alert("Error", error.response?.data?.message || "Failed to create deal")
     } finally {
@@ -226,4 +242,3 @@ const styles = StyleSheet.create({
 })
 
 export default AddDealContentCreator
-
