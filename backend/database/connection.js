@@ -173,7 +173,7 @@ Deal.hasMany(Term);
 Term.belongsTo(Deal);
 
 // Term -> Negotiation (One-to-Many)
-  Term.hasOne(Negotiation, {as:'negotiation' , foreignKey: 'termId'});
+  Term.hasOne(Negotiation, {as:'negotiation' });
   Negotiation.belongsTo(Term);
 
 
@@ -218,14 +218,6 @@ Message.belongsTo(Room, {
 });
 
 // A message belongs to a user
-User.hasMany(Message, {
-  foreignKey: 'userId',
-  as: 'userMessages'
-});
-Message.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'sender'
-});
 
 // Room associations
 Room.belongsToMany(User, {
@@ -290,8 +282,6 @@ ContentCreatorSubCriteria.belongsTo(SubCriteria, {
 
 
 // Make sure this association exists and is properly defined
-Message.hasOne(Media, { foreignKey: 'messageId' });
-Media.belongsTo(Message, { foreignKey: 'messageId' });
 
 
 // Add Term associations
@@ -308,7 +298,7 @@ sequelize
   })
 
 // Sync models with the database
-  // sequelize.sync({ alter:true }).then(() => {
+  // sequelize.sync({ force:true }).then(() => {
   //   console.log('Database & tables have been synchronized!');
   // }).catch((error) => {
   //   console.error('Error syncing database:', error);

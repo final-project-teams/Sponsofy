@@ -66,7 +66,7 @@ interface Signature {
 }
 
 const ContractPreview = ({ route }) => {
-  const contractId = 5;
+  const contractId = 1;
   const { currentTheme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const [contract, setContract] = useState<Contract | null>(null);

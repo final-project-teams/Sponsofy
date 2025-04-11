@@ -15,7 +15,7 @@ const DealDetailsScreen = ({ route, navigation }) => {
   useEffect(() => {
     const fetchDeal = async () => {
       try {
-        const response = await api.get(`/addDeal/${dealId}`);
+        const response = await api.get(`/deal/${dealId}`);
         setDeal(response.data.deal);
         console.log("deaaaaaaaalllllllllllo",response.data.deal);
         setLoading(false);
@@ -46,10 +46,10 @@ const DealDetailsScreen = ({ route, navigation }) => {
               console.log("Accepting deal for contract:", deal.id);
               
               // Show loading indicator or disable button here if needed
-              const response = await api.post('/addDeal/request', {
+              const response = await api.post('/deal/request', {
                 companyId: deal.Company.id,
                 termstermsList: deal.Terms,
-                contractId: deal.id,
+                ContractId: deal.id,
                 price: deal.amount || 0 // Use the contract amount or default to 0
               });
               dealSocket.emit("send_deal_request", response.data.deal)
