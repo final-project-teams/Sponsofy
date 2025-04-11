@@ -17,8 +17,13 @@ const api = axios.create({
 const getAuthToken = async () => {
   try {
     const token = await AsyncStorage.getItem('userToken');
-    console.log('Token:', token);
-    return token;
+    if (token) {
+      console.log('Auth token found in storage');
+      return token;
+    } else {
+      console.log('No auth token found in storage');
+      return null;
+    }
   } catch (error) {
     console.error('Error getting auth token:', error);
     return null;
@@ -30,11 +35,15 @@ api.interceptors.request.use(
   async (config) => {
     const token = await getAuthToken(); // Await the token retrieval
     if (token) {
+      console.log(`Setting Authorization header for request to ${config.url}`);
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn(`No Authorization token for request to ${config.url}`);
     }
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -42,23 +51,10 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    // Handle 401 Unauthorized errors
+  (error) => {
     if (error.response?.status === 401) {
-      console.log('Unauthorized request detected');
-      
-      // Clear token from storage on auth errors
-      try {
-        await AsyncStorage.removeItem('userToken');
-        console.log('Cleared invalid token from storage');
-        
-        // You could redirect to login screen here if needed
-        // For example, using a navigation service or event emitter
-      } catch (storageError) {
-        console.error('Error clearing token:', storageError);
-      }
+      // Handle unauthorized access
     }
-    
     return Promise.reject(error);
   }
 );

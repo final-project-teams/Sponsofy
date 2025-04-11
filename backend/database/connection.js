@@ -43,8 +43,8 @@ User.hasOne(ContentCreator, { foreignKey: "userId", as: "contentCreator" });
 ContentCreator.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 // User -> Company (One-to-One)
-User.hasOne(Company, { foreignKey: "userId", as: "companyrs" });
-Company.belongsTo(User, { foreignKey: "userId", as: "user" });
+User.hasOne(Company, { foreignKey: "userId", as: "company" })
+Company.belongsTo(User, { foreignKey: "userId", as: "user" })
 
 // ContentCreator and Media relationship for social media stats
 ContentCreator.hasMany(Media, { foreignKey: "contentCreatorId", as: "media" });
@@ -63,22 +63,35 @@ ContentCreator.hasMany(Deal, { as: "ContentCreatorDeals", foreignKey: "contentCr
 Deal.belongsTo(ContentCreator, { as: "ContentCreatorDeals", foreignKey: "contentCreatorId" });
 
 // Company -> Deal (One-to-Many)
-Company.hasMany(Contract);
-Contract.belongsTo(Company);
+Company.hasMany(Contract)
+Contract.belongsTo(Company)
+
+// ContentCreator -> Contract (One-to-Many)
+ContentCreator.hasOne(Contract);
+Contract.belongsTo(ContentCreator);
 
 Contract.hasMany(Deal);
 Deal.belongsTo(Contract);
+Contract.hasMany(Deal)
+Deal.belongsTo(Contract)
 
+// Direct one-to-many relationship
+Contract.belongsTo(Criteria, { foreignKey: 'criteriaId' })
+Criteria.hasMany(Contract, { foreignKey: 'criteriaId' })
+
+// Many-to-many relationship through ContractCriteria
 Contract.belongsToMany(Criteria, {
   through: ContractCriteria,
-  foreignKey: "contractId",
-  as: "criteria",
+  foreignKey: 'contractId',
+  otherKey: 'criteriaId',
+  as: 'criteria'
 });
 
 Criteria.belongsToMany(Contract, {
   through: ContractCriteria,
-  foreignKey: "criteriaId",
-  as: "contracts",
+  foreignKey: 'criteriaId',
+  otherKey: 'contractId',
+  as: 'contracts'
 });
 
 // Company -> Media (One-to-Many)
@@ -94,8 +107,8 @@ Post.belongsTo(Term);
 Message.hasMany(Media, { foreignKey: 'MessageId' });
 Media.belongsTo(Message, { foreignKey: 'MessageId' });
 
-Deal.hasMany(Media, { as: "AttachedMedia", foreignKey: "dealId" });
-Media.belongsTo(Deal, { foreignKey: "dealId" });
+// Deal.hasMany(Media, { as: "AttachedMedia", foreignKey: "dealId" })
+// Media.belongsTo(Deal, { foreignKey: "dealId" })
 
 Account.hasMany(Post);
 Post.belongsTo(Account);
@@ -106,8 +119,8 @@ Deal.belongsTo(Contract);
 Deal.hasMany(Term);
 Term.belongsTo(Deal);
 
-Term.hasMany(Negotiation);
-Negotiation.belongsTo(Term);
+  Term.hasMany(Negotiation)
+  Negotiation.belongsTo(Term)
 
 Contract.belongsTo(Criteria, { through: ContractCriteria });
 Criteria.belongsTo(Contract, { through: ContractCriteria });
@@ -115,8 +128,8 @@ Criteria.belongsTo(Contract, { through: ContractCriteria });
 Criteria.hasMany(SubCriteria);
 SubCriteria.belongsTo(Criteria);
 
-User.hasOne(Signature);
-Signature.belongsTo(User);
+// User.hasOne(Signature)
+// Signature.belongsTo(User)
 
 User.hasMany(Notification);
 Notification.belongsTo(User);
@@ -139,6 +152,61 @@ SubCriteria.belongsTo(Criteria,{
 });
 
 /////////////////////////////////////////
+// ContentCreator -> Media (Many-to-One, Portfolio)
+ContentCreator.hasMany(Media, { as: 'Portfolio', foreignKey: 'contentCreatorId' });
+Media.belongsTo(ContentCreator, {as: 'Portfolio', foreignKey: 'contentCreatorId' });
+
+// Deal -> Media (Many-to-One, Attach Media to Deals)
+Deal.hasMany(Media, { as: 'AttachedMedia', foreignKey: 'dealId' });
+Media.belongsTo(Deal, { foreignKey: 'dealId' });
+
+// Account -> Post (One-to-Many)
+Account.hasMany(Post);
+Post.belongsTo(Account);
+
+
+// Contract -> Deal (One-to-Many)
+Contract.hasMany(Deal);
+Deal.belongsTo(Contract);
+
+// Deal -> Term (One-to-Many)
+Deal.hasMany(Term);
+Term.belongsTo(Deal);
+
+// Term -> Negotiation (One-to-Many)
+  Term.hasOne(Negotiation, {as:'negotiation' , foreignKey: 'termId'});
+  Negotiation.belongsTo(Term);
+
+
+Term.hasMany(Contract);
+Contract.belongsTo(Term);
+
+// Contract -> Criteria (Many-to-Many through contract_criteria)
+Contract.belongsTo(Criteria, { through: ContractCriteria });
+Criteria.belongsTo(Contract, { through: ContractCriteria });
+
+
+// Criteria -> SubCriteria (One-to-Many)
+Criteria.hasMany(SubCriteria);
+SubCriteria.belongsTo(Criteria);
+
+// A user has one signature
+// User.hasOne(Signature);
+// Signature.belongsTo(User);
+
+// A user has many signatures
+User.hasMany(Signature, {
+    foreignKey: 'userId',
+    as: 'signatures'
+});
+Signature.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'signer'
+});
+
+// A user has many notifications
+User.hasMany(Notification);
+Notification.belongsTo(User);
 
 // A room has many messages
 Room.hasMany(Message, {
@@ -210,22 +278,34 @@ ContentCreatorSubCriteria.belongsTo(SubCriteria, {
   as: "sub_criterias",
 });
 
-// Transaction associations
-ContentCreator.hasMany(Transaction, { foreignKey: 'contentCreatorId', as: 'transactions' });
-Transaction.belongsTo(ContentCreator, { foreignKey: 'contentCreatorId', as: 'contentCreator' });
 
-Deal.hasMany(Transaction, { foreignKey: 'dealId', as: 'transactions' });
-Transaction.belongsTo(Deal, { foreignKey: 'dealId', as: 'deal' });
+// User -> Signature (One-to-Many, since a user can sign multiple contracts)
+// User.hasMany(Signature, {
+//     foreignKey: 'userId',
+//     as: 'signatures'
+// });
+// Signature.belongsTo(User, {
+//     foreignKey: 'userId',
+//     as: 'signer'
+// });
 
-Company.hasMany(Transaction, { foreignKey: 'companyId', as: 'transactions' });
-Transaction.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
 
-// CardPayment associations
-Company.hasMany(CardPayment, { foreignKey: 'companyId', as: 'cardPayments' });
-CardPayment.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
+// Make sure this association exists and is properly defined
+Message.hasOne(Media, { foreignKey: 'messageId' });
+Media.belongsTo(Message, { foreignKey: 'messageId' });
 
-ContentCreator.hasMany(CardPayment, { foreignKey: 'contentCreatorId', as: 'cardPayments' });
-CardPayment.belongsTo(ContentCreator, { foreignKey: 'contentCreatorId', as: 'contentCreator' });
+
+// Add Term associations
+Contract.hasMany(Term);
+Term.belongsTo(Contract);
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 sequelize
   .authenticate()
@@ -237,15 +317,19 @@ sequelize
   });
 
 // Sync models with the database
-//  sequelize.sync({ alter: true }) // Use `force: true` only in development
-//   .then(() => {
-//     console.log('Database & tables have been synchronized!');
-//   })
-//   .catch((error) => {
-//     console.error('Error syncing database:', error);
-//   });
+  // sequelize.sync({ alter:true }).then(() => {
+  //   console.log('Database & tables have been synchronized!');
+  // }).catch((error) => {
+  //   console.error('Error syncing database:', error);
+  // });
 
 // Export models and sequelize instance
+
+
+
+
+
+
 module.exports = {
   DealRequest,
   Payment,

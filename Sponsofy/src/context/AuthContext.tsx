@@ -9,7 +9,6 @@ type AuthContextType = {
   loading: boolean;
   fetchCurrentUser: () => Promise<void>;
   logout: () => Promise<void>;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,7 +17,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const { dealSocket, chatSocket } = useSocket();
+  const { dealSocket, notificationSocket,contractSocket,chatSocket } = useSocket();
 
   useEffect(() => {
     const loadStoredData = async () => {
@@ -44,17 +43,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Joining deal room with user ID:", user.id);
       dealSocket.emit("join_deal_room", user.id);
     }
-  }, [user, dealSocket]);
+    if (user && notificationSocket) {
+      console.log("Joining notification room with user ID:", user.id);
+      notificationSocket.emit("subscribe_notifications", user.id);
+    }
+    if (user && contractSocket) {
+      console.log("Joining contract room with user ID:", user.id);
+      contractSocket.emit("subscribe_contract", user.id);
+      }
+    if (user && chatSocket) {
+      console.log("Joining chat room with user ID:", user.id);
+      chatSocket.emit("init_user", user);
+    }
+  }, [user, dealSocket,notificationSocket,contractSocket,chatSocket]);
 
   const fetchCurrentUser = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem('userToken');
-      if (!storedToken) {
-        console.log('No authentication token found');
-        setUser(null);
-        return;
-      }
-      
       const response = await api.get('/user/me');
       setUser(response.data.user);
       
@@ -63,16 +67,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Joining deal room with user ID:", response.data.user.id);
         dealSocket.emit("join_deal_room", response.data.user.id);
       }
-      if (chatSocket && response.data.user) {
-        console.log("Joining chat room with user ID:", response.data.user.id);
-        chatSocket.emit("init_user", response.data.user);
+      if (contractSocket && response.data.user) {
+        console.log("Joining contract room with user ID:", response.data.user.id);
+        contractSocket.emit("subscribe_contract", response.data.user.id);
       }
+
     } catch (error) {
       console.error('Error fetching current user:', error);
-      if (error.response && error.response.status === 401) {
-        console.log('Invalid or expired token, logging out');
-        await logout();
-      }
     }
   };
 
@@ -83,7 +84,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Leaving deal room for user ID:", user.id);
         dealSocket.emit("leave_deal_room", user.id);
       }
+      if (notificationSocket && user) {
+        console.log("Leaving notification room for user ID:", user.id);
+        notificationSocket.emit("leave_notification_room", user.id);
+      }
+      if (contractSocket && user) {
+        console.log("Leaving contract room for user ID:", user.id);
+        contractSocket.emit("leave_contract_room", user.id);
+      }
+      if (chatSocket && user) {
+        console.log("Leaving chat room for user ID:", user.id);
+        chatSocket.emit("leave_chat_room", user.id);
+      }
+
       
+
       setToken(null);
       setUser(null);
       await AsyncStorage.removeItem('userToken');

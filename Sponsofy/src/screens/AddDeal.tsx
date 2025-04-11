@@ -47,18 +47,10 @@ const AddDeal = () => {
 
     const [selectedCriteria, setSelectedCriteria] = useState<string[]>([]);
     const [selectedSubCriteria, setSelectedSubCriteria] = useState<{ [key: string]: string }>({});
+    const [selectedPlatform, setSelectedPlatform] = useState<string>('');
 
     const rankOptions = ['plat', 'gold', 'silver'];
-
-    // const followerMarks = [
-    //     { value: 20000, label: '20k' },
-    //     { value: 2000000, label: '2M' },
-    //     { value: 3500000, label: '3.5M' },
-    //     { value: 5000000, label: '5M' },
-    //     { value: 6500000, label: '6.5M' },
-    //     { value: 8000000, label: '8M' },
-    //     { value: 10000000, label: '10M' },
-    // ];
+    const platformOptions = ['instagram', 'facebook', 'twitter', 'tiktok', 'youtube'];
 
     const handleTitleChange = (text: string) => {
         setTitle(text);
@@ -181,6 +173,12 @@ const AddDeal = () => {
     const handleContinueCriteria = () => {
         const newErrors = { ...errors };
 
+        if (!selectedPlatform) {
+            newErrors.criteria = "Please select a platform";
+            setErrors(newErrors);
+            return;
+        }
+
         if (selectedCriteria.length === 0) {
             newErrors.criteria = "Please select at least one criteria";
             setErrors(newErrors);
@@ -249,7 +247,6 @@ const AddDeal = () => {
         }
 
         try {
-            // Get both user data and token from AsyncStorage
             const [userString, token] = await Promise.all([
                 AsyncStorage.getItem('userData'),
                 AsyncStorage.getItem('userToken')
@@ -257,64 +254,85 @@ const AddDeal = () => {
 
             if (!userString || !token) {
                 console.error('User data or token not found');
-                // Handle the error appropriately (e.g., redirect to login)
                 return;
             }
 
             const userData = JSON.parse(userString);
 
-            // Create the deal data
-            const dealData = {
+            const contractData = {
                 title,
                 description,
                 budget: parseFloat(budget),
-                payement_terms,
+                payment_terms: payement_terms,
                 start_date,
                 end_date,
                 rank,
                 company_id: userData.id,
-                termsList: terms.filter(term => term.title.trim() !== ''),
+                termsList: terms.filter(term => term.title.trim() !== '').map(term => ({
+                    title: term.title,
+                    description: term.description || ''
+                })),
                 criteriaList: selectedCriteria.map(criteria => ({
-                    name: criteria.toLowerCase(),
-                    description: selectedSubCriteria[criteria]
+                    criteria: {
+                        name: criteria.toLowerCase(),
+                        platform: selectedPlatform
+                    },
+                    subCriteria: {
+                        name: selectedSubCriteria[criteria],
+                        description: `${criteria} requirement: ${selectedSubCriteria[criteria]}`
+                    }
                 }))
             };
 
-            // Make the API call with the token in headers
-            const response = await api.post("/contract", dealData, {
+            console.log('Contract Data being sent:', JSON.stringify(contractData, null, 2));
+
+            const response = await api.post("/contract", contractData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
 
+            console.log("response.data.contract!!!!!!!!!!!!!!!!", response.data.contract);
+
             if (response.data.success) {
-                
-                navigation.navigate("Home" as never);
+                Alert.alert(
+                    'Success',
+                    `Contract created successfully!\n\nSerial Number: ${response.data.contract.serialNumber}`,
+                    [
+                        {
+                            text: 'View Details',
+                            onPress: () => {
+                                navigation.reset({
+                                    index: 0,
+                                    routes: [
+                                        { name: 'Home' as never },
+                                        {
+                                            name: 'ContractDetails' as never,
+                                            params: { contractId: response.data.contract.id } as never
+                                        }
+                                    ],
+                                });
+                            }
+                        },
+                        {
+                            text: 'Go Home',
+                            onPress: () => navigation.navigate('Home' as never),
+                        }
+                    ]
+                );
             } else {
-                console.error('Error response:', response.data);
-                // Handle the error appropriately
-                Alert.alert('Error', response.data.message || 'Failed to create deal');
+                Alert.alert('Error', response.data.message || 'Failed to create contract');
             }
 
         } catch (error) {
-            console.error('Error posting deal:', error);
+            console.error('Error posting contract:', error);
             Alert.alert(
                 'Error',
-                'Failed to create deal. Please check your connection and try again.'
+                'Failed to create contract. Please check your connection and try again.'
             );
         }
     };
-
-    // const handleGoBack = () => {
-    //     if (view === "Terms") {
-    //         setView("Basic Information");
-    //     } else if (view === "Criteria") {
-    //         setView("Terms");
-    //     } else if (view === "Start & End Date") {
-    //         setView("Criteria");
-    //     }
-    // };
 
     const styles = StyleSheet.create({
         container: {
@@ -626,6 +644,27 @@ const AddDeal = () => {
         criteriaSectionContainer: {
             marginBottom: 24,
         },
+        platformContainer: {
+            marginBottom: 16,
+        },
+        platformButton: {
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            backgroundColor: currentTheme.colors.surface,
+            marginRight: 8,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: currentTheme.colors.border,
+        },
+        platformButtonActive: {
+            backgroundColor: currentTheme.colors.primary,
+        },
+        platformButtonText: {
+            color: currentTheme.colors.text,
+            fontSize: 14,
+            fontFamily: currentTheme.fonts.medium,
+        },
     });
 
     const getStepNumber = () => {
@@ -740,12 +779,12 @@ const AddDeal = () => {
 
             case "Criteria":
                 isValid = selectedCriteria.length > 0 &&
-                    selectedCriteria.every(criteria => selectedSubCriteria[criteria]);
+                    selectedCriteria.every(criteria => selectedSubCriteria[criteria] && selectedPlatform);
 
                 if (selectedCriteria.length === 0) {
                     newErrors.criteria = "Please select at least one criteria";
-                } else if (!selectedCriteria.every(criteria => selectedSubCriteria[criteria])) {
-                    newErrors.criteria = "Please select ranges for all criteria";
+                } else if (!selectedCriteria.every(criteria => selectedSubCriteria[criteria] && selectedPlatform)) {
+                    newErrors.criteria = "Please select platforms and ranges for all criteria";
                 }
                 break;
 
@@ -870,14 +909,6 @@ const AddDeal = () => {
             </View>
 
             <ScrollView style={{ flex: 1 }}>
-                {/* <Text style={styles.viewTitle}>
-                    {view === "Basic Information" && "Basic Information"}
-                    {view === "Terms" && "Terms"}
-                    {view === "Criteria" && "Criteria"}
-                    {view === "Start & End Date" && "Start & End Date"}
-                    {view === "Review" && "Review"}
-                </Text> */}
-
                 {view === "Basic Information" && (
                     <View>
                         <Text style={styles.label}>Title</Text>
@@ -1021,7 +1052,25 @@ const AddDeal = () => {
 
                 {view === "Criteria" && (
                     <View>
-                        <Text style={styles.label}>Select Criteria (Multiple)</Text>
+                        <Text style={styles.label}>Select Platform</Text>
+                        <View style={styles.criteriaContainer}>
+                            {platformOptions.map((platform) => (
+                                <TouchableOpacity
+                                    key={platform}
+                                    style={[
+                                        styles.criteriaButton,
+                                        selectedPlatform === platform && styles.criteriaButtonActive
+                                    ]}
+                                    onPress={() => setSelectedPlatform(platform)}
+                                >
+                                    <Text style={styles.criteriaButtonText}>
+                                        {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.label, { marginTop: 24 }]}>Select Criteria (Multiple)</Text>
                         <View style={styles.criteriaContainer}>
                             {['Followers', 'Views', 'Posts'].map((criteriaName) => (
                                 <TouchableOpacity
@@ -1170,6 +1219,12 @@ const AddDeal = () => {
 
                         <View style={styles.reviewSection}>
                             <Text style={styles.reviewSectionTitle}>Criteria</Text>
+                            <View style={styles.reviewItem}>
+                                <Text style={styles.reviewLabel}>Platform</Text>
+                                <Text style={styles.reviewValue}>
+                                    {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                                </Text>
+                            </View>
                             {selectedCriteria.map((criteria) => (
                                 <View key={criteria} style={styles.reviewItem}>
                                     <Text style={styles.reviewLabel}>{criteria} Requirement</Text>

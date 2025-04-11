@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet, ScrollView, SafeAreaView, St
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/axios';
 import { useSocket } from "../context/socketContext";
+
 const DealDetailsScreen = ({ route, navigation }) => {
   const {dealSocket} = useSocket();
   const { dealId } = route.params;
@@ -94,7 +95,7 @@ const DealDetailsScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0066cc" />
+        <ActivityIndicator size="large" color="#7C4DFF" />
       </View>
     );
   }
@@ -102,128 +103,128 @@ const DealDetailsScreen = ({ route, navigation }) => {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color="#cc0000" />
+        <Ionicons name="alert-circle" size={48} color="#FF4D4D" />
         <Text style={styles.errorText}>Error: {error}</Text>
       </View>
     );
-  }
-
-  // Determine the background color based on the rank
-  let ribbonColor;
-  switch (deal?.rank) {
-    case 'gold':
-      ribbonColor = 'gold';
-      break;
-    case 'silver':
-      ribbonColor = 'grey';
-      break;
-    case 'plat':
-      ribbonColor = '#8A2BE2';
-      break;
-    default:
-      ribbonColor = 'red';
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>{deal?.title}</Text>
-          <View style={[styles.statusRibbon, { backgroundColor: ribbonColor }]}>
-            <Text style={styles.rankText}>{deal?.rank}</Text>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+        <View style={styles.headerContent}>
+
+          {/* Add Ribbon */}
+          {deal?.rank && (
+            <View style={[
+              styles.ribbon, 
+              { backgroundColor: 
+                deal.rank === 'gold' ? 'gold' :
+                deal.rank === 'silver' ? 'grey' :
+                deal.rank === 'plat' ? '#8A2BE2' : 'red'
+              }
+            ]}>
+              <Text style={styles.ribbonText}>{deal.rank}</Text>
+            </View>
+          )}
+          <Text style={styles.mainTitle}>{deal?.title}</Text>
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionText}>{deal?.description}</Text>
+          </View>
+          
+        </View>
+        </View>
+ {/* Criteria Section */}
+ <View style={styles.criteriaSection}>
+          <Text style={styles.criteriaTitle}>Criteria</Text>
+          <View style={styles.criteriaContainer}>
+          {deal.criteria.map((item:any) => (
+            <View style={styles.criteriaItem} key={item?.id }>
+              <Text style={styles.criteriaValue}>{item.name}</Text>
+              <Text style={styles.criteriaLabel}>{item.description}</Text>
+            </View>))}
+           
+           
+          </View>
+        </View>
+        <View style={styles.contractSection}>
+          <Text style={styles.contractTitle}>Contract</Text>
+          <View style={styles.contractGrid}>
+            <View style={styles.contractItem}>
+              <Ionicons name="calendar-outline" size={20} color="#666" />
+              <Text style={styles.contractLabel}>Starting Time</Text>
+              <Text style={styles.contractValue}>{new Date(deal?.start_date).toLocaleDateString()}</Text>
+            </View>
+            
+            <View style={styles.contractItem}>
+              <Ionicons name="cash-outline" size={20} color="#666" />
+              <Text style={styles.contractLabel}>Budget</Text>
+              <Text style={styles.contractValue}>{deal?.amount || '2000'}</Text>
+            </View>
+            
+            <View style={styles.contractItem}>
+              <Ionicons name="calendar-outline" size={20} color="#666" />
+              <Text style={styles.contractLabel}>Ending Time</Text>
+              <Text style={styles.contractValue}>{new Date(deal?.end_date).toLocaleDateString()}</Text>
+            </View>
           </View>
         </View>
 
+      
+
+        {/* Company Info Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Contract Details</Text>
-          <View style={styles.infoRow}>
-            <Ionicons name="document-text-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Description:</Text>
-            <Text style={styles.infoValue}>{deal?.description}</Text>
+          <View style={styles.cardHeader}>
+            <Ionicons name="business" size={24} color="#7C4DFF" />
+            <Text style={styles.cardTitle}>Company Details</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Start Date:</Text>
-            <Text style={styles.infoValue}>{new Date(deal?.start_date).toLocaleDateString()}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>End Date:</Text>
-            <Text style={styles.infoValue}>{new Date(deal?.end_date).toLocaleDateString()}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Status:</Text>
-            <Text style={styles.infoValue}>{deal?.status}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="cash-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Payment Terms:</Text>
-            <Text style={styles.infoValue}>{deal?.payment_terms || 'Not specified'}</Text>
+          <View style={styles.cardContent}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{deal?.Company?.name}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Industry</Text>
+              <Text style={styles.infoValue}>{deal?.Company?.industry || 'Not specified'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Category</Text>
+              <Text style={styles.infoValue}>{deal?.Company?.category || 'Not specified'}</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Company Information</Text>
-          <View style={styles.infoRow}>
-            <Ionicons name="business-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Name:</Text>
-            <Text style={styles.infoValue}>{deal?.Company?.name}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="briefcase-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Industry:</Text>
-            <Text style={styles.infoValue}>{deal?.Company?.industry || 'Not specified'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="briefcase-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Category:</Text>
-            <Text style={styles.infoValue}>{deal?.Company?.category || 'Not specified'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="card-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Code Fiscal:</Text>
-            <Text style={styles.infoValue}>{deal?.Company?.codeFiscal || 'Not specified'}</Text>
-          </View>
-        </View>
-
-        {deal?.Terms && deal.Terms.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Terms</Text>
-            {deal.Terms.map((term, index) => (
-              <View key={term?.id || index} style={styles.termItem}>
-                <Text style={styles.termTitle}>{term?.title}</Text>
-                <Text style={styles.termDescription}>{term?.description}</Text>
-                <View style={styles.termStatusContainer}>
-                  <Text style={styles.termStatusLabel}>Status:</Text>
-                  <Text style={[styles.termStatus, { color: term?.status === 'negotiating' ? '#ff9900' : '#00cc66' }]}>
-                    {term?.status}
-                  </Text>
-                </View>
-              </View>
+        {/* Terms Section */}
+        <View style={styles.termsSection}>
+          <Text style={styles.termsTitle}>Terms</Text>
+          <View style={styles.termsList}>
+          {deal.Terms.map((term, index) => (
+            <Text key={term?.id || index} style={styles.termItem}>{term?.description}</Text>
             ))}
+            <TouchableOpacity onPress={() => console.log('See more')}>
+              <Text style={styles.seeMoreText}>see more</Text>
+            </TouchableOpacity>
           </View>
-        )}
-        
-        {/* Action Buttons Section */}
+        </View>
+
+        {/* Action Buttons */}
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity 
             style={styles.actionButton} 
             onPress={handleAcceptDeal}
           >
-            <Ionicons name="checkmark-circle" size={24} color="#00cc66" />
+            <Ionicons name="checkmark-circle" size={24} color="#fff" />
             <Text style={styles.actionButtonText}>Accept Deal</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('Negotiate Terms')}>
-            <Ionicons name="git-compare" size={24} color="#ff9900" />
-            <Text style={styles.actionButtonText}>Negotiate</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonDivider} />
           
           <TouchableOpacity style={styles.actionButton} onPress={() => console.log('Contact Company')}>
-            <Ionicons name="chatbubble" size={24} color="#0099ff" />
-            <Text style={styles.actionButtonText}>Contact</Text>
+            <Ionicons name="call" size={24} color="#666" />
+            <Text style={[styles.actionButtonText, { color: '#666' }]}>Contact</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -232,141 +233,308 @@ const DealDetailsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  headerContent: {
+    flex: 1,
+    paddingRight: 48, // Make space for the badge
+  },
+  ribbon: {
+    position: 'absolute',
+    top: -30,
+    right: -60,
+    width: 150,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 8,
+    transform: [{ rotate: '45deg' }],
+    zIndex: 1,
+  },
+  ribbonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  criteriaSection: {
+    marginBottom: 24,
+  },
+  criteriaTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  criteriaContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
+  },
+  criteriaItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  criteriaValue: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  criteriaLabel: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  termsSection: {
+    marginBottom: 24,
+  },
+  termsTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  termsList: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
+  },
+  termItem: {
+    color: '#fff',
+    fontSize: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  seeMoreText: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  headerSection: {
+    position: 'relative',
+    overflow: 'hidden',
+    padding: 16,
+    marginBottom: 24,
+  },
+  mainTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 16,
+    lineHeight: 28,
+    
+  },
+  descriptionContainer: {
+    marginBottom: 16,
+  },
+  descriptionText: {
+    color: '#666',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: '#121212',
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  badge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  badgeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  keyInfoContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    justifyContent: 'space-between',
+  },
+  keyInfoItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  keyInfoDivider: {
+    width: 1,
+    backgroundColor: '#333',
+  },
+  keyInfoValue: {
+    color: '#7C4DFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  keyInfoLabel: {
+    color: '#888',
+    fontSize: 12,
+  },
+  card: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  cardTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  infoLabel: {
+    color: '#888',
+    fontSize: 14,
+  },
+  infoValue: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  termHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  termTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  termDescription: {
+    color: '#888',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1E1E1E',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 24,
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  buttonDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: '#333',
+    marginHorizontal: 16,
+  },
+  secondaryButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginHorizontal: 8,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+  },
+  secondaryButtonText: {
+    color: '#7C4DFF',
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111',
+    backgroundColor: '#121212',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111',
+    backgroundColor: '#121212',
   },
   errorText: {
     color: '#fff',
     fontSize: 16,
     marginTop: 10,
   },
-  scrollContent: {
-    padding: 16,
+  contractSection: {
+    marginBottom: 24,
   },
-  headerContainer: {
-    position: 'relative',
-    marginBottom: 20,
-    overflow: 'hidden',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  contractTitle: {
     color: '#fff',
-    marginBottom: 5,
-  },
-  statusRibbon: {
-    position: 'absolute',
-    top: -15,
-    right: -50,
-    width: 130,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '45deg' }],
-  },
-  rankText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 5,
-  },
-  card: {
-    backgroundColor: '#222',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    paddingBottom: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#aaa',
-    marginLeft: 8,
-    width: 100,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#fff',
-    flex: 1,
-  },
-  termItem: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-  },
-  termTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
+    fontWeight: '600',
+    marginBottom: 12,
   },
-  termDescription: {
-    fontSize: 14,
-    color: '#ccc',
-    marginBottom: 8,
-  },
-  termStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  termStatusLabel: {
-    fontSize: 14,
-    color: '#aaa',
-    marginRight: 5,
-  },
-  termStatus: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  // Action Buttons Styles
-  actionButtonsContainer: {
+  contractGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#222',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
   },
-  actionButton: {
+  contractItem: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
+    flex: 1,
   },
-  actionButtonText: {
+  contractLabel: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  contractValue: {
     color: '#fff',
     fontSize: 14,
-    marginTop: 5,
+    fontWeight: '500',
+    marginTop: 4,
   },
 });
 

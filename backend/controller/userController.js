@@ -232,7 +232,7 @@ module.exports = {
             model: decoded.role === 'content_creator' ? ContentCreator : Company,
             as: decoded.role === 'content_creator' ? 'contentCreator' : 'company',
             include: [
-              { model: Media, as: 'ProfilePicture' },
+              { model: Media },
             ],
           },
         ],

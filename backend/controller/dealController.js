@@ -6,8 +6,18 @@ const dealController = {
   // Create a new deal request from content creator to company
   createDealRequest: async (req, res) => {
     try {
-      const { contractId, price, terms } = req.body;
+      const { ContractId, price, terms } = req.body;
       const userId = req.user.userId;
+      
+      console.log('Request body:', req.body);
+      console.log('ContractId:', ContractId);
+      
+      if (!ContractId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ContractId is required'
+        });
+      }
       
       // Find the content creator
       const contentCreator = await ContentCreator.findOne({
@@ -22,14 +32,11 @@ const dealController = {
         });
       }
       
-      // Find the contract with company information
-      const contract = await Contract.findByPk(contractId, {
-        include: [{ 
-          model: Company,
-          include: [{ model: User, as: 'user' }]
-        }]
+      // Find the contract and its associated company
+      const contract = await Contract.findByPk(ContractId, {
+        include: [{ model: Company }]
       });
-      
+
       if (!contract) {
         return res.status(404).json({
           success: false,
@@ -37,41 +44,14 @@ const dealController = {
         });
       }
       
-      // Check if a deal already exists
-      const existingDeal = await Deal.findOne({
-        where: {
-          contentCreatorId: contentCreator.id,
-          ContractId: contractId
-        }
-      });
-      
-      if (existingDeal) {
-        return res.status(400).json({
-          success: false,
-          message: 'A deal already exists for this contract'
-        });
-      }
-      
-      // Create the deal with pending status
+      // Create the deal
       const deal = await Deal.create({
         contentCreatorId: contentCreator.id,
-        ContractId: contractId,
-        deal_terms: contract.payment_terms || "Standard terms",
-        price: price || contract.amount || 0,
-        status: 'pending' // Initial status is pending
+        ContractId: ContractId,
+        deal_terms: terms || contract.payment_terms || "Standard terms",
+        price: price || contract.budget,
+        status: 'pending'
       });
-      
-      // Create terms if provided
-      if (terms && terms.length > 0) {
-        await Promise.all(terms.map(term => {
-          return Term.create({
-            title: term.title,
-            description: term.description || '',
-            status: 'negotiating',
-            DealId: deal.id
-          });
-        }));
-      }
       
       // Get the created deal with all related data
       const createdDeal = await Deal.findOne({
@@ -79,68 +59,28 @@ const dealController = {
         include: [
           {
             model: Contract,
-            include: [
-              {
-                model: Company,
-                include: [{ model: User, as: 'user' }],
-                attributes: ['id', 'name', 'industry', 'codeFiscal', 'category']
-              }
-            ],
-            attributes: ['id', 'title', 'description', 'start_date', 'end_date', 'status', 'payment_terms', 'rank']
-          },
-          {
-            model: Term,
-            attributes: ['id', 'title', 'description', 'status']
+            include: [{ 
+              model: Company,
+              include: [{ model: User, as: 'user' }]
+            }]
           },
           {
             model: ContentCreator,
-            as:"ContentCreatorDeals",
-            attributes: ['id', 'first_name', 'last_name', 'bio', 'pricing', 'portfolio_links', 'location', 'category', 'verified', 'isPremium', 'profile_picture']
+            as: "ContentCreatorDeals",
+            include: [{ model: User, as: 'user' }]
           }
         ]
       });
       
-      // Get company user ID for notification
-      const companyUserId = contract.Company?.user?.id;
-      
-      if (companyUserId) {
-        try {
-          // Create notification data
-          const notificationData = {
-            userId: companyUserId,
-            message: `${contentCreator.user.username || 'A content creator'} has requested a deal for your contract "${contract.title}"`,
-            type: 'deal_request',
-            link: `/deals/${deal.id}`,
-            timestamp: new Date()
-          };
-          
-          // Save notification to database
-          await Notification.create({
-            userId: companyUserId,
-            message: notificationData.message,
-            type: notificationData.type,
-            link: notificationData.link,
-            read: false
-          });
-          
-          // Comment out socket notification
-          /*
-          // Send real-time notification via socket.io
-          io.of('/notification').to(companyUserId.toString()).emit('new_notification', notificationData);
-          
-          // Also emit to the deal namespace
-          io.of('/deal').to(companyUserId.toString()).emit('new_deal_request', {
-            dealId: deal.id,
-            contractId: contract.id,
-            contentCreatorId: contentCreator.id,
-            contentCreatorName: contentCreator.user.username || 'A content creator',
-            contractTitle: contract.title,
-            timestamp: new Date()
-          });
-          */
-        } catch (notificationError) {
-          console.error('Error saving notification:', notificationError);
-        }
+      // Create notification for company
+      if (contract.Company?.userId) {
+        await Notification.create({
+          userId: contract.Company.userId,
+          message: `${contentCreator.first_name} has requested a deal for contract "${contract.title}"`,
+          type: 'deal_request',
+          link: `/deals/${deal.id}`,
+          read: false
+        });
       }
       
       res.status(201).json({

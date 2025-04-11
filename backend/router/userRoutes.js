@@ -26,6 +26,7 @@ const {
 const { upload } = require("../middleware/uploadMiddleware");
 const { GoogleAuth } = require("../controller/googleAuthController");
 const authenticateJWT = require("../auth/refreshToken");
+const { uploadSingle, handleUploadError } = require('../middleware/uploadMiddleware');
 
 // New routes for criteria selection flow
 router.get("/all-criteria", getAllCriteria);
@@ -53,7 +54,7 @@ router.delete("/:userId/social-media/:mediaId", deleteMediaLink); // Delete medi
 
 // Authentication routes
 router.post("/login", Login);
-router.post("/register", upload.single("media"), Register);
+router.post("/register", uploadSingle, handleUploadError, Register);
 router.post("/google-auth", GoogleAuth);
 router.get("/me", authenticateJWT, getCurrentUser);
 router.get("/users/:userId", getUserById);

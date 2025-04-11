@@ -1,234 +1,433 @@
 import api from '../config/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../config/source';
 
-export const companyService = {
-  getAllCompanies: async () => {
+export const chatService = {
+  getMessages: async (roomId: string) => {
     try {
-      // Log the request for debugging
-      console.log('Fetching companies from API...');
-      
-      // Get the authentication token for authorization
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        console.warn('No authentication token found for getAllCompanies');
-      }
-      
-      // The baseURL already includes '/api', so we don't need to include it in the path
-      const response = await api.get('/companies', {
-        headers: token ? {
-          'Authorization': `Bearer ${token}`
-        } : undefined
-      });
-      
-      console.log('Companies response status:', response.status);
-      console.log('Companies raw response:', response);
-      
-      // Check if the response has data in the expected format
-      if (response.data && Array.isArray(response.data)) {
-        console.log(`Found ${response.data.length} companies in array format`);
-        return response.data;
-      } else if (response.data && response.data.companies && Array.isArray(response.data.companies)) {
-        console.log(`Found ${response.data.companies.length} companies in nested format`);
-        return response.data.companies;
-      } else if (response.data) {
-        console.log('Response data structure:', Object.keys(response.data));
-        // Try to extract companies from whatever structure we have
-        return response.data;
-      }
-      
-      console.error('Invalid response format:', response.data);
-      throw new Error('Invalid response format from server');
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      throw error;
-    }
-  },
-
-  getCompanyById: async (id) => {
-    try {
-      console.log(`Fetching company with ID ${id}`);
-      
-      // Get the authentication token for authorization
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        console.warn('No authentication token found for getCompanyById');
-      }
-      
-      // The baseURL already includes '/api', so we don't need to include it in the path
-      const response = await api.get(`/companies/${id}`, {
-        headers: token ? {
-          'Authorization': `Bearer ${token}`
-        } : undefined
-      });
-      
-      console.log(`Company ${id} response status:`, response.status);
-      console.log(`Company ${id} raw response:`, response);
-      
-      // Check if the response has data in the expected format
-      if (response.data && response.data.id) {
-        console.log('Found company in direct format');
-        return response.data;
-      } else if (response.data && response.data.company && response.data.company.id) {
-        console.log('Found company in nested format');
-        return response.data.company;
-      } else if (response.data) {
-        console.log('Response data structure:', Object.keys(response.data));
-        // Try to extract company from whatever structure we have
-        return response.data;
-      }
-      
-      console.error('Invalid company response format:', response.data);
-      throw new Error(`Company with ID ${id} not found or invalid format`);
-    } catch (error) {
-      console.error(`Error fetching company with ID ${id}:`, error);
-      console.error('Error details:', error.response?.data || error.message);
-      throw error;
-    }
-  },
-
-  createCompany: async (companyData) => {
-    try {
-      console.log('Creating new company:', companyData);
-      
-      // Get the authentication token for authorization
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-      
-      // The baseURL already includes '/api', so we don't need to include it in the path
-      const response = await api.post('/companies', companyData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.data) {
-        throw new Error('Failed to create company');
-      }
-      
-      console.log('Create company response:', response.data);
+      const response = await api.get(`chat/rooms/${roomId}/messages`);
       return response.data;
     } catch (error) {
-      console.error('Error creating company:', error);
-      console.error('Error details:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  updateCompany: async (id, companyData) => {
+  sendMessage: async (roomId: string, message: string) => {
     try {
-      console.log(`Updating company with ID ${id}:`, companyData);
-      
-      // Make sure we have a valid ID
-      if (!id) {
-        console.error('Cannot update company: No ID provided');
-        throw new Error('Company ID is required for updates');
-      }
-      
-      // Get the authentication token for authorization
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-      
-      // The baseURL already includes '/api', so we don't need to include it in the path
-      const response = await api.put(`/companies/${id}`, companyData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.data) {
-        throw new Error(`Failed to update company with ID ${id}`);
-      }
-      
-      console.log('Update company response:', response.data);
+      const response = await api.post(`chat/rooms/${roomId}/messages`, { message });
       return response.data;
     } catch (error) {
-      console.error(`Error updating company with ID ${id}:`, error);
-      console.error('Error details:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  getCompanyByUserId: async (userId) => {
+  uploadFile: async (chatId: string, file: FormData) => {
     try {
-      console.log(`Fetching company for user ID ${userId}`);
-      
-      // Get the authentication token for authorization
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        console.warn('No authentication token found for getCompanyByUserId');
-        throw new Error('Authentication token not found');
-      }
-      
-      // The baseURL already includes '/api', so we don't need to include it in the path
-      // The correct endpoint is /companies/user/:userId
-      const response = await api.get(`/companies/user/${userId}`, {
+      const response = await api.post(`/chats/${chatId}/files`, file, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      
-      console.log(`Company for user ${userId} response status:`, response.status);
-      
-      // Check if the response has data in the expected format
-      if (response.data && response.data.id) {
-        console.log('Found company in direct format:', response.data.name);
-        return response.data;
-      } else if (response.data && response.data.company && response.data.company.id) {
-        console.log('Found company in nested format:', response.data.company.name);
-        return response.data.company;
-      } else if (response.data) {
-        console.log('Response data structure:', Object.keys(response.data));
-        // Try to extract company from whatever structure we have
-        return response.data;
-      }
-      
-      console.error('Invalid company response format:', response.data);
-      throw new Error(`No company found for user ID ${userId} or invalid format`);
+      return response.data;
     } catch (error) {
-      console.error(`Error fetching company for user ID ${userId}:`, error);
-      console.error('Error details:', error.response?.data || error.message);
       throw error;
     }
-  }
+  },
+};
+
+export const userService = {
+  getProfile: async (userId: string) => {
+    try {
+      const response = await api.get(`/user/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export const contractService = {
-  getContractsByCompanyId: async (companyId) => {
+  submitContent: async (data: {
+    termId: number;
+    contractId: number;
+    contentUrl: string;
+    platform: string;
+    mediaData?: any;
+  }) => {
     try {
-      console.log(`Fetching contracts for company ID ${companyId}`);
-      
-      // Get the authentication token for authorization
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        console.warn('No authentication token found for getContractsByCompanyId');
-        throw new Error('Authentication token not found');
-      }
-      
-      // Make the API request with the token
-      const response = await api.get(`/contract/company/${companyId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const response = await api.post(`/contracts/content/submit`, {
+        ...data,
+        mediaData: {
+          media_type: data.platform === 'youtube' ? 'video' : 'image',
+          platform: data.platform,
+          file_url: data.contentUrl,
+          file_name: data.contentUrl.split('/').pop() || 'content',
+          termId: data.termId,
+          file_format: 'mp4',
         }
       });
-      
-      console.log(`Contracts for company ${companyId} response status:`, response.status);
-      
-      if (response.data && response.data.success && response.data.contracts) {
-        console.log(`Found ${response.data.contracts.length} contracts for company ${companyId}`);
-        return response.data.contracts;
-      }
-      
-      console.error('Invalid contracts response format:', response.data);
-      return [];
+      return response.data;
     } catch (error) {
-      console.error(`Error fetching contracts for company ID ${companyId}:`, error);
-      console.error('Error details:', error.response?.data || error.message);
+      console.error('Error submitting content:', error);
+      throw error;
+    }
+  },
+
+  approveContent: async (data: {
+    termId: number;
+    contractId: number;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/approve`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error approving content:', error);
+      throw error;
+    }
+  },
+
+  rejectContent: async (data: {
+    termId: number;
+    contractId: number;
+    reason: string;
+  }) => {
+    try {
+      const response = await api.post(`/contracts/content/reject`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error rejecting content:', error);
+      throw error;
+    }
+  },
+
+  getContracts: async () => {
+    const response = await api.get('/contract');
+    return response.data;
+  },
+  
+  // Fetch contracts for a specific user
+  getContractByCompanyId: async (userId: number ) => {
+  try { 
+    const response = await api.get(`/contract/company/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+
+},  
+getContractByContentCreatorId: async (userId: number) => {
+  try {
+    console.log('Fetching contracts for content creator with ID:', userId);
+    // Update to match your backend route
+    const response = await api.get(`/contract/creator/${userId}`);
+    console.log('Content creator contracts response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching content creator contracts:', error);
+    throw error;
+  }
+},
+
+    // Accept a contract
+
+    // Create a new contract
+    createContract: async (contractData) => {
+      try {
+        const response = await api.post('/contract/post', contractData);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Update an existing contract
+    updateContract: async (contractId, contractData) => {
+        try {
+            const response = await api.put(`/contract/${contractId}`, contractData);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+    updateContractStatus: async (contractId, status) => {
+        try {
+            const response = await api.put(`/contract/${contractId}/update-status`, { status });
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+    
+
+    // Delete a contract
+    deleteContract: async (contractId) => {
+        try {
+            const response = await api.delete(`/contract/${contractId}`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+  // Get contract terms
+  getContractTerms: async (contractId: number | string) => {
+    try {
+      const response = await api.get(`/contract/${contractId}/terms`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching contract terms:', error);
+      throw error;
+    }
+  },
+
+  
+
+  // Get contract by ID with terms
+
+  gettermsbycontractid: async (contractId: number | string) => {
+    try {
+      console.log('Making API request for contract ID:', contractId);
+      const response = await api.get(`/contract/${contractId}/terms`);
+      console.log('Full API response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('Error in gettermsbycontractid:', error);
+      throw error;
+    }
+  },
+updateTerm: async (contractId: number | string, termId: number | string, updates: { title: string, description: string }) => {
+  try {
+    console.log('Sending update request:', { contractId, termId, updates });
+    
+    const response = await api.put(`/contract/${contractId}/terms/${termId}/update`, updates);
+    
+    console.log('Server response:', response.data);
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to update term');
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error in updateTerm:', error);
+    throw error;
+  }
+},
+acceptTerm: async (contractId: number | string, termId: number | string, userRole: 'company' | 'influencer') => {
+  try {
+    const response = await api.put(`/contract/${contractId}/terms/${termId}/accept`, { userRole });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+getContractPaymentDetails: async (contractId: number) => {
+  try {
+    const response = await api.get(`/contract/${contractId}/payment-details`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+};
+
+
+export const searchService = {
+  searchCompanies: async (query: string) => {
+    try {
+      const response = await api.get(`/search/companies?query=${query}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  searchContentCreators: async (query: string) => {
+    try {
+      const response = await api.get(`/search/content-creators?query=${query}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  searchContracts: async (query: string, rank?: string) => {
+    try {
+      const response = await api.get(`/search/contracts?query=${query}${rank ? `&rank=${rank}` : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  searchContractsByRank: async (rank: string) => {
+    try {
+      const response = await api.get(`/search/contracts/rank?rank=${rank}`);
+      return response.data;
+    } catch (error) {
       throw error;
     }
   }
+  
+
 };
+export const contentCreatorService = {
+  getContentCreators: async () => {
+    const response = await api.get('/contentcreator');
+    return response.data;
+  },
+  getContentCreatorById: async (id: string) => {
+    const response = await api.get(`/contentcreator/${id}`);
+    return response.data;
+  },
+  createContentCreator: async (contentCreator: any) => {
+    const response = await api.post('/contentcreator', contentCreator);
+    return response.data;
+  }
+  
+};
+export const paymentService = {
+  createPaymentIntent: async (paymentData: {
+    contractId: number;
+    amount: number;
+    userId: number;
+    currency?: string;
+  }) => {
+    try {
+      const response = await api.post('/payment/create-payment-intent', paymentData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  createEscrowPayment: async (paymentData: {
+    contractId: number;
+    amount: number;
+    userId: number;
+    currency?: string;
+    escrowHoldPeriod?: number;
+  }) => {
+    try {
+      const dataWithHoldPeriod = {
+        ...paymentData,
+        escrowHoldPeriod: paymentData.escrowHoldPeriod || 7
+      };
+      
+      console.log('Sending payment data:', JSON.stringify(dataWithHoldPeriod));
+      const response = await api.post('/payment/create-escrow-payment', dataWithHoldPeriod);
+
+      // Convert paymentId to string before returning
+      if (response.data.success && response.data.paymentId) {
+        response.data.paymentId = response.data.paymentId.toString();
+      }
+
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Server error response:', error.response.data);
+      }
+      throw error;
+    }
+  },
+  confirmEscrowPayment: async (paymentId: string) => {
+    try {
+      // Log the data being sent
+      console.log('Sending confirmation request for payment ID:', paymentId);
+      
+      // Make sure paymentId is sent in the correct format
+      const response = await api.post('/payment/confirm-escrow', { 
+        paymentId: paymentId.toString() // Ensure it's a string
+      });
+      
+      console.log('Confirmation response:', response.data);
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Server error during confirmation:', error.response.data);
+      }
+      console.error('Error confirming escrow payment:', error);
+      throw error;
+    }
+  },
+  getPaymentStatus: async (contractId: string) => {
+    try {
+      console.log('Fetching payment status for contract:', contractId);
+      const response = await api.get(`/payment/status/${contractId}`);
+      
+      console.log('Payment status response:', response.data);
+      
+      if (!response.data || !response.data.status) {
+        return {
+          status: 'pending',
+          message: 'Awaiting payment',
+          amount: 1000,
+          currency: 'usd'
+        };
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting payment status:', error);
+      return {
+        status: 'pending',
+        message: 'Unable to fetch payment status',
+        amount: 1000,
+        currency: 'usd'
+      };
+    }
+  },
+  refundPayment: async (paymentId: string, reason: string) => {
+    try {
+      const response = await api.post('/payment/refund-payment', { 
+        paymentId,
+        reason 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error refunding payment:', error);
+      throw error;
+    }
+  },
+  getTerms: async () => {
+    const response = await api.get('/terms');
+    return response.data;
+  },
+  addTerm: async (termData: any) => {
+    const response = await api.post('/terms', termData);
+    return response.data;
+  },
+  editTerm: async (termData: any) => {
+    const response = await api.put('/terms', termData);
+    return response.data;
+  },
+  confirmTerm: async (termId: string) => {
+    const response = await api.post(`/terms/confirm/${termId}`);
+    return response.data;
+  },
+  
+};
+
+// Fetch contracts for a specific company
+export const getContractbyCompanyId = async (companyId: string) => {
+    try {
+        const response = await api.get(`/contract/company/${companyId}`);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Accept a contract
+export const acceptContract = async (contractId: string, userId: string) => {
+    try {
+        const response = await api.post(`/contract/${contractId}/accept`, { userId });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+
+
+
+      

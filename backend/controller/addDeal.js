@@ -1,77 +1,63 @@
-const { Deal, Term, Contract, Company, ContentCreator, pre_Term } = require("../database/connection");
+const { Deal, Term, Contract, Company, ContentCreator, pre_Term,Criteria } = require("../database/connection");
 const jwt = require('jsonwebtoken');
 
 module.exports = {
   addDeal: async (req, res) => {
     try {
       const decoded = req.user;
-      const { contractId, termsList, companyId, price } = req.body;
+      const { title, description, budget, termsList, start_date, end_date, rank, payement_terms, company_id } = req.body;
 
-      const contentCreator = await ContentCreator.findOne({ where: { userId: decoded.userId } });
-
-      const contract = await Contract.findOne({ where: { id: contractId, CompanyId: companyId } });
-
-      if (!contract) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Contract not found' 
-        });
-      }
-
-      const deal = await Deal.create({
-        contentCreatorId: contentCreator.id,
-        deal_terms: contract.payment_terms,
-        price: contract.amount,
+      // Create the contract first
+      const contract = await Contract.create({
+        title,
+        description,
+        amount: budget,
+        payment_terms: payement_terms,
+        start_date,
+        end_date,
+        rank,
         status: 'pending',
-        ContractId: contract.id,
+        CompanyId: company_id
       });
 
+      // Add terms to pre_terms table
       if (termsList && termsList.length > 0) {
         await Promise.all(termsList.map(term => {
-          return Term.create({
+          return pre_Term.create({
             title: term.title,
             description: term.description || '',
             status: 'negotiating',
-            DealId: deal.id
+            ContractId: contract.id
           });
         }));
       }
 
-      const createdDeal = await Deal.findOne({
-        where: { id: deal.id },
+      // Fetch the created contract with its terms
+      const createdContract = await Contract.findOne({
+        where: { id: contract.id },
         include: [
           {
-            model: Contract,
-            include: [
-              {
-                model: Company,
-                attributes: ['id', 'name', 'industry', 'codeFiscal', 'category']
-              }
-            ],
-            attributes: ['id', 'title', 'description', 'start_date', 'end_date', 'status', 'payment_terms', 'rank']
+            model: Company,
+            attributes: ['id', 'name', 'industry', 'codeFiscal', 'category']
           },
           {
-            model: Term,
+            model: pre_Term,
             attributes: ['id', 'title', 'description', 'status']
-          },
-          {
-            model: ContentCreator,
-            attributes: ['id', 'first_name', 'last_name', 'bio', 'pricing', 'portfolio_links', 'location', 'category', 'verified', 'isPremium', 'profile_picture']
           }
         ]
       });
 
       res.status(201).json({
         success: true,
-        message: 'Deal created successfully',
-        deal: createdDeal
+        message: 'Contract created successfully',
+        contract: createdContract
       });
 
     } catch (error) {
-      console.error("Error creating deal:", error);
+      console.error("Error creating contract:", error);
       res.status(500).json({ 
         success: false, 
-        message: 'Error creating deal',
+        message: 'Error creating contract',
         error: error.message 
       });
     }
@@ -110,6 +96,15 @@ module.exports = {
       
               // Adding terms to the deal object
               deal.dataValues.Terms = terms;
+            }
+            if (deal.id) {
+              const criteria = await Criteria.findAll({
+                where: { ContractId: deal.id },
+                attributes: ['id','name', 'description']
+              });
+      
+              // Adding terms to the deal object
+              deal.dataValues.criteria = criteria;
             }
           
 

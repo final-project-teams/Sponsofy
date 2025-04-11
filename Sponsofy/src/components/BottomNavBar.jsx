@@ -14,7 +14,7 @@ const BottomNavBar = () => {
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('MyDeals')}>
         <Ionicons name="home-outline" size={26} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ExploreScreen')}>
+      <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ContractSection')}>
         <Ionicons name="compass-outline" size={26} color="#666" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('AddDeal')}>
@@ -25,11 +25,13 @@ const BottomNavBar = () => {
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('ChatList')}>
         <Ionicons name="chatbubble-outline" size={26} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navItem} onPress={() => {user.role==="content_creator"?navigation.navigate('ProfileContent'):navigation.navigate('ProfileCompany')}}>
-        <Ionicons name="person-outline" size={26} color="#666" />
+      <TouchableOpacity style={styles.navItem} onPress={() => {user.role==="content_creator"?navigation.navigate('ProfileContent'):navigation.navigate('CompanyProfile', { company: user?.company || {} })}}>        <Ionicons name="person-outline" size={26} color="#666" />
       </TouchableOpacity>
+      
+     
       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('PremiumScreen')}>
         <Ionicons name="star-outline" size={26} color="#666" />
+        
       </TouchableOpacity>
     </View>
   );
@@ -61,4 +63,4 @@ const styles = {
   },
 };
 
-export default BottomNavBar; 
+export default BottomNavBar;

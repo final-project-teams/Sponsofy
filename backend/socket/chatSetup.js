@@ -1,5 +1,5 @@
 const path = require('path');
-const axios = require('axios');
+
 
 
 
@@ -107,7 +107,7 @@ const setupChat = (io) => {
     });
 
     // Handle message with media
-    socket.on('new_message_with_media', (messageData) => {
+    socket.on('new_message_with_media', async (messageData) => {
       const { roomId } = messageData;
       
       // Get sender info from socket or messageData
@@ -124,8 +124,11 @@ const setupChat = (io) => {
         socketId: socket.id
       };
 
-      // Broadcast to everyone in the room including sender
+      // Immediately broadcast to all users in the room
       chatIo.to(roomId).emit('receive_message', enrichedMessage);
+
+      // Also emit a specific event for media messages
+      chatIo.to(roomId).emit('receive_media_message', enrichedMessage);
     });
 
     // Handle typing indicators
@@ -165,6 +168,22 @@ const setupChat = (io) => {
 
     // Handle message deletion
     socket.on('delete_message', ({ roomId, messageId }) => {
+      console.log('Received delete_message event:', { roomId, messageId });
+      
+      // Verify the sender is in the room
+      const user = activeUsers.get(socket.id);
+      if (!user) {
+        console.error('User not found for socket:', socket.id);
+        return;
+      }
+
+      if (!roomUsers.has(roomId) || !roomUsers.get(roomId).has(user.userId)) {
+        console.error('User not in room:', { userId: user.userId, roomId });
+        return;
+      }
+
+      // Broadcast deletion to all users in the room
+      console.log('Broadcasting message_deleted event to room:', roomId);
       chatIo.to(roomId).emit('message_deleted', { messageId });
     });
 
